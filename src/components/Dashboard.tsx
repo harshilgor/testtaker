@@ -1,23 +1,19 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Zap, Clock, BookOpen, Brain } from 'lucide-react';
-
 interface DashboardProps {
   userName: string;
   onMarathonSelect: () => void;
   onMockTestSelect: () => void;
   onAllContentSelect: () => void;
 }
-
-const Dashboard: React.FC<DashboardProps> = ({ 
-  userName, 
-  onMarathonSelect, 
-  onMockTestSelect, 
-  onAllContentSelect 
+const Dashboard: React.FC<DashboardProps> = ({
+  userName,
+  onMarathonSelect,
+  onMockTestSelect,
+  onAllContentSelect
 }) => {
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+  return <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">
@@ -51,10 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <Button
-                onClick={onMarathonSelect}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 text-sm font-medium"
-              >
+              <Button onClick={onMarathonSelect} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 text-sm font-medium">
                 Start Marathon
               </Button>
             </div>
@@ -66,7 +59,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="bg-purple-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <Brain className="h-8 w-8 text-purple-500" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">All Content</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">Specific Topic</h3>
               <p className="text-gray-600 mb-4 text-sm leading-relaxed">
                 Practice specific topics and focus on areas that need improvement
               </p>
@@ -82,10 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <Button
-                onClick={onAllContentSelect}
-                className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 text-sm font-medium"
-              >
+              <Button onClick={onAllContentSelect} className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 text-sm font-medium">
                 Browse Topics
               </Button>
             </div>
@@ -113,18 +103,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <Button
-                onClick={onMockTestSelect}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 text-sm font-medium"
-              >
+              <Button onClick={onMockTestSelect} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 text-sm font-medium">
                 Take Mock Test
               </Button>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
