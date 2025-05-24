@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Marathon, FileText, Zap, Clock } from 'lucide-react';
+import { FileText, Zap, Clock } from 'lucide-react';
 
 interface DashboardProps {
   userName: string;
@@ -37,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userName, onMarathonSelect, onMoc
               
               <div className="flex items-center justify-center space-x-4 mb-6 text-sm text-gray-500">
                 <div className="flex items-center">
-                  <Marathon className="h-4 w-4 mr-1" />
+                  <Zap className="h-4 w-4 mr-1" />
                   Unlimited Questions
                 </div>
                 <div className="flex items-center">
