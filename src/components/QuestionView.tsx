@@ -67,6 +67,20 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
 
   const handleNextQuestion = () => {
     if (mode === 'mock') {
+      if (mockTestIndex === mockTestQuestions.length - 1) {
+        // Store mock test result
+        const mockTestResult = {
+          score: Math.round((score.correct / score.total) * 100),
+          questions: mockTestQuestions,
+          answers: new Array(mockTestQuestions.length).fill(null), // This would need to be tracked properly
+          date: new Date().toISOString(),
+          userName
+        };
+        
+        const existingMockTests = JSON.parse(localStorage.getItem('mockTestResults') || '[]');
+        existingMockTests.push(mockTestResult);
+        localStorage.setItem('mockTestResults', JSON.stringify(existingMockTests));
+      }
       setMockTestIndex(prev => prev + 1);
     }
     loadNextQuestion();

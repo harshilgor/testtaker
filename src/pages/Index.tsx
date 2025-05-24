@@ -7,8 +7,10 @@ import Marathon from '../components/Marathon';
 import MockTest from '../components/MockTest';
 import AllContent from '../components/AllContent';
 import Navigation from '../components/Navigation';
+import Quiz from '../components/Quiz';
+import PerformanceDashboard from '../components/PerformanceDashboard';
 
-export type Screen = 'landing' | 'name-entry' | 'dashboard' | 'marathon' | 'mock-test' | 'all-content' | 'stats';
+export type Screen = 'landing' | 'name-entry' | 'dashboard' | 'marathon' | 'mock-test' | 'quiz' | 'stats';
 export type Subject = 'math' | 'english';
 
 const Index = () => {
@@ -32,6 +34,10 @@ const Index = () => {
 
   const handleMockTestSelect = () => {
     setCurrentScreen('mock-test');
+  };
+
+  const handleQuizSelect = () => {
+    setCurrentScreen('quiz');
   };
 
   const handleAllContentSelect = () => {
@@ -70,7 +76,7 @@ const Index = () => {
             userName={userName}
             onMarathonSelect={handleMarathonSelect}
             onMockTestSelect={handleMockTestSelect}
-            onAllContentSelect={handleAllContentSelect}
+            onQuizSelect={handleQuizSelect}
           />
         );
       case 'marathon':
@@ -84,6 +90,13 @@ const Index = () => {
         );
       case 'mock-test':
         return <MockTest userName={userName} onBack={handleBackToDashboard} />;
+      case 'quiz':
+        return (
+          <Quiz
+            userName={userName}
+            onBack={handleBackToDashboard}
+          />
+        );
       case 'all-content':
         return (
           <AllContent
@@ -97,12 +110,10 @@ const Index = () => {
         );
       case 'stats':
         return (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Performance Dashboard</h1>
-              <p className="text-gray-600">Coming soon - Track your progress and performance stats</p>
-            </div>
-          </div>
+          <PerformanceDashboard
+            userName={userName}
+            onBack={handleBackToDashboard}
+          />
         );
       default:
         return <LandingScreen onGetStarted={handleGetStarted} />;
