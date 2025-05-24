@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Check, X, RefreshCw } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, Check, X, RefreshCw, Clock, Target, Trophy } from 'lucide-react';
 import { Subject } from '../pages/Index';
 import { getRandomQuestion, mockTestQuestions } from '../data/questions';
 
@@ -28,8 +29,15 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [mockTestIndex, setMockTestIndex] = useState(0);
   const [mockTestComplete, setMockTestComplete] = useState(false);
+  const [startTime, setStartTime] = useState<Date>(new Date());
+  const [showMarathonSummary, setShowMarathonSummary] = useState(false);
+  const [mockTestAnswers, setMockTestAnswers] = useState<(number | null)[]>([]);
 
   useEffect(() => {
+    setStartTime(new Date());
+    if (mode === 'mock') {
+      setMockTestAnswers(new Array(mockTestQuestions.length).fill(null));
+    }
     loadNextQuestion();
   }, []);
 
@@ -51,6 +59,11 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
   const handleAnswerSelect = (answerIndex: number) => {
     if (!showResult) {
       setSelectedAnswer(answerIndex);
+      if (mode === 'mock') {
+        const newAnswers = [...mockTestAnswers];
+        newAnswers[mockTestIndex] = answerIndex;
+        setMockTestAnswers(newAnswers);
+      }
     }
   };
 
@@ -68,11 +81,10 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
   const handleNextQuestion = () => {
     if (mode === 'mock') {
       if (mockTestIndex === mockTestQuestions.length - 1) {
-        // Store mock test result
         const mockTestResult = {
           score: Math.round((score.correct / score.total) * 100),
           questions: mockTestQuestions,
-          answers: new Array(mockTestQuestions.length).fill(null), // This would need to be tracked properly
+          answers: mockTestAnswers,
           date: new Date().toISOString(),
           userName
         };
@@ -86,52 +98,199 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
     loadNextQuestion();
   };
 
-  if (mockTestComplete) {
-    const percentage = Math.round((score.correct / score.total) * 100);
+  const handleEndMarathon = () => {
+    setShowMarathonSummary(true);
+  };
+
+  const formatTime = (startTime: Date) => {
+    const endTime = new Date();
+    const diffMs = endTime.getTime() - startTime.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  if (showMarathonSummary) {
+    const timeSpent = formatTime(startTime);
+    const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="mb-6">
-            <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
-              percentage >= 70 ? 'bg-green-100' : percentage >= 50 ? 'bg-yellow-100' : 'bg-red-100'
-            }`}>
-              {percentage >= 70 ? (
-                <Check className={`h-10 w-10 text-green-600`} />
-              ) : (
-                <X className={`h-10 w-10 ${percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`} />
-              )}
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <div className="mb-6">
+              <div className="bg-blue-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <Trophy className="h-10 w-10 text-blue-600" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Marathon Complete!</h2>
+              <p className="text-gray-600">Great job, {userName}!</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Mock Test Complete!</h2>
-            <p className="text-gray-600">Great job, {userName}!</p>
-          </div>
 
-          <div className="space-y-4 mb-6">
-            <div className="text-3xl font-bold text-blue-600">{percentage}%</div>
-            <div className="text-gray-600">
-              {score.correct} out of {score.total} questions correct
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Target className="h-6 w-6 text-green-600 mr-2" />
+                  <span className="text-sm text-green-700 font-medium">Questions Attempted</span>
+                </div>
+                <div className="text-2xl font-bold text-green-800">{score.total}</div>
+              </div>
+              
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Check className="h-6 w-6 text-blue-600 mr-2" />
+                  <span className="text-sm text-blue-700 font-medium">Correct Answers</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-800">{score.correct}</div>
+              </div>
+              
+              <div className="bg-red-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <X className="h-6 w-6 text-red-600 mr-2" />
+                  <span className="text-sm text-red-700 font-medium">Wrong Answers</span>
+                </div>
+                <div className="text-2xl font-bold text-red-800">{score.total - score.correct}</div>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Clock className="h-6 w-6 text-purple-600 mr-2" />
+                  <span className="text-sm text-purple-700 font-medium">Time Spent</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-800">{timeSpent}</div>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <Button
-              onClick={() => {
-                setMockTestIndex(0);
-                setMockTestComplete(false);
-                setScore({ correct: 0, total: 0 });
-                loadNextQuestion();
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retake Test
-            </Button>
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">{accuracy}%</div>
+              <div className="text-gray-600">Overall Accuracy</div>
+            </div>
+
             <Button
               onClick={onBack}
-              variant="outline"
-              className="w-full"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               Back to Dashboard
             </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mockTestComplete) {
+    const percentage = Math.round((score.correct / score.total) * 100);
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <div className="text-center mb-8">
+              <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
+                percentage >= 70 ? 'bg-green-100' : percentage >= 50 ? 'bg-yellow-100' : 'bg-red-100'
+              }`}>
+                {percentage >= 70 ? (
+                  <Check className={`h-10 w-10 text-green-600`} />
+                ) : (
+                  <X className={`h-10 w-10 ${percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`} />
+                )}
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Mock Test Complete!</h2>
+              <p className="text-gray-600">Great job, {userName}!</p>
+            </div>
+
+            <div className="text-center mb-8">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{percentage}%</div>
+              <div className="text-gray-600">
+                {score.correct} out of {score.total} questions correct
+              </div>
+            </div>
+
+            {/* Show all questions with answers */}
+            <div className="space-y-6 mb-8">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Review Your Answers</h3>
+              {mockTestQuestions.map((question, index) => {
+                const userAnswer = mockTestAnswers[index];
+                const isCorrect = userAnswer === question.correctAnswer;
+                
+                return (
+                  <div key={question.id} className="border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center mb-3">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium mr-3">
+                        Question {index + 1}
+                      </span>
+                      {isCorrect ? (
+                        <span className="text-green-600 text-sm font-medium">✅ Correct</span>
+                      ) : (
+                        <span className="text-red-600 text-sm font-medium">❌ Incorrect</span>
+                      )}
+                    </div>
+                    
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">{question.question}</h4>
+                    
+                    <div className="space-y-2 mb-4">
+                      {question.options.map((option, optionIndex) => (
+                        <div
+                          key={optionIndex}
+                          className={`p-3 rounded-lg border ${
+                            optionIndex === question.correctAnswer
+                              ? 'bg-green-50 border-green-300 text-green-800'
+                              : optionIndex === userAnswer && !isCorrect
+                              ? 'bg-red-50 border-red-300 text-red-800'
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <span className="font-medium mr-3">
+                            {String.fromCharCode(65 + optionIndex)}.
+                          </span>
+                          {option}
+                          {optionIndex === question.correctAnswer && (
+                            <span className="ml-2 text-green-600 font-medium">(Correct)</span>
+                          )}
+                          {optionIndex === userAnswer && userAnswer !== question.correctAnswer && (
+                            <span className="ml-2 text-red-600 font-medium">(Your Answer)</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                      <h5 className="font-medium text-blue-900 mb-2">Explanation:</h5>
+                      <p className="text-blue-800">{question.explanation}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-center space-x-4">
+              <Button
+                onClick={() => {
+                  setMockTestIndex(0);
+                  setMockTestComplete(false);
+                  setScore({ correct: 0, total: 0 });
+                  setMockTestAnswers(new Array(mockTestQuestions.length).fill(null));
+                  setStartTime(new Date());
+                  loadNextQuestion();
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retake Test
+              </Button>
+              <Button
+                onClick={onBack}
+                variant="outline"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -149,41 +308,69 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
     );
   }
 
-  const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+  const progress = mode === 'mock' ? ((mockTestIndex + 1) / mockTestQuestions.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="flex items-center"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {mode === 'mock' ? 'Mock Test' : `${subject === 'math' ? 'Math' : 'English'} Marathon`}
-            </h1>
-            {mode === 'mock' && (
-              <p className="text-gray-600">Question {mockTestIndex + 1} of {mockTestQuestions.length}</p>
-            )}
+        {/* Header with Progress for Mock Test */}
+        {mode === 'mock' && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                onClick={onBack}
+                variant="outline"
+                className="flex items-center"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-900">Mock Test</h1>
+                <p className="text-gray-600">Question {mockTestIndex + 1} of {mockTestQuestions.length}</p>
+              </div>
+              
+              <div className="text-right min-w-[100px]">
+                <div className="text-sm text-gray-600">Progress</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {Math.round(progress)}%
+                </div>
+              </div>
+            </div>
+            
+            <Progress value={progress} className="h-2" />
           </div>
-          
-          <div className="text-right">
-            <div className="text-sm text-gray-600">Score</div>
-            <div className="text-lg font-bold text-blue-600">
-              {score.correct}/{score.total}
+        )}
+
+        {/* Header for Marathon */}
+        {mode === 'marathon' && (
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              onClick={handleEndMarathon}
+              variant="outline"
+              className="flex items-center"
+            >
+              <X className="h-4 w-4 mr-2" />
+              End Marathon
+            </Button>
+            
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {subject === 'math' ? 'Math' : 'English'} Marathon
+              </h1>
+            </div>
+            
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Questions: {score.total}</div>
+              <div className="text-sm text-green-600">Correct: {score.correct}</div>
+              <div className="text-sm text-red-600">Wrong: {score.total - score.correct}</div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Question Card */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-8 mb-6">
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -244,13 +431,11 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
 
           {/* Result and Explanation */}
           {showResult && (
-            <div className={`p-4 rounded-lg mb-6 ${
-              isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-            }`}>
-              <div className={`font-medium mb-2 ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                {isCorrect ? '✅ Correct!' : '❌ Incorrect'}
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+              <div className="font-medium mb-2 text-blue-800">
+                {selectedAnswer === currentQuestion.correctAnswer ? '✅ Correct!' : '❌ Incorrect'}
               </div>
-              <p className="text-gray-700">{currentQuestion.explanation}</p>
+              <p className="text-blue-700">{currentQuestion.explanation}</p>
             </div>
           )}
 

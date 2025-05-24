@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { ArrowLeft, Play } from 'lucide-react';
 import { Subject } from '../pages/Index';
 import QuizView from './QuizView';
@@ -53,8 +54,15 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   };
 
   const handleStartQuiz = () => {
-    if (selectedTopics.length > 0) {
+    if (selectedTopics.length > 0 && questionCount > 0) {
       setStartQuiz(true);
+    }
+  };
+
+  const handleQuestionCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0 && value <= 100) {
+      setQuestionCount(value);
     }
   };
 
@@ -115,23 +123,22 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
             <label htmlFor="questionCount" className="block text-lg font-semibold text-gray-900 mb-4">
               Number of Questions
             </label>
-            <select
+            <Input
               id="questionCount"
+              type="number"
+              min="1"
+              max="100"
               value={questionCount}
-              onChange={(e) => setQuestionCount(Number(e.target.value))}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value={5}>5 Questions</option>
-              <option value={10}>10 Questions</option>
-              <option value={15}>15 Questions</option>
-              <option value={20}>20 Questions</option>
-              <option value={25}>25 Questions</option>
-            </select>
+              onChange={handleQuestionCountChange}
+              placeholder="Enter number of questions (1-100)"
+              className="w-full"
+            />
+            <p className="text-sm text-gray-500 mt-2">Enter any number between 1 and 100</p>
           </div>
 
           <Button
             onClick={handleStartQuiz}
-            disabled={selectedTopics.length === 0}
+            disabled={selectedTopics.length === 0 || questionCount <= 0}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
           >
             <Play className="h-5 w-5 mr-2" />

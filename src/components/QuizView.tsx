@@ -102,8 +102,8 @@ const QuizView: React.FC<QuizViewProps> = ({
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <div className="mb-6">
+          <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
+            <div className="text-center mb-8">
               <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
                 percentage >= 70 ? 'bg-green-100' : percentage >= 50 ? 'bg-yellow-100' : 'bg-red-100'
               }`}>
@@ -117,7 +117,7 @@ const QuizView: React.FC<QuizViewProps> = ({
               <p className="text-gray-600">Great job, {userName}!</p>
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-8 text-center">
               <div className="text-4xl font-bold text-blue-600">{percentage}%</div>
               <div className="text-gray-600">
                 {questions.reduce((count, question, index) => 
@@ -125,18 +125,88 @@ const QuizView: React.FC<QuizViewProps> = ({
                 )} out of {questionCount} questions correct
               </div>
             </div>
+          </div>
 
-            <div className="space-y-3">
+          {/* Show all questions with answers */}
+          <div className="space-y-6 mb-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Review Your Answers</h3>
+            {questions.map((question, questionIndex) => {
+              const userAnswer = answers[questionIndex];
+              const isCorrect = userAnswer === question.correctAnswer;
+              
+              return (
+                <div key={question.id} className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="mb-4">
+                    <div className="flex items-center mb-3">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium mr-3">
+                        Question {questionIndex + 1}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        question.subject === 'math' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {question.subject === 'math' ? 'Mathematics' : 'English'}
+                      </span>
+                      {isCorrect ? (
+                        <span className="ml-3 text-green-600 text-sm font-medium">✅ Correct</span>
+                      ) : (
+                        <span className="ml-3 text-red-600 text-sm font-medium">❌ Incorrect</span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 leading-relaxed">
+                      {question.question}
+                    </h3>
+                  </div>
+
+                  <div className="space-y-3 mb-4">
+                    {question.options.map((option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className={`p-4 rounded-lg border-2 ${
+                          optionIndex === question.correctAnswer
+                            ? 'border-green-500 bg-green-50 text-green-900'
+                            : optionIndex === userAnswer && !isCorrect
+                            ? 'border-red-500 bg-red-50 text-red-900'
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <span className="font-medium mr-3 text-gray-500">
+                            {String.fromCharCode(65 + optionIndex)}.
+                          </span>
+                          {option}
+                          {optionIndex === question.correctAnswer && (
+                            <span className="ml-auto text-green-600 font-medium">(Correct Answer)</span>
+                          )}
+                          {optionIndex === userAnswer && userAnswer !== question.correctAnswer && (
+                            <span className="ml-auto text-red-600 font-medium">(Your Answer)</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">Explanation:</h4>
+                    <p className="text-blue-800">{question.explanation}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex justify-center space-x-4">
               <Button
                 onClick={onBackToDashboard}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Back to Dashboard
               </Button>
               <Button
                 onClick={onBack}
                 variant="outline"
-                className="w-full"
               >
                 Create Another Quiz
               </Button>
