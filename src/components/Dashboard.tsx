@@ -1,86 +1,121 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Zap, Clock } from 'lucide-react';
+import { FileText, Zap, Clock, BookOpen, Brain } from 'lucide-react';
 
 interface DashboardProps {
   userName: string;
   onMarathonSelect: () => void;
   onMockTestSelect: () => void;
+  onAllContentSelect: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ userName, onMarathonSelect, onMockTestSelect }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  userName, 
+  onMarathonSelect, 
+  onMockTestSelect, 
+  onAllContentSelect 
+}) => {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome back, {userName}! 👋
-          </h1>
-          <p className="text-xl text-gray-600">
-            Ready to boost your SAT score? Choose your practice mode:
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+            Hello, {userName}! 👋
+          </h2>
+          <p className="text-lg text-gray-600">
+            Choose your practice mode to get started
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-3 gap-6">
           {/* Marathon Mode */}
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-blue-200">
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-100">
             <div className="text-center">
-              <div className="bg-orange-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                <Zap className="h-10 w-10 text-orange-600" />
+              <div className="bg-orange-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Zap className="h-8 w-8 text-orange-500" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Marathon Mode</h2>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Dive into unlimited practice questions. Choose between Math or English and get 
-                random questions from all topics to strengthen your skills.
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">Marathon Mode</h3>
+              <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+                Practice unlimited questions from all topics in your chosen subject
               </p>
               
-              <div className="flex items-center justify-center space-x-4 mb-6 text-sm text-gray-500">
+              <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
                 <div className="flex items-center">
-                  <Zap className="h-4 w-4 mr-1" />
-                  Unlimited Questions
+                  <Zap className="h-3 w-3 mr-1" />
+                  Unlimited
                 </div>
                 <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
+                  <Clock className="h-3 w-3 mr-1" />
                   Self-Paced
                 </div>
               </div>
 
               <Button
                 onClick={onMarathonSelect}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 text-lg font-semibold"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 text-sm font-medium"
               >
                 Start Marathon
               </Button>
             </div>
           </div>
 
-          {/* Mock Test Mode */}
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-blue-200">
+          {/* All Content Mode */}
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-100">
             <div className="text-center">
-              <div className="bg-blue-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                <FileText className="h-10 w-10 text-blue-600" />
+              <div className="bg-purple-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Brain className="h-8 w-8 text-purple-500" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Mock Test</h2>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Experience a full SAT simulation with timed sections, real question formats, 
-                and comprehensive scoring to track your progress.
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">All Content</h3>
+              <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+                Practice specific topics and focus on areas that need improvement
               </p>
               
-              <div className="flex items-center justify-center space-x-4 mb-6 text-sm text-gray-500">
+              <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
                 <div className="flex items-center">
-                  <FileText className="h-4 w-4 mr-1" />
-                  Real SAT Format
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  Topic-Based
                 </div>
                 <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  Timed Sections
+                  <Brain className="h-3 w-3 mr-1" />
+                  Focused
+                </div>
+              </div>
+
+              <Button
+                onClick={onAllContentSelect}
+                className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 text-sm font-medium"
+              >
+                Browse Topics
+              </Button>
+            </div>
+          </div>
+
+          {/* Mock Test Mode */}
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-100">
+            <div className="text-center">
+              <div className="bg-blue-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">Mock Test</h3>
+              <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+                Take a full SAT simulation with real timing and scoring
+              </p>
+              
+              <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
+                <div className="flex items-center">
+                  <FileText className="h-3 w-3 mr-1" />
+                  Real Format
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Timed
                 </div>
               </div>
 
               <Button
                 onClick={onMockTestSelect}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 text-sm font-medium"
               >
                 Take Mock Test
               </Button>
