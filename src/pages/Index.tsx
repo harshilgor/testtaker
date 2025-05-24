@@ -10,7 +10,7 @@ import Navigation from '../components/Navigation';
 import Quiz from '../components/Quiz';
 import PerformanceDashboard from '../components/PerformanceDashboard';
 
-export type Screen = 'landing' | 'name-entry' | 'dashboard' | 'marathon' | 'mock-test' | 'quiz' | 'stats';
+export type Screen = 'landing' | 'name-entry' | 'dashboard' | 'marathon' | 'mock-test' | 'quiz' | 'stats' | 'all-content';
 export type Subject = 'math' | 'english';
 
 const Index = () => {
