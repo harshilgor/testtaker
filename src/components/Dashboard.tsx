@@ -29,9 +29,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <Zap className="h-6 w-6 text-orange-500" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Marathon Mode</h3>
-              <p className="text-gray-600 mb-3 text-sm leading-relaxed">
-                Practice unlimited questions from all topics in your chosen subject
-              </p>
+              <p className="text-gray-600 mb-3 text-sm leading-relaxed">Practice unlimited questions 
+
+            </p>
               
               <div className="flex items-center justify-center space-x-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center">
@@ -83,9 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <FileText className="h-6 w-6 text-blue-500" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Mock Test</h3>
-              <p className="text-gray-600 mb-3 text-sm leading-relaxed">
-                Take a full SAT simulation with real timing and scoring
-              </p>
+              <p className="text-gray-600 mb-3 text-sm leading-relaxed">Take a full SAT mock test, with real timing and scoring</p>
               
               <div className="flex items-center justify-center space-x-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center">
