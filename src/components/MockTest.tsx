@@ -1,6 +1,6 @@
 
 import React from 'react';
-import QuestionView from './QuestionView';
+import SATMockTest from './SATMockTest';
 
 interface MockTestProps {
   userName: string;
@@ -9,9 +9,7 @@ interface MockTestProps {
 
 const MockTest: React.FC<MockTestProps> = ({ userName, onBack }) => {
   return (
-    <QuestionView
-      subject="mixed"
-      mode="mock"
+    <SATMockTest
       userName={userName}
       onBack={onBack}
     />
