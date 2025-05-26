@@ -1,23 +1,19 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Zap, Clock, BookOpen, Brain } from 'lucide-react';
-
 interface DashboardProps {
   userName: string;
   onMarathonSelect: () => void;
   onMockTestSelect: () => void;
   onQuizSelect: () => void;
 }
-
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
   onMarathonSelect,
   onMockTestSelect,
   onQuizSelect
 }) => {
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+  return <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <p className="text-lg text-gray-600">
@@ -61,9 +57,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <Brain className="h-6 w-6 text-purple-500" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Quiz</h3>
-              <p className="text-gray-600 mb-3 text-sm leading-relaxed">
-                Create custom quizzes from specific topics and set question count
-              </p>
+              <p className="text-gray-600 mb-3 text-sm leading-relaxed">Create custom quizzes from specific topics </p>
               
               <div className="flex items-center justify-center space-x-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center">
@@ -111,8 +105,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
