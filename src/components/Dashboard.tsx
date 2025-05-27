@@ -29,9 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <Zap className="h-6 w-6 text-orange-500" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Marathon Mode</h3>
-              <p className="text-gray-600 mb-3 text-sm leading-relaxed my-[22px]">Practice unlimited questions 
-
-            </p>
+              <p className="text-gray-600 mb-3 text-sm leading-relaxed my-[22px]">3000+ real SAT Practice questions </p>
               
               <div className="flex items-center justify-center space-x-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center">
