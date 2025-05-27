@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -66,15 +65,20 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     }
   };
 
+  const handleComplete = (results: any) => {
+    console.log('Quiz completed with results:', results);
+    onBackToDashboard();
+  };
+
   if (startQuiz) {
     return (
       <QuizView
         subject={subject}
-        selectedTopics={selectedTopics}
-        questionCount={questionCount}
+        topics={selectedTopics}
+        numQuestions={questionCount}
         userName={userName}
         onBack={() => setStartQuiz(false)}
-        onBackToDashboard={onBackToDashboard}
+        onComplete={handleComplete}
       />
     );
   }
