@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,13 +5,14 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MarathonSettings } from '../types/marathon';
-
 interface MarathonSettingsProps {
   onStart: (settings: MarathonSettings) => void;
   onBack: () => void;
 }
-
-const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, onBack }) => {
+const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
+  onStart,
+  onBack
+}) => {
   const [settings, setSettings] = useState<MarathonSettings>({
     subjects: ['both'],
     difficulty: 'mixed',
@@ -21,15 +21,12 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
     timeGoalMinutes: 30,
     calculatorEnabled: true,
     darkMode: false,
-    fontSize: 'medium',
+    fontSize: 'medium'
   });
-
   const handleStart = () => {
     onStart(settings);
   };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+  return <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       <Card className="max-w-2xl w-full p-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Marathon Mode Settings</h1>
@@ -41,20 +38,21 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
           <div>
             <Label className="text-base font-medium mb-3 block">Subject Focus</Label>
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'math', label: 'Math Only' },
-                { value: 'english', label: 'English Only' },
-                { value: 'both', label: 'Both Subjects' },
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  variant={settings.subjects.includes(option.value as any) ? 'default' : 'outline'}
-                  onClick={() => setSettings(prev => ({ ...prev, subjects: [option.value as any] }))}
-                  className="w-full"
-                >
+              {[{
+              value: 'math',
+              label: 'Math Only'
+            }, {
+              value: 'english',
+              label: 'English Only'
+            }, {
+              value: 'both',
+              label: 'Both Subjects'
+            }].map(option => <Button key={option.value} variant={settings.subjects.includes(option.value as any) ? 'default' : 'outline'} onClick={() => setSettings(prev => ({
+              ...prev,
+              subjects: [option.value as any]
+            }))} className="w-full">
                   {option.label}
-                </Button>
-              ))}
+                </Button>)}
             </div>
           </div>
 
@@ -62,21 +60,24 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
           <div>
             <Label className="text-base font-medium mb-3 block">Difficulty Level</Label>
             <div className="grid grid-cols-4 gap-3">
-              {[
-                { value: 'easy', label: 'Easy' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'hard', label: 'Hard' },
-                { value: 'mixed', label: 'Mixed' },
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  variant={settings.difficulty === option.value ? 'default' : 'outline'}
-                  onClick={() => setSettings(prev => ({ ...prev, difficulty: option.value as any }))}
-                  className="w-full"
-                >
+              {[{
+              value: 'easy',
+              label: 'Easy'
+            }, {
+              value: 'medium',
+              label: 'Medium'
+            }, {
+              value: 'hard',
+              label: 'Hard'
+            }, {
+              value: 'mixed',
+              label: 'Mixed'
+            }].map(option => <Button key={option.value} variant={settings.difficulty === option.value ? 'default' : 'outline'} onClick={() => setSettings(prev => ({
+              ...prev,
+              difficulty: option.value as any
+            }))} className="w-full">
                   {option.label}
-                </Button>
-              ))}
+                </Button>)}
             </div>
           </div>
 
@@ -86,10 +87,10 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
               <Label className="font-medium">Adaptive Learning</Label>
               <p className="text-sm text-gray-600">Focus on your weak topics automatically</p>
             </div>
-            <Switch
-              checked={settings.adaptiveLearning}
-              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, adaptiveLearning: checked }))}
-            />
+            <Switch checked={settings.adaptiveLearning} onCheckedChange={checked => setSettings(prev => ({
+            ...prev,
+            adaptiveLearning: checked
+          }))} />
           </div>
 
           {/* Timed Mode */}
@@ -99,62 +100,29 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
                 <Label className="font-medium">Timed Mode</Label>
                 <p className="text-sm text-gray-600">Set a time goal for your session</p>
               </div>
-              <Switch
-                checked={settings.timedMode}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, timedMode: checked }))}
-              />
+              <Switch checked={settings.timedMode} onCheckedChange={checked => setSettings(prev => ({
+              ...prev,
+              timedMode: checked
+            }))} />
             </div>
             
-            {settings.timedMode && (
-              <div className="ml-4">
+            {settings.timedMode && <div className="ml-4">
                 <Label htmlFor="timeGoal" className="text-sm">Time Goal (minutes)</Label>
-                <Input
-                  id="timeGoal"
-                  type="number"
-                  min="5"
-                  max="180"
-                  value={settings.timeGoalMinutes}
-                  onChange={(e) => setSettings(prev => ({ ...prev, timeGoalMinutes: parseInt(e.target.value) }))}
-                  className="w-24 mt-1"
-                />
-              </div>
-            )}
+                <Input id="timeGoal" type="number" min="5" max="180" value={settings.timeGoalMinutes} onChange={e => setSettings(prev => ({
+              ...prev,
+              timeGoalMinutes: parseInt(e.target.value)
+            }))} className="w-24 mt-1" />
+              </div>}
           </div>
 
           {/* Calculator */}
-          {(settings.subjects.includes('math') || settings.subjects.includes('both')) && (
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Calculator (Math Questions)</Label>
-                <p className="text-sm text-gray-600">Enable calculator for math practice</p>
-              </div>
-              <Switch
-                checked={settings.calculatorEnabled}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, calculatorEnabled: checked }))}
-              />
-            </div>
-          )}
+          {(settings.subjects.includes('math') || settings.subjects.includes('both')) && <div className="flex items-center justify-between">
+              
+              
+            </div>}
 
           {/* Font Size */}
-          <div>
-            <Label className="text-base font-medium mb-3 block">Font Size</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'small', label: 'Small' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'large', label: 'Large' },
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  variant={settings.fontSize === option.value ? 'default' : 'outline'}
-                  onClick={() => setSettings(prev => ({ ...prev, fontSize: option.value as any }))}
-                  className="w-full"
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          
         </div>
 
         <div className="flex justify-between mt-8">
@@ -166,8 +134,6 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({ onStart, o
           </Button>
         </div>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default MarathonSettingsComponent;
