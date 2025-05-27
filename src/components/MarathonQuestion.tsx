@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Flag, ArrowRight, Lightbulb, Eye, GraduationCap, Calculator } from 'lucide-react';
+import { Flag, ArrowRight, Lightbulb, Eye, GraduationCap, Calculator as CalculatorIcon } from 'lucide-react';
 import { Question } from '../data/questions';
+import Calculator from './Calculator';
 
 interface MarathonQuestionProps {
   question: Question;
@@ -32,7 +33,6 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [hintText, setHintText] = useState('');
   const [questionStartTime] = useState(Date.now());
   const [calculatorOpen, setCalculatorOpen] = useState(false);
-  const [calculatorValue, setCalculatorValue] = useState('0');
 
   const fontSizeClass = {
     small: 'text-sm',
@@ -62,32 +62,8 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     if (selectedAnswer === null) return;
     
     const isCorrect = !showAnswer && selectedAnswer === question.correctAnswer;
-    const timeSpent = Date.now() - questionStartTime;
     
     onAnswer(selectedAnswer, isCorrect, showAnswer, hintsUsed);
-  };
-
-  const calculatorButtons = [
-    ['C', '±', '%', '÷'],
-    ['7', '8', '9', '×'],
-    ['4', '5', '6', '-'],
-    ['1', '2', '3', '+'],
-    ['0', '.', '=']
-  ];
-
-  const handleCalculator = (value: string) => {
-    if (value === 'C') {
-      setCalculatorValue('0');
-    } else if (value === '=') {
-      try {
-        const result = eval(calculatorValue.replace('×', '*').replace('÷', '/'));
-        setCalculatorValue(result.toString());
-      } catch {
-        setCalculatorValue('Error');
-      }
-    } else {
-      setCalculatorValue(prev => prev === '0' ? value : prev + value);
-    }
   };
 
   return (
@@ -111,8 +87,9 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
                 onClick={() => setCalculatorOpen(!calculatorOpen)}
                 variant="outline"
                 size="sm"
+                className={calculatorOpen ? 'bg-blue-50 border-blue-300' : ''}
               >
-                <Calculator className="h-4 w-4" />
+                <CalculatorIcon className="h-4 w-4" />
               </Button>
             )}
             
@@ -126,28 +103,6 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
             </Button>
           </div>
         </div>
-
-        {/* Calculator */}
-        {calculatorOpen && (
-          <Card className="mb-6 p-4 w-64">
-            <div className="bg-gray-100 p-2 rounded mb-2 text-right font-mono">
-              {calculatorValue}
-            </div>
-            <div className="grid grid-cols-4 gap-1">
-              {calculatorButtons.flat().map((btn, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleCalculator(btn)}
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                >
-                  {btn}
-                </Button>
-              ))}
-            </div>
-          </Card>
-        )}
 
         {/* Question */}
         <div className="mb-8">
@@ -238,6 +193,12 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
           </Button>
         </div>
       </Card>
+
+      {/* Calculator */}
+      <Calculator
+        isOpen={calculatorOpen}
+        onClose={() => setCalculatorOpen(false)}
+      />
     </div>
   );
 };
