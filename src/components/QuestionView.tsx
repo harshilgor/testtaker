@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -49,7 +48,14 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
         setMockTestComplete(true);
       }
     } else {
-      const question = getRandomQuestion(subject as Subject);
+      // Handle the 'both' case by randomly selecting math or english
+      let questionSubject: 'math' | 'english';
+      if (subject === 'both' || subject === 'mixed') {
+        questionSubject = Math.random() > 0.5 ? 'math' : 'english';
+      } else {
+        questionSubject = subject as 'math' | 'english';
+      }
+      const question = getRandomQuestion(questionSubject);
       setCurrentQuestion(question);
     }
     setSelectedAnswer(null);
@@ -357,7 +363,7 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
             
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">
-                {subject === 'math' ? 'Math' : 'English'} Marathon
+                {subject === 'math' ? 'Math' : subject === 'english' ? 'English' : 'Mixed'} Marathon
               </h1>
             </div>
             
