@@ -1,24 +1,20 @@
+
 import React from 'react';
 import { GraduationCap, Brain, Target, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import LoginSignup from './LoginSignup';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
 
 const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
-  const handleLogin = (userData: any) => {
-    console.log('User logged in:', userData);
-    // For now, proceed to the app after login
-    onGetStarted();
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header with Login Button */}
       <div className="flex justify-end p-4">
-        <LoginSignup onLogin={handleLogin} />
+        <Button onClick={onGetStarted} variant="outline">
+          Login / Sign Up
+        </Button>
       </div>
       
       {/* Main Content */}

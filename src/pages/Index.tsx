@@ -1,136 +1,119 @@
 
 import React, { useState } from 'react';
-import LandingScreen from '../components/LandingScreen';
-import NameEntry from '../components/NameEntry';
-import Dashboard from '../components/Dashboard';
-import Marathon from '../components/Marathon';
-import MockTest from '../components/MockTest';
-import AllContent from '../components/AllContent';
-import Navigation from '../components/Navigation';
-import Quiz from '../components/Quiz';
-import PerformanceDashboard from '../components/PerformanceDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LogOut, User } from 'lucide-react';
+import LandingScreen from '@/components/LandingScreen';
+import AuthPage from '@/components/AuthPage';
+import Dashboard from '@/components/Dashboard';
+import Marathon from '@/components/Marathon';
+import Quiz from '@/components/Quiz';
+import MockTest from '@/components/MockTest';
 
-export type Screen = 'landing' | 'name-entry' | 'dashboard' | 'marathon' | 'mock-test' | 'quiz' | 'stats' | 'all-content';
-export type Subject = 'math' | 'english';
+export type Subject = 'math' | 'english' | 'both';
 
 const Index = () => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
-  const [userName, setUserName] = useState('');
+  const { user, session, loading, signOut } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<'landing' | 'auth' | 'dashboard' | 'marathon' | 'quiz' | 'mocktest'>('landing');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
-  const handleGetStarted = () => {
-    setCurrentScreen('name-entry');
-  };
+  // Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-  const handleNameSubmit = (name: string) => {
-    setUserName(name);
-    setCurrentScreen('dashboard');
-  };
-
-  const handleMarathonSelect = () => {
-    setCurrentScreen('marathon');
-  };
-
-  const handleMockTestSelect = () => {
-    setCurrentScreen('mock-test');
-  };
-
-  const handleQuizSelect = () => {
-    setCurrentScreen('quiz');
-  };
-
-  const handleAllContentSelect = () => {
-    setCurrentScreen('all-content');
-  };
-
-  const handleSubjectSelect = (subject: Subject) => {
-    setSelectedSubject(subject);
-  };
-
-  const handleTopicSelect = (topic: string) => {
-    setSelectedTopic(topic);
-  };
-
-  const handleBackToDashboard = () => {
-    setCurrentScreen('dashboard');
-    setSelectedSubject(null);
-    setSelectedTopic(null);
-  };
-
-  const handleNavigate = (screen: Screen) => {
-    setCurrentScreen(screen);
-  };
-
-  const showNavigation = currentScreen !== 'landing' && currentScreen !== 'name-entry';
-
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'landing':
-        return <LandingScreen onGetStarted={handleGetStarted} />;
-      case 'name-entry':
-        return <NameEntry onNameSubmit={handleNameSubmit} />;
-      case 'dashboard':
-        return (
-          <Dashboard
-            userName={userName}
-            onMarathonSelect={handleMarathonSelect}
-            onMockTestSelect={handleMockTestSelect}
-            onQuizSelect={handleQuizSelect}
-          />
-        );
-      case 'marathon':
-        return (
-          <Marathon
-            userName={userName}
-            selectedSubject={selectedSubject}
-            onSubjectSelect={handleSubjectSelect}
-            onBack={handleBackToDashboard}
-          />
-        );
-      case 'mock-test':
-        return <MockTest userName={userName} onBack={handleBackToDashboard} />;
-      case 'quiz':
-        return (
-          <Quiz
-            userName={userName}
-            onBack={handleBackToDashboard}
-          />
-        );
-      case 'all-content':
-        return (
-          <AllContent
-            userName={userName}
-            selectedSubject={selectedSubject}
-            selectedTopic={selectedTopic}
-            onSubjectSelect={handleSubjectSelect}
-            onTopicSelect={handleTopicSelect}
-            onBack={handleBackToDashboard}
-          />
-        );
-      case 'stats':
-        return (
-          <PerformanceDashboard
-            userName={userName}
-            onBack={handleBackToDashboard}
-          />
-        );
-      default:
-        return <LandingScreen onGetStarted={handleGetStarted} />;
+  // If user is not authenticated, show landing or auth page
+  if (!user || !session) {
+    if (currentScreen === 'auth') {
+      return <AuthPage />;
     }
+    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
+  }
+
+  // User is authenticated - show app content
+  const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
+
+  const handleSignOut = async () => {
+    await signOut();
+    setCurrentScreen('landing');
   };
 
+  if (currentScreen === 'marathon') {
+    return (
+      <Marathon
+        userName={userName}
+        selectedSubject={selectedSubject}
+        onSubjectSelect={setSelectedSubject}
+        onBack={() => setCurrentScreen('dashboard')}
+      />
+    );
+  }
+
+  if (currentScreen === 'quiz') {
+    return (
+      <Quiz
+        userName={userName}
+        onBack={() => setCurrentScreen('dashboard')}
+      />
+    );
+  }
+
+  if (currentScreen === 'mocktest') {
+    return (
+      <MockTest
+        userName={userName}
+        onBack={() => setCurrentScreen('dashboard')}
+      />
+    );
+  }
+
+  // Show dashboard with user menu
   return (
     <div className="min-h-screen bg-gray-50">
-      {showNavigation && (
-        <Navigation 
-          currentScreen={currentScreen} 
-          onNavigate={handleNavigate}
-        />
-      )}
-      <div className={showNavigation ? 'pt-16' : ''}>
-        {renderScreen()}
+      {/* Top navigation bar */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">
+                Welcome back, {userName}!
+              </h1>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <Avatar>
+                <AvatarImage src={user.user_metadata?.avatar_url} />
+                <AvatarFallback>
+                  <User className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Dashboard content */}
+      <Dashboard
+        userName={userName}
+        onMarathonSelect={() => setCurrentScreen('marathon')}
+        onMockTestSelect={() => setCurrentScreen('mocktest')}
+        onQuizSelect={() => setCurrentScreen('quiz')}
+      />
     </div>
   );
 };
