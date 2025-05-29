@@ -31,6 +31,7 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
   const [startTime, setStartTime] = useState<Date>(new Date());
   const [showMarathonSummary, setShowMarathonSummary] = useState(false);
   const [mockTestAnswers, setMockTestAnswers] = useState<(number | null)[]>([]);
+  const [quizEndTime, setQuizEndTime] = useState<Date | null>(null);
 
   useEffect(() => {
     setStartTime(new Date());
@@ -46,6 +47,7 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
         setCurrentQuestion(mockTestQuestions[mockTestIndex]);
       } else {
         setMockTestComplete(true);
+        setQuizEndTime(new Date());
       }
     } else {
       // Handle the 'both' case by randomly selecting math or english
@@ -87,6 +89,7 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
   const handleNextQuestion = () => {
     if (mode === 'mock') {
       if (mockTestIndex === mockTestQuestions.length - 1) {
+        setQuizEndTime(new Date());
         const mockTestResult = {
           score: Math.round((score.correct / score.total) * 100),
           questions: mockTestQuestions,
@@ -108,9 +111,9 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
     setShowMarathonSummary(true);
   };
 
-  const formatTime = (startTime: Date) => {
-    const endTime = new Date();
-    const diffMs = endTime.getTime() - startTime.getTime();
+  const formatTime = (startTime: Date, endTime?: Date) => {
+    const finalTime = endTime || new Date();
+    const diffMs = finalTime.getTime() - startTime.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
@@ -193,6 +196,8 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
 
   if (mockTestComplete) {
     const percentage = Math.round((score.correct / score.total) * 100);
+    const finalTimeSpent = formatTime(startTime, quizEndTime);
+    
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
@@ -209,10 +214,19 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Mock Test Complete!</h2>
               <p className="text-gray-600">Great job, {userName}!</p>
+              <div className="mt-4 flex justify-center items-center space-x-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{percentage}%</div>
+                  <div className="text-gray-600">Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{finalTimeSpent}</div>
+                  <div className="text-gray-600">Total Time</div>
+                </div>
+              </div>
             </div>
 
             <div className="text-center mb-8">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{percentage}%</div>
               <div className="text-gray-600">
                 {score.correct} out of {score.total} questions correct
               </div>
@@ -283,6 +297,7 @@ const QuestionView: React.FC<QuestionViewProps> = ({ subject, mode, userName, on
                   setScore({ correct: 0, total: 0 });
                   setMockTestAnswers(new Array(mockTestQuestions.length).fill(null));
                   setStartTime(new Date());
+                  setQuizEndTime(null);
                   loadNextQuestion();
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"

@@ -36,11 +36,27 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
     typeof selectedAnswer === 'string' ? selectedAnswer : ''
   );
   const [struckOutOptions, setStruckOutOptions] = useState<Set<number>>(new Set());
+  const [lastClickTime, setLastClickTime] = useState<{[key: number]: number}>({});
 
   const handleMultipleChoiceSelect = (optionIndex: number) => {
     // Don't select if option is struck out
     if (struckOutOptions.has(optionIndex)) return;
-    onAnswerChange(optionIndex);
+    
+    // Handle double-click to deselect
+    const now = Date.now();
+    const lastClick = lastClickTime[optionIndex] || 0;
+    
+    if (now - lastClick < 300) { // Double click within 300ms
+      // Double click - deselect if this option is currently selected
+      if (selectedAnswer === optionIndex) {
+        onAnswerChange(null);
+      }
+    } else {
+      // Single click - select this option
+      onAnswerChange(optionIndex);
+    }
+    
+    setLastClickTime({ ...lastClickTime, [optionIndex]: now });
   };
 
   const handleGridInChange = (value: string) => {
@@ -105,16 +121,15 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
               
               return (
                 <div key={index} className="relative">
-                  <button
+                  <div
                     onClick={() => handleMultipleChoiceSelect(index)}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                    className={`w-full p-4 text-left rounded-lg border-2 transition-all cursor-pointer ${
                       isSelected && !isStruckOut
                         ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : isStruckOut
-                        ? 'border-gray-200 bg-gray-100 text-gray-400'
+                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
-                    style={{ pointerEvents: isStruckOut ? 'none' : 'auto' }}
                   >
                     <div className="flex items-center pr-8">
                       <span className={`font-medium mr-3 ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -125,7 +140,7 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
                         <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
                       )}
                     </div>
-                  </button>
+                  </div>
                   
                   {/* Strike-out button */}
                   <button
