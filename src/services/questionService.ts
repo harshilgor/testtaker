@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -37,21 +36,42 @@ export interface QuestionFilters {
 
 class QuestionService {
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
-    const { data, error } = await supabase.rpc('get_random_questions', {
-      p_section: filters.section || null,
-      p_difficulty: filters.difficulty || null,
-      p_skill: filters.skill || null,
-      p_domain: filters.domain || null,
-      p_limit: filters.limit || 10,
-      p_exclude_ids: filters.excludeIds || []
-    });
+    // Use direct query instead of RPC to get all needed fields
+    let query = supabase
+      .from('question_bank')
+      .select('*')
+      .eq('is_active', true);
+
+    // Apply filters
+    if (filters.section) {
+      query = query.eq('section', filters.section);
+    }
+    if (filters.difficulty) {
+      query = query.eq('difficulty', filters.difficulty);
+    }
+    if (filters.skill) {
+      query = query.eq('skill', filters.skill);
+    }
+    if (filters.domain) {
+      query = query.eq('domain', filters.domain);
+    }
+    if (filters.excludeIds && filters.excludeIds.length > 0) {
+      query = query.not('id', 'in', `(${filters.excludeIds.join(',')})`);
+    }
+
+    // Add random ordering and limit
+    query = query.order('id'); // Postgres requires deterministic ordering for consistent results
+    
+    const { data, error } = await query.limit(filters.limit || 10);
 
     if (error) {
       console.error('Error fetching questions:', error);
       throw error;
     }
 
-    return data || [];
+    // Shuffle the results to get random questions
+    const shuffled = (data || []).sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, filters.limit || 10);
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
@@ -177,4 +197,3 @@ class QuestionService {
 }
 
 export const questionService = new QuestionService();
-
