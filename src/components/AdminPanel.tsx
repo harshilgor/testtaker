@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database, Upload, BarChart3, Settings } from 'lucide-react';
 import QuestionImport from './QuestionImport';
+import QuestionBankManagement from './QuestionBankManagement';
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -46,17 +47,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </TabsContent>
 
           <TabsContent value="database" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Question Bank Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Question bank management features will be available here. 
-                  This includes viewing, editing, and organizing your 3,000 questions.
-                </p>
-              </CardContent>
-            </Card>
+            <QuestionBankManagement />
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
