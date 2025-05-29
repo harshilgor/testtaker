@@ -121,38 +121,37 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
               
               return (
                 <div key={index} className="relative">
-                  <div
+                  <button
                     onClick={() => handleMultipleChoiceSelect(index)}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all cursor-pointer ${
+                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                       isSelected && !isStruckOut
                         ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : isStruckOut
                         ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
-                    style={{ paddingRight: '3rem' }}
+                    style={{ paddingRight: '4rem' }}
                   >
                     <div className="flex items-center">
-                      <span className={`font-medium mr-3 ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <span className={`font-medium mr-3 min-w-[2rem] ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
                         {String.fromCharCode(65 + index)}.
                       </span>
-                      <span className={isStruckOut ? 'line-through' : ''}>{option}</span>
+                      <span className={`flex-1 ${isStruckOut ? 'line-through' : ''}`}>{option}</span>
                       {isSelected && !isStruckOut && (
-                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto mr-8" />
+                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
                       )}
                     </div>
-                  </div>
+                  </button>
                   
-                  {/* Strike-out button - positioned to avoid overlap */}
+                  {/* Strike-out button - positioned absolutely to avoid conflicts */}
                   <button
                     onClick={(e) => toggleStrikeOut(index, e)}
-                    className={`absolute top-2 right-2 p-1.5 rounded-full hover:bg-gray-200 transition-colors z-20 ${
+                    className={`absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 transition-colors z-10 ${
                       isStruckOut ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'
                     }`}
                     title={isStruckOut ? 'Remove strike-out' : 'Strike out this option'}
-                    style={{ minWidth: '28px', minHeight: '28px' }}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               );
