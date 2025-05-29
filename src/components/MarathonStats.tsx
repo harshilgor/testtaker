@@ -12,6 +12,7 @@ interface MarathonStatsProps {
   averageTime: number;
   timeGoal?: number;
   sessionStartTime: Date;
+  showStreak?: boolean;
 }
 
 const MarathonStats: React.FC<MarathonStatsProps> = ({
@@ -21,7 +22,8 @@ const MarathonStats: React.FC<MarathonStatsProps> = ({
   currentStreak,
   averageTime,
   timeGoal,
-  sessionStartTime
+  sessionStartTime,
+  showStreak = true
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -71,13 +73,15 @@ const MarathonStats: React.FC<MarathonStatsProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Zap className="h-5 w-5 text-orange-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Streak</p>
-                  <p className="text-lg font-bold">{currentStreak}</p>
+              {showStreak && (
+                <div className="flex items-center space-x-2">
+                  <Zap className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Streak</p>
+                    <p className="text-lg font-bold">{currentStreak}</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">

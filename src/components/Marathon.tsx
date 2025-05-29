@@ -89,9 +89,8 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
       setCurrentStreak(0);
     }
 
-    setTimeout(() => {
-      generateNextQuestion(settings, [...attempts, attempt]);
-    }, 1500);
+    // Generate next question immediately without delay
+    generateNextQuestion(settings, [...attempts, attempt]);
   };
 
   const handleEndMarathon = () => {
@@ -156,8 +155,9 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
             incorrectAnswers={session.incorrectAnswers}
             currentStreak={currentStreak}
             averageTime={averageTime}
-            timeGoal={session.timeGoalMinutes}
+            timeGoal={session.timedMode ? session.timeGoalMinutes : undefined}
             sessionStartTime={sessionStartTime}
+            showStreak={false}
           />
         )}
 

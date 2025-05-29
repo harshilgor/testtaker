@@ -76,10 +76,8 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     setIsSubmitting(true);
     const isCorrect = !showAnswer && selectedAnswer === question.correctAnswer;
     
-    // Use setTimeout to ensure smooth UI transition
-    setTimeout(() => {
-      onAnswer(selectedAnswer, isCorrect, showAnswer, hintsUsed);
-    }, 100);
+    // Remove the artificial delay - call onAnswer immediately
+    onAnswer(selectedAnswer, isCorrect, showAnswer, hintsUsed);
   }, [selectedAnswer, showAnswer, question.correctAnswer, hintsUsed, onAnswer, isSubmitting]);
 
   const handleAnswerSelect = useCallback((answerIndex: number) => {
