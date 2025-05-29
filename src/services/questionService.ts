@@ -1,4 +1,5 @@
 
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -101,6 +102,14 @@ class QuestionService {
 
   // Convert database question to the format expected by existing components
   convertToLegacyFormat(dbQuestion: DatabaseQuestion) {
+    // Map database section to expected subject type
+    const getSubject = (section: string): 'math' | 'english' => {
+      if (section === 'math') return 'math';
+      if (section === 'reading-writing') return 'english';
+      // Default fallback
+      return 'english';
+    };
+
     return {
       id: dbQuestion.id,
       question: dbQuestion.question_text,
@@ -114,9 +123,9 @@ class QuestionService {
                     dbQuestion.correct_answer === 'B' ? 1 :
                     dbQuestion.correct_answer === 'C' ? 2 : 3,
       explanation: dbQuestion.correct_rationale,
-      subject: dbQuestion.section === 'math' ? 'math' : 'english',
+      subject: getSubject(dbQuestion.section),
       topic: dbQuestion.skill,
-      difficulty: dbQuestion.difficulty,
+      difficulty: dbQuestion.difficulty as 'easy' | 'medium' | 'hard',
       section: dbQuestion.section,
       type: dbQuestion.question_type,
       rationales: {
@@ -166,3 +175,4 @@ class QuestionService {
 }
 
 export const questionService = new QuestionService();
+

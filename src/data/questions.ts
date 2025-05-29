@@ -1,4 +1,5 @@
 
+
 import { questionService } from '@/services/questionService';
 
 export interface Question {
@@ -49,7 +50,14 @@ export const getQuestionsBySubject = async (
     };
 
     const dbQuestions = await questionService.getRandomQuestions(filters);
-    const questions = dbQuestions.map(q => questionService.convertToLegacyFormat(q));
+    const questions = dbQuestions.map(q => {
+      const converted = questionService.convertToLegacyFormat(q);
+      // Ensure subject is properly typed
+      return {
+        ...converted,
+        subject: converted.subject as 'math' | 'english'
+      };
+    });
     
     questionCache.set(cacheKey, questions);
     setTimeout(() => questionCache.delete(cacheKey), cacheTimeout);
@@ -78,7 +86,14 @@ export const getQuestionsByTopics = async (
       };
 
       const dbQuestions = await questionService.getRandomQuestions(filters);
-      const questions = dbQuestions.map(q => questionService.convertToLegacyFormat(q));
+      const questions = dbQuestions.map(q => {
+        const converted = questionService.convertToLegacyFormat(q);
+        // Ensure subject is properly typed
+        return {
+          ...converted,
+          subject: converted.subject as 'math' | 'english'
+        };
+      });
       allQuestions.push(...questions);
     }
     
@@ -116,3 +131,4 @@ export const mockTestQuestions = {
 
 // Export for backward compatibility
 export { questionService };
+
