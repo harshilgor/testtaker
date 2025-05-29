@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Home, BarChart3, Trophy, Activity } from 'lucide-react';
 
-type Screen = 'dashboard' | 'stats' | 'leaderboard' | 'performance-dashboard';
+type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
 
 interface NavigationProps {
   currentScreen: Screen;
