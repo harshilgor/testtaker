@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { SATQuestion } from '../data/satQuestions';
 import SATQuestionHeader from './SAT/SATQuestionHeader';
 import SATMultipleChoice from './SAT/SATMultipleChoice';
@@ -33,6 +33,22 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
   isLastQuestion,
   onModuleComplete
 }) => {
+  const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+
+  const handleEliminateOption = (optionIndex: number) => {
+    const newEliminated = new Set(eliminatedOptions);
+    if (newEliminated.has(optionIndex)) {
+      newEliminated.delete(optionIndex);
+    } else {
+      newEliminated.add(optionIndex);
+      // If the eliminated option was selected, deselect it
+      if (selectedAnswer === optionIndex) {
+        onAnswerChange(null);
+      }
+    }
+    setEliminatedOptions(newEliminated);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-8">
       <SATQuestionHeader
@@ -53,7 +69,9 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
           <SATMultipleChoice
             options={question.options}
             selectedAnswer={typeof selectedAnswer === 'number' ? selectedAnswer : null}
-            onAnswerChange={onAnswerChange}
+            onAnswerSelect={onAnswerChange}
+            eliminatedOptions={eliminatedOptions}
+            onEliminateOption={handleEliminateOption}
           />
         )}
 
