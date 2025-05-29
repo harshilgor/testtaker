@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      leaderboard_stats: {
+        Row: {
+          display_name: string
+          id: string
+          last_updated: string
+          marathon_questions_count: number
+          mock_test_count: number
+          quiz_count: number
+          total_points: number
+          user_id: string
+          visibility: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Insert: {
+          display_name: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Update: {
+          display_name?: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id?: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marathon_sessions: {
         Row: {
           adaptive_learning: boolean | null
@@ -103,6 +147,9 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          leaderboard_visibility:
+            | Database["public"]["Enums"]["leaderboard_visibility"]
+            | null
           preferences: Json | null
           updated_at: string
           username: string | null
@@ -113,6 +160,9 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          leaderboard_visibility?:
+            | Database["public"]["Enums"]["leaderboard_visibility"]
+            | null
           preferences?: Json | null
           updated_at?: string
           username?: string | null
@@ -123,6 +173,9 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          leaderboard_visibility?:
+            | Database["public"]["Enums"]["leaderboard_visibility"]
+            | null
           preferences?: Json | null
           updated_at?: string
           username?: string | null
@@ -226,10 +279,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_points: {
+        Args: { correct_answers: number; difficulty?: string }
+        Returns: number
+      }
+      refresh_all_leaderboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_leaderboard_stats: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      leaderboard_visibility: "public" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -344,6 +408,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      leaderboard_visibility: ["public", "private"],
+    },
   },
 } as const

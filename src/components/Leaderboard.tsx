@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface LeaderboardProps {
   userName: string;
@@ -10,112 +12,45 @@ interface LeaderboardProps {
 }
 
 interface UserScore {
-  userName: string;
-  totalPoints: number;
-  mockTests: number;
-  quizzes: number;
-  marathonQuestions: number;
+  id: string;
+  user_id: string;
+  display_name: string;
+  total_points: number;
+  mock_test_count: number;
+  quiz_count: number;
+  marathon_questions_count: number;
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
-  const [leaderboard, setLeaderboard] = useState<UserScore[]>([]);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
-  useEffect(() => {
-    calculateLeaderboard();
-  }, []);
+  // Fetch leaderboard data from Supabase
+  const { data: leaderboard = [], isLoading, error } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leaderboard_stats')
+        .select('*')
+        .eq('visibility', 'public')
+        .order('total_points', { ascending: false });
 
-  const calculatePoints = (quizResults: any[], mockResults: any[], marathonSessions: any[]) => {
-    let totalPoints = 0;
-    
-    // Points from quizzes (assuming medium difficulty for now)
-    quizResults.forEach(quiz => {
-      totalPoints += quiz.correct_answers * 6;
-    });
-    
-    // Points from mock tests (assuming medium difficulty for now)
-    mockResults.forEach(mock => {
-      const totalCorrect = (mock.math_score || 0) + (mock.english_score || 0);
-      totalPoints += totalCorrect * 6;
-    });
-    
-    // Points from marathon mode (assuming medium difficulty for now)
-    marathonSessions.forEach(session => {
-      totalPoints += (session.correct_answers || 0) * 6;
-    });
-    
-    return totalPoints;
-  };
-
-  const generateSampleUsers = () => {
-    const sampleUsers = [
-      'Alex Chen', 'Sarah Johnson', 'Michael Brown', 'Emma Davis', 'Ryan Wilson',
-      'Jessica Lee', 'David Kim', 'Ashley Martinez', 'Chris Anderson', 'Maya Patel'
-    ];
-    
-    return sampleUsers.map(name => ({
-      userName: name,
-      totalPoints: Math.floor(Math.random() * 5000) + 500,
-      mockTests: Math.floor(Math.random() * 15) + 1,
-      quizzes: Math.floor(Math.random() * 25) + 5,
-      marathonQuestions: Math.floor(Math.random() * 500) + 50
-    }));
-  };
-
-  const calculateLeaderboard = () => {
-    const allUsers = new Set<string>();
-    const userStats: { [key: string]: UserScore } = {};
-
-    // Get all stored results from localStorage
-    const quizResults = JSON.parse(localStorage.getItem('quizResults') || '[]');
-    const mockResults = JSON.parse(localStorage.getItem('mockTestResults') || '[]');
-    const satResults = JSON.parse(localStorage.getItem('satTestResults') || '[]');
-    const marathonSessions = JSON.parse(localStorage.getItem('marathonSessions') || '[]');
-
-    // Collect all unique usernames
-    [...quizResults, ...mockResults, ...satResults, ...marathonSessions].forEach(result => {
-      if (result.userName) {
-        allUsers.add(result.userName);
+      if (error) {
+        console.error('Error fetching leaderboard:', error);
+        throw error;
       }
-    });
 
-    // Calculate stats for each user
-    allUsers.forEach(user => {
-      const userQuizzes = quizResults.filter((r: any) => r.userName === user);
-      const userMockTests = mockResults.filter((r: any) => r.userName === user);
-      const userSatTests = satResults.filter((r: any) => r.userName === user);
-      const userMarathonSessions = marathonSessions.filter((r: any) => r.userName === user);
+      return data || [];
+    },
+    staleTime: 30000, // Cache for 30 seconds
+  });
 
-      const totalPoints = calculatePoints(userQuizzes, [...userMockTests, ...userSatTests], userMarathonSessions);
-      
-      const marathonQuestions = userMarathonSessions.reduce((sum: number, session: any) => 
-        sum + (session.totalQuestions || 0), 0
-      );
-
-      userStats[user] = {
-        userName: user,
-        totalPoints,
-        mockTests: userMockTests.length + userSatTests.length,
-        quizzes: userQuizzes.length,
-        marathonQuestions
-      };
-    });
-
-    // Add sample users if leaderboard is empty or has few users
-    let finalUsers = Object.values(userStats);
-    if (finalUsers.length < 5) {
-      const sampleUsers = generateSampleUsers();
-      finalUsers = [...finalUsers, ...sampleUsers.slice(0, 10 - finalUsers.length)];
+  // Find current user rank
+  useEffect(() => {
+    if (leaderboard.length > 0) {
+      const rank = leaderboard.findIndex(user => user.display_name === userName) + 1;
+      setCurrentUserRank(rank > 0 ? rank : null);
     }
-
-    // Sort by points and create leaderboard
-    const sortedUsers = finalUsers.sort((a, b) => b.totalPoints - a.totalPoints);
-    setLeaderboard(sortedUsers);
-
-    // Find current user rank
-    const rank = sortedUsers.findIndex(user => user.userName === userName) + 1;
-    setCurrentUserRank(rank > 0 ? rank : null);
-  };
+  }, [leaderboard, userName]);
 
   const getRankIcon = (position: number) => {
     switch (position) {
@@ -129,6 +64,57 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         return <span className="text-sm md:text-lg font-bold text-gray-600 min-w-[2rem] text-center">#{position}</span>;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-6 md:mb-8">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              className="flex items-center mr-4"
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading leaderboard...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-6 md:mb-8">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              className="flex items-center mr-4"
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
+          </div>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-red-600 text-center">Failed to load leaderboard. Please try again later.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
@@ -155,7 +141,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
                   <div>
                     <p className="font-semibold text-blue-900 text-sm md:text-base">Your Rank: #{currentUserRank}</p>
                     <p className="text-xs md:text-sm text-blue-700">
-                      {leaderboard[currentUserRank - 1]?.totalPoints || 0} points
+                      {leaderboard[currentUserRank - 1]?.total_points || 0} points
                     </p>
                   </div>
                 </div>
@@ -173,14 +159,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           </CardHeader>
           <CardContent className="p-3 md:p-6">
             {leaderboard.length === 0 ? (
-              <p className="text-gray-600 text-center py-8 text-sm md:text-base">No data available yet. Complete some activities to see the leaderboard!</p>
+              <p className="text-gray-600 text-center py-8 text-sm md:text-base">
+                No leaderboard data available yet. Complete some activities to see rankings!
+              </p>
             ) : (
               <div className="space-y-3 md:space-y-4">
                 {leaderboard.map((user, index) => (
                   <div
-                    key={`${user.userName}-${index}`}
+                    key={user.id}
                     className={`flex items-center justify-between p-3 md:p-4 rounded-lg border ${
-                      user.userName === userName 
+                      user.display_name === userName 
                         ? 'border-blue-300 bg-blue-50' 
                         : 'border-gray-200 bg-white'
                     }`}
@@ -191,20 +179,20 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-gray-900 text-sm md:text-base break-words">
-                          {user.userName}
-                          {user.userName === userName && (
+                          {user.display_name}
+                          {user.display_name === userName && (
                             <span className="ml-2 text-xs md:text-sm text-blue-600">(You)</span>
                           )}
                         </p>
                         <div className="flex flex-col sm:flex-row sm:gap-4 gap-1 text-xs md:text-sm text-gray-600 mt-1">
-                          <span className="whitespace-nowrap">{user.mockTests} tests</span>
-                          <span className="whitespace-nowrap">{user.quizzes} quizzes</span>
-                          <span className="whitespace-nowrap">{user.marathonQuestions} marathon</span>
+                          <span className="whitespace-nowrap">{user.mock_test_count} tests</span>
+                          <span className="whitespace-nowrap">{user.quiz_count} quizzes</span>
+                          <span className="whitespace-nowrap">{user.marathon_questions_count} marathon</span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <p className="text-lg md:text-xl font-bold text-gray-900">{user.totalPoints}</p>
+                      <p className="text-lg md:text-xl font-bold text-gray-900">{user.total_points}</p>
                       <p className="text-xs md:text-sm text-gray-600">points</p>
                     </div>
                   </div>
