@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Flag, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
+import { Flag, ArrowLeft, ArrowRight, CheckCircle, X } from 'lucide-react';
 import { SATQuestion } from '../data/satQuestions';
 
 interface SATQuestionViewProps {
@@ -35,14 +34,33 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
   const [gridInValue, setGridInValue] = useState<string>(
     typeof selectedAnswer === 'string' ? selectedAnswer : ''
   );
+  const [struckOutOptions, setStruckOutOptions] = useState<Set<number>>(new Set());
 
   const handleMultipleChoiceSelect = (optionIndex: number) => {
+    // Don't select if option is struck out
+    if (struckOutOptions.has(optionIndex)) return;
     onAnswerChange(optionIndex);
   };
 
   const handleGridInChange = (value: string) => {
     setGridInValue(value);
     onAnswerChange(value || null);
+  };
+
+  const toggleStrikeOut = (optionIndex: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const newStruckOut = new Set(struckOutOptions);
+    if (newStruckOut.has(optionIndex)) {
+      newStruckOut.delete(optionIndex);
+      // If this was the selected answer and we're un-striking it, keep it selected
+    } else {
+      newStruckOut.add(optionIndex);
+      // If we're striking out the selected answer, deselect it
+      if (selectedAnswer === optionIndex) {
+        onAnswerChange(null);
+      }
+    }
+    setStruckOutOptions(newStruckOut);
   };
 
   return (
@@ -80,27 +98,47 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
         {/* Answer Options */}
         {question.type === 'multiple-choice' && question.options && (
           <div className="space-y-3">
-            {question.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleMultipleChoiceSelect(index)}
-                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                  selectedAnswer === index
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center">
-                  <span className="font-medium mr-3 text-gray-500">
-                    {String.fromCharCode(65 + index)}.
-                  </span>
-                  <span>{option}</span>
-                  {selectedAnswer === index && (
-                    <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
-                  )}
+            {question.options.map((option, index) => {
+              const isSelected = selectedAnswer === index;
+              const isStruckOut = struckOutOptions.has(index);
+              
+              return (
+                <div key={index} className="relative">
+                  <button
+                    onClick={() => handleMultipleChoiceSelect(index)}
+                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                      isSelected && !isStruckOut
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
+                        : isStruckOut
+                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                    disabled={isStruckOut}
+                  >
+                    <div className="flex items-center">
+                      <span className={`font-medium mr-3 ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {String.fromCharCode(65 + index)}.
+                      </span>
+                      <span className={isStruckOut ? 'line-through' : ''}>{option}</span>
+                      {isSelected && !isStruckOut && (
+                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
+                      )}
+                    </div>
+                  </button>
+                  
+                  {/* Strike-out button */}
+                  <button
+                    onClick={(e) => toggleStrikeOut(index, e)}
+                    className={`absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 transition-colors ${
+                      isStruckOut ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    title={isStruckOut ? 'Remove strike-out' : 'Strike out this option'}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -31,8 +31,8 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [showExplanation, setShowExplanation] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [hintText, setHintText] = useState('');
-  const [questionStartTime] = useState(Date.now());
   const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fontSizeClass = {
     small: 'text-sm',
@@ -40,7 +40,17 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     large: 'text-lg'
   }[fontSize];
 
-  const getHint = () => {
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setShowAnswer(false);
+    setShowExplanation(false);
+    setHintsUsed(0);
+    setHintText('');
+    setIsSubmitting(false);
+  }, [question.id]);
+
+  const getHint = useCallback(() => {
     const hints = [
       "Think about what type of problem this is and what approach you should use.",
       "Break down the problem step by step. What information are you given?",
@@ -51,20 +61,30 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
       setHintText(hints[hintsUsed]);
       setHintsUsed(prev => prev + 1);
     }
-  };
+  }, [hintsUsed]);
 
-  const handleShowAnswer = () => {
+  const handleShowAnswer = useCallback(() => {
     setShowAnswer(true);
     setShowExplanation(true);
-  };
+  }, []);
 
-  const handleSubmitAnswer = () => {
-    if (selectedAnswer === null) return;
+  const handleSubmitAnswer = useCallback(() => {
+    if (selectedAnswer === null || isSubmitting) return;
     
+    setIsSubmitting(true);
     const isCorrect = !showAnswer && selectedAnswer === question.correctAnswer;
     
-    onAnswer(selectedAnswer, isCorrect, showAnswer, hintsUsed);
-  };
+    // Use setTimeout to ensure smooth UI transition
+    setTimeout(() => {
+      onAnswer(selectedAnswer, isCorrect, showAnswer, hintsUsed);
+    }, 100);
+  }, [selectedAnswer, showAnswer, question.correctAnswer, hintsUsed, onAnswer, isSubmitting]);
+
+  const handleAnswerSelect = useCallback((answerIndex: number) => {
+    if (!showAnswer && !isSubmitting) {
+      setSelectedAnswer(answerIndex);
+    }
+  }, [showAnswer, isSubmitting]);
 
   return (
     <div className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-white'} transition-colors`}>
@@ -115,8 +135,8 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
             {question.options.map((option, index) => (
               <button
                 key={index}
-                onClick={() => setSelectedAnswer(index)}
-                disabled={showAnswer}
+                onClick={() => handleAnswerSelect(index)}
+                disabled={showAnswer || isSubmitting}
                 className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                   showAnswer
                     ? index === question.correctAnswer
@@ -126,7 +146,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
                       : 'border-gray-200 bg-gray-50'
                     : selectedAnswer === index
                     ? 'border-blue-500 bg-blue-50'
-                    : `border-gray-200 hover:border-gray-300 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
+                    : `border-gray-200 hover:border-gray-300 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`
                 }`}
               >
                 <div className="flex items-center">
@@ -161,14 +181,14 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
         {/* Action Buttons */}
         <div className="flex justify-between items-center pt-6 border-t">
           <div className="flex space-x-2">
-            {!showAnswer && hintsUsed < 3 && (
+            {!showAnswer && hintsUsed < 3 && !isSubmitting && (
               <Button onClick={getHint} variant="outline" size="sm">
                 <Lightbulb className="h-4 w-4 mr-1" />
                 Hint ({hintsUsed}/3)
               </Button>
             )}
             
-            {!showAnswer && (
+            {!showAnswer && !isSubmitting && (
               <Button onClick={handleShowAnswer} variant="outline" size="sm">
                 <Eye className="h-4 w-4 mr-1" />
                 Show Answer
@@ -185,10 +205,10 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
 
           <Button
             onClick={handleSubmitAnswer}
-            disabled={selectedAnswer === null}
-            className="bg-orange-600 hover:bg-orange-700"
+            disabled={selectedAnswer === null || isSubmitting}
+            className={`bg-orange-600 hover:bg-orange-700 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            Next Question
+            {isSubmitting ? 'Processing...' : 'Next Question'}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>

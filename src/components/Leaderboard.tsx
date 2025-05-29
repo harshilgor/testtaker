@@ -98,40 +98,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const getRankIcon = (position: number) => {
     switch (position) {
       case 1:
-        return <Trophy className="h-6 w-6 text-yellow-500" />;
+        return <Trophy className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
       case 2:
-        return <Medal className="h-6 w-6 text-gray-400" />;
+        return <Medal className="h-5 w-5 md:h-6 md:w-6 text-gray-400" />;
       case 3:
-        return <Award className="h-6 w-6 text-amber-600" />;
+        return <Award className="h-5 w-5 md:h-6 md:w-6 text-amber-600" />;
       default:
-        return <span className="text-lg font-bold text-gray-600">#{position}</span>;
+        return <span className="text-sm md:text-lg font-bold text-gray-600">#{position}</span>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-8">
+        <div className="flex items-center mb-6 md:mb-8">
           <Button
             onClick={onBack}
             variant="outline"
             className="flex items-center mr-4"
+            size="sm"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
         </div>
 
         {currentUserRank && (
-          <Card className="mb-6 border-blue-200 bg-blue-50">
-            <CardContent className="p-4">
+          <Card className="mb-4 md:mb-6 border-blue-200 bg-blue-50">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 md:space-x-3">
                   {getRankIcon(currentUserRank)}
                   <div>
-                    <p className="font-semibold text-blue-900">Your Rank: #{currentUserRank}</p>
-                    <p className="text-sm text-blue-700">
+                    <p className="font-semibold text-blue-900 text-sm md:text-base">Your Rank: #{currentUserRank}</p>
+                    <p className="text-xs md:text-sm text-blue-700">
                       {leaderboard[currentUserRank - 1]?.totalPoints || 0} points
                     </p>
                   </div>
@@ -142,47 +143,47 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
+          <CardHeader className="pb-3 md:pb-4">
+            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
+              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" />
               <span>Top Performers</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 md:p-6">
             {leaderboard.length === 0 ? (
-              <p className="text-gray-600 text-center py-8">No data available yet. Complete some activities to see the leaderboard!</p>
+              <p className="text-gray-600 text-center py-8 text-sm md:text-base">No data available yet. Complete some activities to see the leaderboard!</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {leaderboard.map((user, index) => (
                   <div
                     key={user.userName}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                    className={`flex items-center justify-between p-3 md:p-4 rounded-lg border ${
                       user.userName === userName 
                         ? 'border-blue-300 bg-blue-50' 
                         : 'border-gray-200 bg-white'
                     }`}
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-12">
+                    <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
+                      <div className="flex items-center justify-center w-8 md:w-12 flex-shrink-0">
                         {getRankIcon(index + 1)}
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm md:text-base truncate">
                           {user.userName}
                           {user.userName === userName && (
-                            <span className="ml-2 text-sm text-blue-600">(You)</span>
+                            <span className="ml-2 text-xs md:text-sm text-blue-600">(You)</span>
                           )}
                         </p>
-                        <div className="flex space-x-4 text-sm text-gray-600">
-                          <span>{user.mockTests} mock tests</span>
+                        <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mt-1">
+                          <span>{user.mockTests} tests</span>
                           <span>{user.quizzes} quizzes</span>
-                          <span>{user.marathonQuestions} marathon questions</span>
+                          <span className="hidden sm:inline">{user.marathonQuestions} marathon</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-gray-900">{user.totalPoints}</p>
-                      <p className="text-sm text-gray-600">points</p>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-lg md:text-xl font-bold text-gray-900">{user.totalPoints}</p>
+                      <p className="text-xs md:text-sm text-gray-600">points</p>
                     </div>
                   </div>
                 ))}
