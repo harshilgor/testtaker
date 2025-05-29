@@ -130,27 +130,29 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
                         ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
+                    style={{ paddingRight: '3rem' }}
                   >
-                    <div className="flex items-center pr-8">
+                    <div className="flex items-center">
                       <span className={`font-medium mr-3 ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
                         {String.fromCharCode(65 + index)}.
                       </span>
                       <span className={isStruckOut ? 'line-through' : ''}>{option}</span>
                       {isSelected && !isStruckOut && (
-                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
+                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto mr-8" />
                       )}
                     </div>
                   </div>
                   
-                  {/* Strike-out button */}
+                  {/* Strike-out button - positioned to avoid overlap */}
                   <button
-                    onMouseDown={(e) => toggleStrikeOut(index, e)}
-                    className={`absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 transition-colors z-10 ${
+                    onClick={(e) => toggleStrikeOut(index, e)}
+                    className={`absolute top-2 right-2 p-1.5 rounded-full hover:bg-gray-200 transition-colors z-20 ${
                       isStruckOut ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'
                     }`}
                     title={isStruckOut ? 'Remove strike-out' : 'Strike out this option'}
+                    style={{ minWidth: '28px', minHeight: '28px' }}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               );

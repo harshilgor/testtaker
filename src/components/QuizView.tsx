@@ -29,6 +29,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>([]);
   const [timeSpent, setTimeSpent] = useState(0);
+  const [finalTimeSpent, setFinalTimeSpent] = useState<number | null>(null);
   const [startTime] = useState(Date.now());
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -44,11 +45,15 @@ const QuizView: React.FC<QuizViewProps> = ({
   }, [subject, numQuestions]);
 
   useEffect(() => {
+    // Only run timer if quiz is not completed
+    if (showSummary || finalTimeSpent !== null) return;
+    
     const timer = setInterval(() => {
       setTimeSpent(Date.now() - startTime);
     }, 1000);
+    
     return () => clearInterval(timer);
-  }, [startTime]);
+  }, [startTime, showSummary, finalTimeSpent]);
 
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
@@ -67,6 +72,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   };
 
   const handleSubmit = () => {
+    // Capture final time at the moment of submission
+    const finalTime = Date.now() - startTime;
+    setFinalTimeSpent(finalTime);
+    
     const correctAnswers = answers.filter((answer, index) => 
       answer === questions[index]?.correctAnswer
     ).length;
@@ -81,7 +90,7 @@ const QuizView: React.FC<QuizViewProps> = ({
       topics,
       date: new Date().toISOString(),
       userName,
-      timeSpent: Math.floor(timeSpent / 1000),
+      timeSpent: Math.floor(finalTime / 1000),
       correctAnswers,
       totalQuestions: questions.length
     };
@@ -104,6 +113,9 @@ const QuizView: React.FC<QuizViewProps> = ({
   const getAnsweredCount = () => {
     return answers.filter(answer => answer !== null).length;
   };
+
+  // Use final time if quiz is completed, otherwise use current time
+  const displayTime = finalTimeSpent !== null ? finalTimeSpent : timeSpent;
 
   if (showSummary && quizResults) {
     const accuracy = Math.round((quizResults.correctAnswers / quizResults.totalQuestions) * 100);
@@ -154,7 +166,7 @@ const QuizView: React.FC<QuizViewProps> = ({
                   <Clock className="h-6 w-6 text-purple-600 mr-2" />
                   <span className="text-sm text-purple-700 font-medium">Time Spent</span>
                 </div>
-                <div className="text-2xl font-bold text-purple-800">{formatTime(timeSpent)}</div>
+                <div className="text-2xl font-bold text-purple-800">{formatTime(finalTimeSpent || 0)}</div>
               </div>
             </div>
 
@@ -196,7 +208,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           </Button>
           <h1 className="text-2xl font-bold">Quiz</h1>
           <div className="text-sm text-gray-600">
-            {Math.floor(timeSpent / 60000)}:{((timeSpent % 60000) / 1000).toFixed(0).padStart(2, '0')}
+            {Math.floor(displayTime / 60000)}:{((displayTime % 60000) / 1000).toFixed(0).padStart(2, '0')}
           </div>
         </div>
 
