@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award } from 'lucide-react';
+import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye } from 'lucide-react';
 
 interface DashboardProps {
   userName: string;
@@ -19,6 +19,14 @@ interface MarathonStats {
   bestStreak: number;
 }
 
+interface MarathonSession {
+  userName: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  bestStreak: number;
+  completedAt: string;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
   onMarathonSelect,
@@ -32,6 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     totalSessions: 0,
     bestStreak: 0
   });
+  const [marathonSessions, setMarathonSessions] = useState<MarathonSession[]>([]);
 
   useEffect(() => {
     calculateMarathonStats();
@@ -40,6 +49,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const calculateMarathonStats = () => {
     const marathonSessions = JSON.parse(localStorage.getItem('marathonSessions') || '[]');
     const userSessions = marathonSessions.filter((session: any) => session.userName === userName);
+    
+    setMarathonSessions(userSessions);
     
     if (userSessions.length === 0) {
       return;
@@ -114,6 +125,42 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <p className="text-2xl font-bold text-gray-900">{marathonStats.totalSessions}</p>
                   <p className="text-sm text-gray-600">Sessions</p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Marathon History Section */}
+        {marathonSessions.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Marathon History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {marathonSessions.slice(-5).reverse().map((session, index) => {
+                  const accuracy = session.totalQuestions > 0 ? Math.round((session.correctAnswers / session.totalQuestions) * 100) : 0;
+                  return (
+                    <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div>
+                        <h3 className="font-medium">Marathon Session</h3>
+                        <p className="text-sm text-gray-600">
+                          {new Date(session.completedAt).toLocaleDateString()} • {session.totalQuestions} questions • Best streak: {session.bestStreak}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className={`text-lg font-bold ${
+                          accuracy >= 70 ? 'text-green-600' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {accuracy}%
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {session.correctAnswers}/{session.totalQuestions}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

@@ -36,27 +36,17 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
     typeof selectedAnswer === 'string' ? selectedAnswer : ''
   );
   const [struckOutOptions, setStruckOutOptions] = useState<Set<number>>(new Set());
-  const [lastClickTime, setLastClickTime] = useState<{[key: number]: number}>({});
 
   const handleMultipleChoiceSelect = (optionIndex: number) => {
     // Don't select if option is struck out
     if (struckOutOptions.has(optionIndex)) return;
     
-    // Handle double-click to deselect
-    const now = Date.now();
-    const lastClick = lastClickTime[optionIndex] || 0;
-    
-    if (now - lastClick < 300) { // Double click within 300ms
-      // Double click - deselect if this option is currently selected
-      if (selectedAnswer === optionIndex) {
-        onAnswerChange(null);
-      }
+    // Simple toggle behavior: if this option is selected, deselect it, otherwise select it
+    if (selectedAnswer === optionIndex) {
+      onAnswerChange(null);
     } else {
-      // Single click - select this option
       onAnswerChange(optionIndex);
     }
-    
-    setLastClickTime({ ...lastClickTime, [optionIndex]: now });
   };
 
   const handleGridInChange = (value: string) => {
@@ -131,6 +121,7 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                     style={{ paddingRight: '4rem' }}
+                    disabled={isStruckOut}
                   >
                     <div className="flex items-center">
                       <span className={`font-medium mr-3 min-w-[2rem] ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
