@@ -62,27 +62,41 @@ export const useSATTest = (userName: string) => {
   useEffect(() => {
     if (!testStarted) return;
 
-    if (currentProgress.module === 1) {
-      const questions = getSATQuestions(currentProgress.section, 1);
-      setCurrentQuestions(questions);
-    } else {
-      const module1Results = moduleResults.find(
-        r => r.section === currentProgress.section && r.module === 1
-      );
-      
-      if (module1Results) {
-        const performance = module1Results.score / module1Results.totalQuestions;
-        const adaptiveQuestions = getAdaptiveQuestions(currentProgress.section, performance);
-        setCurrentQuestions(adaptiveQuestions);
+    const loadQuestions = async () => {
+      try {
+        if (currentProgress.module === 1) {
+          const questions = await getSATQuestions(currentProgress.section, 1);
+          setCurrentQuestions(questions);
+        } else {
+          const module1Results = moduleResults.find(
+            r => r.section === currentProgress.section && r.module === 1
+          );
+          
+          if (module1Results) {
+            const performance = module1Results.score / module1Results.totalQuestions;
+            const adaptiveQuestions = await getAdaptiveQuestions(currentProgress.section, performance);
+            setCurrentQuestions(adaptiveQuestions);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading SAT questions:', error);
+        setCurrentQuestions([]);
       }
-    }
+    };
+
+    loadQuestions();
   }, [currentProgress.section, currentProgress.module, testStarted, moduleResults]);
 
-  const startTest = () => {
+  const startTest = async () => {
     setTestStarted(true);
     setStartTime(new Date());
-    const questions = getSATQuestions('reading-writing', 1);
-    setCurrentQuestions(questions);
+    try {
+      const questions = await getSATQuestions('reading-writing', 1);
+      setCurrentQuestions(questions);
+    } catch (error) {
+      console.error('Error starting test:', error);
+      setCurrentQuestions([]);
+    }
   };
 
   const handleAnswerChange = (questionId: string, answer: number | string | null) => {

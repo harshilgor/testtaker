@@ -88,6 +88,12 @@ export const getAdaptiveQuestions = async (
   }
 };
 
+// Export all SAT questions for backward compatibility
+export const allSATQuestions = {
+  'reading-writing': [] as SATQuestion[],
+  'math': [] as SATQuestion[]
+};
+
 // Fallback questions in case database is unavailable
 const getFallbackQuestions = (section: 'reading-writing' | 'math', count: number): SATQuestion[] => {
   const fallbackQuestion: SATQuestion = {

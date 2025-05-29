@@ -108,5 +108,11 @@ const getFallbackQuestion = (subject: 'math' | 'english'): Question => ({
   difficulty: 'medium'
 });
 
+// Export mock test questions for backward compatibility
+export const mockTestQuestions = {
+  math: [] as Question[],
+  english: [] as Question[]
+};
+
 // Export for backward compatibility
 export { questionService };

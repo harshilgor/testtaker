@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -19,11 +20,12 @@ interface MarathonProps {
 
 const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjectSelect, onBack }) => {
   const [currentScreen, setCurrentScreen] = useState<'settings' | 'question' | 'summary'>('settings');
-  const [currentQuestion, setCurrentQuestion] = useState(getRandomQuestion('math'));
+  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [currentStreak, setCurrentStreak] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [settings, setSettings] = useState<MarathonSettings | null>(null);
+  const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   
   const {
     session,
@@ -36,36 +38,55 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
     toggleFlag,
   } = useMarathonSession();
 
-  const handleStartMarathon = (marathonSettings: MarathonSettings) => {
+  const handleStartMarathon = async (marathonSettings: MarathonSettings) => {
     setSettings(marathonSettings);
     startSession(marathonSettings);
     const startTime = new Date();
     setSessionStartTime(startTime);
     setCurrentScreen('question');
-    generateNextQuestion(marathonSettings, []);
+    await generateNextQuestion(marathonSettings, []);
   };
 
-  const generateNextQuestion = (marathonSettings: MarathonSettings, currentAttempts: QuestionAttempt[]) => {
-    let subject: 'math' | 'english';
-    
-    if (marathonSettings.subjects.includes('both')) {
-      subject = Math.random() > 0.5 ? 'math' : 'english';
-    } else {
-      subject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
-    }
+  const generateNextQuestion = async (marathonSettings: MarathonSettings, currentAttempts: QuestionAttempt[]) => {
+    setIsLoadingQuestion(true);
+    try {
+      let subject: 'math' | 'english';
+      
+      if (marathonSettings.subjects.includes('both')) {
+        subject = Math.random() > 0.5 ? 'math' : 'english';
+      } else {
+        subject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
+      }
 
-    if (marathonSettings.adaptiveLearning && weakTopics.length > 0 && Math.random() > 0.3) {
-      const weakTopic = weakTopics[Math.floor(Math.random() * weakTopics.length)];
-      subject = weakTopic.subject;
-    }
+      if (marathonSettings.adaptiveLearning && weakTopics.length > 0 && Math.random() > 0.3) {
+        const weakTopic = weakTopics[Math.floor(Math.random() * weakTopics.length)];
+        subject = weakTopic.subject;
+      }
 
-    const newQuestion = getRandomQuestion(subject);
-    setCurrentQuestion(newQuestion);
-    setQuestionStartTime(Date.now());
+      const newQuestion = await getRandomQuestion(subject);
+      setCurrentQuestion(newQuestion);
+      setQuestionStartTime(Date.now());
+    } catch (error) {
+      console.error('Error loading question:', error);
+      // Fallback to a simple question if database fails
+      setCurrentQuestion({
+        id: `fallback-${Date.now()}`,
+        question: subject === 'math' ? 'If 3x + 7 = 22, what is the value of x?' : 'Which sentence best supports the main idea?',
+        options: subject === 'math' ? ['3', '5', '7', '15'] : ['Option A', 'Option B', 'Option C', 'Option D'],
+        correctAnswer: 1,
+        explanation: subject === 'math' ? 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.' : 'This option best supports the main argument.',
+        subject,
+        topic: subject === 'math' ? 'Algebra' : 'Reading Comprehension',
+        difficulty: 'medium',
+        type: 'multiple-choice'
+      });
+    } finally {
+      setIsLoadingQuestion(false);
+    }
   };
 
-  const handleAnswer = (answer: number | string, isCorrect: boolean, showAnswerUsed: boolean, hintsUsed: number) => {
-    if (!session || !settings) return;
+  const handleAnswer = async (answer: number | string, isCorrect: boolean, showAnswerUsed: boolean, hintsUsed: number) => {
+    if (!session || !settings || !currentQuestion) return;
 
     const timeSpent = Date.now() - questionStartTime;
     const attempt: QuestionAttempt = {
@@ -89,8 +110,8 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
       setCurrentStreak(0);
     }
 
-    // Generate next question immediately without delay
-    generateNextQuestion(settings, [...attempts, attempt]);
+    // Generate next question
+    await generateNextQuestion(settings, [...attempts, attempt]);
   };
 
   const handleEndMarathon = () => {
@@ -100,7 +121,9 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
   };
 
   const handleFlag = () => {
-    toggleFlag(currentQuestion.id);
+    if (currentQuestion) {
+      toggleFlag(currentQuestion.id);
+    }
   };
 
   const averageTime = attempts.length > 0 
@@ -125,6 +148,20 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
         onBack={onBack}
         onRestart={() => setCurrentScreen('settings')}
       />
+    );
+  }
+
+  if (isLoadingQuestion || !currentQuestion) {
+    return (
+      <div className={`min-h-screen ${settings?.darkMode ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="text-center">
+            <p className={`text-lg ${settings?.darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Loading question...
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -165,7 +202,7 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
           question={currentQuestion}
           onAnswer={handleAnswer}
           onFlag={handleFlag}
-          isFlagged={flaggedQuestions.includes(currentQuestion.id)}
+          isFlagged={currentQuestion ? flaggedQuestions.includes(currentQuestion.id) : false}
           calculatorEnabled={settings?.calculatorEnabled || false}
           fontSize={settings?.fontSize || 'medium'}
           darkMode={settings?.darkMode || false}

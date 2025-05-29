@@ -11,7 +11,7 @@ interface Question {
   correctAnswer: number | string;
   explanation: string;
   subject: 'math' | 'english';
-  type: 'multiple-choice' | 'grid-in';
+  type?: 'multiple-choice' | 'grid-in';
 }
 
 interface MarathonQuestionProps {
@@ -39,10 +39,12 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
 
+  const questionType = question.type || 'multiple-choice';
+
   const handleSubmit = () => {
     if (selectedAnswer === null && !gridInValue) return;
     
-    const answer = question.type === 'grid-in' ? gridInValue : selectedAnswer;
+    const answer = questionType === 'grid-in' ? gridInValue : selectedAnswer;
     const isCorrect = answer === question.correctAnswer;
     
     onAnswer(answer!, isCorrect, showAnswer, hintsUsed);
@@ -62,7 +64,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
 
   const handleShowAnswer = () => {
     setShowAnswer(true);
-    if (question.type === 'multiple-choice') {
+    if (questionType === 'multiple-choice') {
       setSelectedAnswer(question.correctAnswer as number);
     } else {
       setGridInValue(question.correctAnswer as string);
@@ -100,7 +102,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
       </h2>
 
       {/* Answer Options */}
-      {question.type === 'multiple-choice' && question.options && (
+      {questionType === 'multiple-choice' && question.options && (
         <div className="space-y-3 mb-6">
           {question.options.map((option, index) => (
             <button
@@ -120,7 +122,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
       )}
 
       {/* Grid-In Input */}
-      {question.type === 'grid-in' && (
+      {questionType === 'grid-in' && (
         <div className="mb-6">
           <Input
             type="text"
