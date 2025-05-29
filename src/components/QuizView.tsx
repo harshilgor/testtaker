@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Flag, Calculator as CalculatorIcon, Trophy, Target, Check, X, Clock, Lightbulb, Eye, GraduationCap } from 'lucide-react';
 import { Question, getRandomQuestion } from '../data/questions';
 import Calculator from './Calculator';
+import { getQuestionsBySubject, getQuestionsByTopics, questionService } from '../data/questions';
 
 interface QuizViewProps {
   subject: string;
@@ -43,13 +44,33 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [hintText, setHintText] = useState('');
 
   useEffect(() => {
-    const generatedQuestions = Array.from({ length: numQuestions }, () => 
-      getRandomQuestion(subject === 'math' ? 'math' : 'english')
-    );
-    setQuestions(generatedQuestions);
-    setAnswers(new Array(numQuestions).fill(null));
-    setFlaggedQuestions(new Array(numQuestions).fill(false));
-  }, [subject, numQuestions]);
+    const loadQuestions = async () => {
+      try {
+        let loadedQuestions;
+        if (topics.length > 0) {
+          loadedQuestions = await getQuestionsByTopics(
+            subject === 'math' ? 'math' : 'english',
+            topics,
+            numQuestions
+          );
+        } else {
+          loadedQuestions = await getQuestionsBySubject(
+            subject === 'math' ? 'math' : 'english',
+            numQuestions
+          );
+        }
+        
+        setQuestions(loadedQuestions);
+        setAnswers(new Array(loadedQuestions.length).fill(null));
+        setFlaggedQuestions(new Array(loadedQuestions.length).fill(false));
+      } catch (error) {
+        console.error('Error loading questions:', error);
+        // Keep existing fallback behavior
+      }
+    };
+
+    loadQuestions();
+  }, [subject, numQuestions, topics]);
 
   useEffect(() => {
     if (showSummary || finalTimeSpent !== null) return;
@@ -77,6 +98,14 @@ const QuizView: React.FC<QuizViewProps> = ({
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
+
+    // Track question usage
+    if (questions[currentQuestionIndex]) {
+      questionService.trackQuestionUsage(
+        questions[currentQuestionIndex].id, 
+        mode === 'marathon' ? 'marathon' : 'quiz'
+      );
+    }
   };
 
   const handleFlag = () => {
@@ -362,33 +391,74 @@ const QuizView: React.FC<QuizViewProps> = ({
                 {currentQuestion.question}
               </h2>
 
-              {/* Answer Options */}
+              {/* Enhanced Answer Options with Rationales */}
               <div className="space-y-3 mb-8">
-                {currentQuestion.options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    disabled={mode === 'marathon' && showAnswer}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                      mode === 'marathon' && showAnswer
-                        ? index === currentQuestion.correctAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : answers[currentQuestionIndex] === index
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-gray-200 bg-gray-50'
-                        : answers[currentQuestionIndex] === index
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <span className="font-medium mr-3 text-gray-500">
-                        {String.fromCharCode(65 + index)}.
-                      </span>
-                      <span>{option}</span>
+                {currentQuestion.options.map((option, index) => {
+                  const isSelected = answers[currentQuestionIndex] === index;
+                  const isCorrect = index === currentQuestion.correctAnswer;
+                  const isIncorrect = showAnswer && isSelected && !isCorrect;
+                  const showRationale = mode === 'marathon' && showExplanation;
+                  
+                  return (
+                    <div key={index} className="space-y-2">
+                      <button
+                        onClick={() => handleAnswerSelect(index)}
+                        disabled={mode === 'marathon' && showAnswer}
+                        className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                          mode === 'marathon' && showAnswer
+                            ? isCorrect
+                              ? 'border-green-500 bg-green-50'
+                              : isIncorrect
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-gray-200 bg-gray-50'
+                            : isSelected
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <span className="font-medium mr-3 text-gray-500">
+                            {String.fromCharCode(65 + index)}.
+                          </span>
+                          <span>{option}</span>
+                        </div>
+                      </button>
+
+                      {/* Show individual option rationales in marathon mode */}
+                      {showRationale && currentQuestion.rationales && (
+                        <div className="ml-8">
+                          {isCorrect && currentQuestion.rationales.correct && (
+                            <Card className="p-3 bg-green-50 border-green-200">
+                              <div className="flex items-start space-x-2">
+                                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                                <p className="text-sm text-green-800">
+                                  <strong>Correct:</strong> {currentQuestion.rationales.correct}
+                                </p>
+                              </div>
+                            </Card>
+                          )}
+                          
+                          {!isCorrect && currentQuestion.rationales.incorrect && (
+                            (() => {
+                              const optionLetter = String.fromCharCode(65 + index) as 'A' | 'B' | 'C' | 'D';
+                              const incorrectRationale = currentQuestion.rationales.incorrect[optionLetter];
+                              return incorrectRationale ? (
+                                <Card className="p-3 bg-red-50 border-red-200">
+                                  <div className="flex items-start space-x-2">
+                                    <X className="h-4 w-4 text-red-600 mt-0.5" />
+                                    <p className="text-sm text-red-800">
+                                      <strong>Why this is incorrect:</strong> {incorrectRationale}
+                                    </p>
+                                  </div>
+                                </Card>
+                              ) : null;
+                            })()
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Marathon Mode Hints */}

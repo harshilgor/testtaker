@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye } from 'lucide-react';
+import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import AdminPanel from './AdminPanel';
 
 interface DashboardProps {
   userName: string;
@@ -36,6 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onMockTestSelect,
   onQuizSelect
 }) => {
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
     totalQuestions: 0,
     correctAnswers: 0,
@@ -82,14 +83,28 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [marathonSessions]);
 
+  if (showAdminPanel) {
+    return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col px-4 py-8">
       <div className="max-w-6xl mx-auto w-full">
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Welcome back, {userName}!</h1>
           <p className="text-lg text-gray-600">
             Choose your practice mode to get started
           </p>
+          
+          {/* Admin Access Button */}
+          <Button
+            onClick={() => setShowAdminPanel(true)}
+            variant="ghost"
+            size="sm"
+            className="absolute top-0 right-0 text-gray-500 hover:text-gray-700"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Marathon Stats Section */}

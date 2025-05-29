@@ -1,195 +1,123 @@
 
+import { questionService, DatabaseQuestion } from '@/services/questionService';
+
 export interface SATQuestion {
   id: string;
-  section: 'reading-writing' | 'math';
-  module: 1 | 2;
-  difficulty: 'easy' | 'medium' | 'hard';
-  topic: string;
   question: string;
   options?: string[];
   correctAnswer: number | string;
   explanation: string;
+  section: 'reading-writing' | 'math';
+  topic: string;
+  difficulty: 'easy' | 'medium' | 'hard';
   type: 'multiple-choice' | 'grid-in';
+  rationales?: {
+    correct: string;
+    incorrect: {
+      A?: string;
+      B?: string;
+      C?: string;
+      D?: string;
+    };
+  };
 }
 
-// Reading & Writing Questions
-const readingWritingQuestions: SATQuestion[] = [
-  // Module 1 - Mixed Difficulty
-  {
-    id: 'rw1-1',
-    section: 'reading-writing',
-    module: 1,
-    difficulty: 'easy',
-    topic: 'Information and Ideas',
-    question: 'Based on the passage, which statement best describes the main idea?',
-    options: ['The importance of renewable energy', 'The decline of fossil fuels', 'Environmental conservation methods', 'Economic impacts of climate change'],
-    correctAnswer: 0,
-    explanation: 'The passage primarily focuses on the importance and benefits of renewable energy sources.',
-    type: 'multiple-choice'
-  },
-  {
-    id: 'rw1-2',
-    section: 'reading-writing',
-    module: 1,
+// Cache for questions to avoid repeated database calls
+const questionCache = new Map<string, SATQuestion[]>();
+const cacheTimeout = 5 * 60 * 1000; // 5 minutes
+
+export const getSATQuestions = async (
+  section: 'reading-writing' | 'math', 
+  module: 1 | 2,
+  count: number = 27
+): Promise<SATQuestion[]> => {
+  const cacheKey = `${section}-${module}-${count}`;
+  
+  // Check cache first
+  if (questionCache.has(cacheKey)) {
+    const cached = questionCache.get(cacheKey)!;
+    // Return cached questions if cache is still valid
+    return cached;
+  }
+
+  try {
+    const difficulty = module === 1 ? 'medium' : 'mixed'; // Module 1 is standard, Module 2 is adaptive
+    
+    const filters = {
+      section,
+      limit: count,
+      ...(difficulty !== 'mixed' && { difficulty })
+    };
+
+    const dbQuestions = await questionService.getRandomQuestions(filters);
+    const satQuestions = dbQuestions.map(q => questionService.convertToSATFormat(q));
+    
+    // Cache the results
+    questionCache.set(cacheKey, satQuestions);
+    setTimeout(() => questionCache.delete(cacheKey), cacheTimeout);
+    
+    return satQuestions;
+  } catch (error) {
+    console.error('Error fetching SAT questions:', error);
+    // Return fallback questions if database fails
+    return getFallbackQuestions(section, count);
+  }
+};
+
+export const getAdaptiveQuestions = async (
+  section: 'reading-writing' | 'math',
+  performance: number, // 0-1 score from module 1
+  count: number = 27
+): Promise<SATQuestion[]> => {
+  const difficulty = performance >= 0.7 ? 'hard' : performance >= 0.4 ? 'medium' : 'easy';
+  
+  try {
+    const filters = {
+      section,
+      difficulty,
+      limit: count
+    };
+
+    const dbQuestions = await questionService.getRandomQuestions(filters);
+    const satQuestions = dbQuestions.map(q => questionService.convertToSATFormat(q));
+    
+    return satQuestions;
+  } catch (error) {
+    console.error('Error fetching adaptive questions:', error);
+    return getFallbackQuestions(section, count);
+  }
+};
+
+// Fallback questions in case database is unavailable
+const getFallbackQuestions = (section: 'reading-writing' | 'math', count: number): SATQuestion[] => {
+  const fallbackQuestion: SATQuestion = {
+    id: 'fallback-1',
+    question: section === 'math' 
+      ? 'If 2x + 5 = 13, what is the value of x?'
+      : 'Which choice best maintains the sentence pattern established in the passage?',
+    options: section === 'math' 
+      ? ['2', '4', '8', '13']
+      : ['However', 'Therefore', 'Additionally', 'In contrast'],
+    correctAnswer: section === 'math' ? 1 : 0,
+    explanation: section === 'math' 
+      ? 'Subtract 5 from both sides: 2x = 8, then divide by 2: x = 4'
+      : 'The sentence pattern requires a contrasting transition word.',
+    section,
+    topic: section === 'math' ? 'Algebra' : 'Writing',
     difficulty: 'medium',
-    topic: 'Craft and Structure',
-    question: 'The author uses the phrase "economic watershed" to emphasize:',
-    options: ['A turning point in financial policy', 'The literal meaning of water management', 'A gradual economic decline', 'The importance of natural resources'],
-    correctAnswer: 0,
-    explanation: 'The metaphor "economic watershed" indicates a significant turning point or dividing line in economic policy.',
     type: 'multiple-choice'
-  },
-  {
-    id: 'rw1-3',
-    section: 'reading-writing',
-    module: 1,
-    difficulty: 'hard',
-    topic: 'Expression of Ideas',
-    question: 'Which revision best improves the clarity and flow of the sentence?',
-    options: ['No change needed', 'Move the dependent clause to the beginning', 'Split into two separate sentences', 'Remove the transitional phrase'],
-    correctAnswer: 1,
-    explanation: 'Moving the dependent clause to the beginning creates better sentence flow and clarity.',
-    type: 'multiple-choice'
-  },
-  // Add more questions for complete 27-question modules...
-];
+  };
 
-// Math Questions
-const mathQuestions: SATQuestion[] = [
-  // Module 1 - Mixed Difficulty
-  {
-    id: 'm1-1',
-    section: 'math',
-    module: 1,
-    difficulty: 'easy',
-    topic: 'Algebra',
-    question: 'If 3x + 7 = 22, what is the value of x?',
-    options: ['3', '5', '7', '15'],
-    correctAnswer: 1,
-    explanation: 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.',
-    type: 'multiple-choice'
-  },
-  {
-    id: 'm1-2',
-    section: 'math',
-    module: 1,
-    difficulty: 'medium',
-    topic: 'Advanced Math',
-    question: 'What is the value of x² + 2x - 8 when x = 3?',
-    correctAnswer: '7',
-    explanation: 'Substitute x = 3: (3)² + 2(3) - 8 = 9 + 6 - 8 = 7.',
-    type: 'grid-in'
-  },
-  {
-    id: 'm1-3',
-    section: 'math',
-    module: 1,
-    difficulty: 'hard',
-    topic: 'Geometry',
-    question: 'In a right triangle with legs of length 6 and 8, what is the length of the hypotenuse?',
-    options: ['10', '12', '14', '16'],
-    correctAnswer: 0,
-    explanation: 'Using the Pythagorean theorem: √(6² + 8²) = √(36 + 64) = √100 = 10.',
-    type: 'multiple-choice'
-  },
-  // Add more questions for complete 22-question modules...
-];
-
-// Generate additional questions to reach required counts
-const generateAdditionalQuestions = () => {
-  const additionalRW: SATQuestion[] = [];
-  const additionalMath: SATQuestion[] = [];
-  
-  // Generate remaining Reading & Writing questions (24 more for Module 1, 27 for Module 2)
-  for (let i = 4; i <= 27; i++) {
-    additionalRW.push({
-      id: `rw1-${i}`,
-      section: 'reading-writing',
-      module: 1,
-      difficulty: i % 3 === 0 ? 'hard' : i % 2 === 0 ? 'medium' : 'easy',
-      topic: ['Information and Ideas', 'Craft and Structure', 'Expression of Ideas', 'Standard English Conventions'][i % 4],
-      question: `Reading and Writing question ${i}: Which choice best maintains the style and tone of the passage?`,
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: i % 4,
-      explanation: `This is the explanation for question ${i}.`,
-      type: 'multiple-choice'
-    });
-  }
-  
-  // Generate Module 2 Reading & Writing questions
-  for (let i = 1; i <= 27; i++) {
-    additionalRW.push({
-      id: `rw2-${i}`,
-      section: 'reading-writing',
-      module: 2,
-      difficulty: i % 3 === 0 ? 'hard' : i % 2 === 0 ? 'medium' : 'easy',
-      topic: ['Information and Ideas', 'Craft and Structure', 'Expression of Ideas', 'Standard English Conventions'][i % 4],
-      question: `Reading and Writing Module 2 question ${i}: Which choice best completes the sentence?`,
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: i % 4,
-      explanation: `This is the explanation for Module 2 question ${i}.`,
-      type: 'multiple-choice'
-    });
-  }
-  
-  // Generate remaining Math questions (19 more for Module 1, 22 for Module 2)
-  for (let i = 4; i <= 22; i++) {
-    additionalMath.push({
-      id: `m1-${i}`,
-      section: 'math',
-      module: 1,
-      difficulty: i % 3 === 0 ? 'hard' : i % 2 === 0 ? 'medium' : 'easy',
-      topic: ['Algebra', 'Advanced Math', 'Problem Solving', 'Geometry'][i % 4],
-      question: `Math question ${i}: Solve for x in the equation.`,
-      options: i % 3 === 0 ? undefined : ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: i % 3 === 0 ? `${i}` : i % 4,
-      explanation: `This is the explanation for math question ${i}.`,
-      type: i % 3 === 0 ? 'grid-in' : 'multiple-choice'
-    });
-  }
-  
-  // Generate Module 2 Math questions
-  for (let i = 1; i <= 22; i++) {
-    additionalMath.push({
-      id: `m2-${i}`,
-      section: 'math',
-      module: 2,
-      difficulty: i % 3 === 0 ? 'hard' : i % 2 === 0 ? 'medium' : 'easy',
-      topic: ['Algebra', 'Advanced Math', 'Problem Solving', 'Geometry'][i % 4],
-      question: `Math Module 2 question ${i}: Calculate the value.`,
-      options: i % 3 === 0 ? undefined : ['Option A', 'Option B', 'Option C', 'Option D'],
-      correctAnswer: i % 3 === 0 ? `${i + 10}` : i % 4,
-      explanation: `This is the explanation for Math Module 2 question ${i}.`,
-      type: i % 3 === 0 ? 'grid-in' : 'multiple-choice'
-    });
-  }
-  
-  return [...additionalRW, ...additionalMath];
+  return Array(count).fill(null).map((_, index) => ({
+    ...fallbackQuestion,
+    id: `fallback-${index + 1}`
+  }));
 };
 
-export const allSATQuestions = [...readingWritingQuestions, ...mathQuestions, ...generateAdditionalQuestions()];
-
-export const getSATQuestions = (section: 'reading-writing' | 'math', module: 1 | 2, difficulty?: 'easy' | 'medium' | 'hard') => {
-  let questions = allSATQuestions.filter(q => q.section === section && q.module === module);
-  
-  if (difficulty) {
-    questions = questions.filter(q => q.difficulty === difficulty);
-  }
-  
-  return questions;
+// Track question usage for analytics
+export const trackQuestionUsage = (questionId: string, sessionType: string) => {
+  questionService.trackQuestionUsage(questionId, sessionType);
 };
 
-export const getAdaptiveQuestions = (section: 'reading-writing' | 'math', performance: number) => {
-  // Performance-based difficulty selection for Module 2
-  let targetDifficulty: 'easy' | 'medium' | 'hard';
-  
-  if (performance >= 0.7) {
-    targetDifficulty = 'hard';
-  } else if (performance >= 0.5) {
-    targetDifficulty = 'medium';
-  } else {
-    targetDifficulty = 'easy';
-  }
-  
-  return getSATQuestions(section, 2, targetDifficulty);
-};
+// Export the original functions for backward compatibility
+export { questionService };

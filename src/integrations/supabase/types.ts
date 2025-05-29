@@ -238,6 +238,116 @@ export type Database = {
           },
         ]
       }
+      question_bank: {
+        Row: {
+          correct_answer: string
+          correct_rationale: string
+          created_at: string
+          difficulty: string
+          domain: string
+          id: string
+          incorrect_rationale_a: string | null
+          incorrect_rationale_b: string | null
+          incorrect_rationale_c: string | null
+          incorrect_rationale_d: string | null
+          is_active: boolean
+          metadata: Json | null
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          question_type: string
+          section: string
+          skill: string
+          test_name: string
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: string
+          correct_rationale: string
+          created_at?: string
+          difficulty: string
+          domain: string
+          id?: string
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          is_active?: boolean
+          metadata?: Json | null
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          question_type: string
+          section: string
+          skill: string
+          test_name: string
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: string
+          correct_rationale?: string
+          created_at?: string
+          difficulty?: string
+          domain?: string
+          id?: string
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          is_active?: boolean
+          metadata?: Json | null
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question_text?: string
+          question_type?: string
+          section?: string
+          skill?: string
+          test_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      question_usage: {
+        Row: {
+          id: string
+          question_id: string | null
+          session_id: string | null
+          session_type: string
+          used_at: string
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          question_id?: string | null
+          session_id?: string | null
+          session_type: string
+          used_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          question_id?: string | null
+          session_id?: string | null
+          session_type?: string
+          used_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_usage_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "question_bank"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_results: {
         Row: {
           correct_answers: number
@@ -281,6 +391,41 @@ export type Database = {
     Functions: {
       calculate_points: {
         Args: { correct_answers: number; difficulty?: string }
+        Returns: number
+      }
+      get_random_questions: {
+        Args: {
+          p_section?: string
+          p_difficulty?: string
+          p_skill?: string
+          p_domain?: string
+          p_limit?: number
+          p_exclude_ids?: string[]
+        }
+        Returns: {
+          id: string
+          question_text: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          correct_answer: string
+          correct_rationale: string
+          incorrect_rationale_a: string
+          incorrect_rationale_b: string
+          incorrect_rationale_c: string
+          incorrect_rationale_d: string
+          section: string
+          skill: string
+          difficulty: string
+          domain: string
+          test_name: string
+          question_type: string
+          metadata: Json
+        }[]
+      }
+      import_questions_batch: {
+        Args: { questions_data: Json }
         Returns: number
       }
       refresh_all_leaderboard_stats: {
