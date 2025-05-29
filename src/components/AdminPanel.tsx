@@ -3,15 +3,44 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, Upload, BarChart3, Settings } from 'lucide-react';
+import { Database, Upload, BarChart3, Settings, AlertTriangle } from 'lucide-react';
 import QuestionImport from './QuestionImport';
 import QuestionBankManagement from './QuestionBankManagement';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface AdminPanelProps {
   onBack: () => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+  const { isAdmin } = useAdminAccess();
+
+  // If user is not admin, show access denied message
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center space-x-2 text-red-600">
+                <AlertTriangle className="h-6 w-6" />
+                <span>Access Denied</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">
+                You don't have permission to access the admin panel.
+              </p>
+              <Button onClick={onBack} variant="outline" className="w-full">
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">

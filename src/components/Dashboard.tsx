@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,7 @@ import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye, 
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import AdminPanel from './AdminPanel';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface DashboardProps {
   userName: string;
@@ -37,6 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onQuizSelect
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const { isAdmin } = useAdminAccess();
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
     totalQuestions: 0,
     correctAnswers: 0,
@@ -96,15 +99,17 @@ const Dashboard: React.FC<DashboardProps> = ({
             Choose your practice mode to get started
           </p>
           
-          {/* Admin Access Button */}
-          <Button
-            onClick={() => setShowAdminPanel(true)}
-            variant="ghost"
-            size="sm"
-            className="absolute top-0 right-0 text-gray-500 hover:text-gray-700"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          {/* Admin Access Button - Only visible to admin */}
+          {isAdmin && (
+            <Button
+              onClick={() => setShowAdminPanel(true)}
+              variant="ghost"
+              size="sm"
+              className="absolute top-0 right-0 text-gray-500 hover:text-gray-700"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Marathon Stats Section */}
