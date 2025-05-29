@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface DashboardProps {
   userName: string;
@@ -20,11 +22,12 @@ interface MarathonStats {
 }
 
 interface MarathonSession {
-  userName: string;
-  totalQuestions: number;
-  correctAnswers: number;
-  bestStreak: number;
-  completedAt: string;
+  id: string;
+  total_questions: number;
+  correct_answers: number;
+  difficulty: string;
+  created_at: string;
+  subjects: string[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -40,34 +43,45 @@ const Dashboard: React.FC<DashboardProps> = ({
     totalSessions: 0,
     bestStreak: 0
   });
-  const [marathonSessions, setMarathonSessions] = useState<MarathonSession[]>([]);
+
+  // Fetch marathon sessions from Supabase
+  const { data: marathonSessions = [], isLoading } = useQuery({
+    queryKey: ['marathon-sessions', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const { data, error } = await supabase
+        .from('marathon_sessions')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching marathon sessions:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!userName,
+  });
 
   useEffect(() => {
-    calculateMarathonStats();
-  }, [userName]);
-
-  const calculateMarathonStats = () => {
-    const marathonSessions = JSON.parse(localStorage.getItem('marathonSessions') || '[]');
-    const userSessions = marathonSessions.filter((session: any) => session.userName === userName);
-    
-    setMarathonSessions(userSessions);
-    
-    if (userSessions.length === 0) {
-      return;
+    if (marathonSessions.length > 0) {
+      const totalQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
+      const correctAnswers = marathonSessions.reduce((sum, session) => sum + (session.correct_answers || 0), 0);
+      
+      setMarathonStats({
+        totalQuestions,
+        correctAnswers,
+        averageAccuracy: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
+        totalSessions: marathonSessions.length,
+        bestStreak: 0 // We'll need to track streaks in future updates
+      });
     }
-
-    const totalQuestions = userSessions.reduce((sum: number, session: any) => sum + (session.totalQuestions || 0), 0);
-    const correctAnswers = userSessions.reduce((sum: number, session: any) => sum + (session.correctAnswers || 0), 0);
-    const bestStreak = userSessions.reduce((max: number, session: any) => Math.max(max, session.bestStreak || 0), 0);
-    
-    setMarathonStats({
-      totalQuestions,
-      correctAnswers,
-      averageAccuracy: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
-      totalSessions: userSessions.length,
-      bestStreak
-    });
-  };
+  }, [marathonSessions]);
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-8">
@@ -80,7 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Marathon Stats Section */}
-        {marathonStats.totalQuestions > 0 && (
+        {!isLoading && marathonStats.totalQuestions > 0 && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -89,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-2">
                     <Target className="h-5 w-5 text-blue-600" />
@@ -113,13 +127,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-2">
-                    <Zap className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{marathonStats.bestStreak}</p>
-                  <p className="text-sm text-gray-600">Best Streak</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
                     <Clock className="h-5 w-5 text-indigo-600" />
                   </div>
                   <p className="text-2xl font-bold text-gray-900">{marathonStats.totalSessions}</p>
@@ -131,22 +138,27 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
 
         {/* Marathon History Section */}
-        {marathonSessions.length > 0 && (
+        {!isLoading && marathonSessions.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Marathon History</CardTitle>
+              <CardTitle>Recent Marathon Sessions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {marathonSessions.slice(-5).reverse().map((session, index) => {
-                  const accuracy = session.totalQuestions > 0 ? Math.round((session.correctAnswers / session.totalQuestions) * 100) : 0;
+                {marathonSessions.slice(0, 5).map((session) => {
+                  const accuracy = session.total_questions > 0 ? Math.round((session.correct_answers / session.total_questions) * 100) : 0;
                   return (
-                    <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div key={session.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                       <div>
                         <h3 className="font-medium">Marathon Session</h3>
                         <p className="text-sm text-gray-600">
-                          {new Date(session.completedAt).toLocaleDateString()} • {session.totalQuestions} questions • Best streak: {session.bestStreak}
+                          {new Date(session.created_at).toLocaleDateString()} • {session.total_questions} questions • {session.difficulty} difficulty
                         </p>
+                        {session.subjects && session.subjects.length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Subjects: {session.subjects.join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-4">
                         <span className={`text-lg font-bold ${
@@ -155,7 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           {accuracy}%
                         </span>
                         <span className="text-sm text-gray-500">
-                          {session.correctAnswers}/{session.totalQuestions}
+                          {session.correct_answers}/{session.total_questions}
                         </span>
                       </div>
                     </div>

@@ -7,6 +7,7 @@ export interface Question {
   correctAnswer: number;
   explanation: string;
   type: 'multiple-choice' | 'grid-in';
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 // Math Questions
@@ -18,7 +19,8 @@ const mathQuestions: Question[] = [
     options: ['3', '5', '7', '15'],
     correctAnswer: 1,
     explanation: 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'easy'
   },
   {
     id: 'm2',
@@ -27,7 +29,8 @@ const mathQuestions: Question[] = [
     options: ['8π', '16π', '32π', '64π'],
     correctAnswer: 1,
     explanation: 'The area of a circle is πr². With r = 4, the area is π(4)² = 16π.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'medium'
   },
   {
     id: 'm3',
@@ -36,7 +39,8 @@ const mathQuestions: Question[] = [
     options: ['3', '5', '7', '9'],
     correctAnswer: 0,
     explanation: 'f(2) = 2(2)² - 3(2) + 1 = 2(4) - 6 + 1 = 8 - 6 + 1 = 3.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'medium'
   },
   {
     id: 'm4',
@@ -45,7 +49,8 @@ const mathQuestions: Question[] = [
     options: ['15', '20', '25', '30'],
     correctAnswer: 1,
     explanation: '25% = 0.25, so 25% of 80 = 0.25 × 80 = 20.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'easy'
   },
   {
     id: 'm5',
@@ -54,7 +59,8 @@ const mathQuestions: Question[] = [
     options: ['Acute', 'Right', 'Obtuse', 'Isosceles'],
     correctAnswer: 1,
     explanation: 'Since 3² + 4² = 9 + 16 = 25 = 5², this satisfies the Pythagorean theorem, making it a right triangle.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'medium'
   },
   {
     id: 'm6',
@@ -63,7 +69,8 @@ const mathQuestions: Question[] = [
     options: ['1', '2', '3', '4'],
     correctAnswer: 1,
     explanation: 'Slope = (y₂ - y₁)/(x₂ - x₁) = (11 - 3)/(6 - 2) = 8/4 = 2.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'hard'
   }
 ];
 
@@ -76,7 +83,8 @@ const englishQuestions: Question[] = [
     options: ['mundane', 'groundbreaking', 'repetitive', 'confusing'],
     correctAnswer: 1,
     explanation: 'Groundbreaking means innovative or pioneering, which fits with research that revolutionized a field.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'medium'
   },
   {
     id: 'e2',
@@ -85,7 +93,8 @@ const englishQuestions: Question[] = [
     options: ['Running', 'park', 'dog', 'ball'],
     correctAnswer: 2,
     explanation: 'The dog is performing the action (chased), making it the subject of the sentence.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'easy'
   },
   {
     id: 'e3',
@@ -99,7 +108,8 @@ const englishQuestions: Question[] = [
     ],
     correctAnswer: 1,
     explanation: 'Parallel structure requires consistent grammatical forms. "Hiking, swimming, and biking" are all gerunds.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'hard'
   },
   {
     id: 'e4',
@@ -108,7 +118,8 @@ const englishQuestions: Question[] = [
     options: ['Rare', 'Present everywhere', 'Ancient', 'Mysterious'],
     correctAnswer: 1,
     explanation: 'Ubiquitous means existing or being everywhere at the same time; omnipresent.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'medium'
   },
   {
     id: 'e5',
@@ -117,7 +128,8 @@ const englishQuestions: Question[] = [
     options: [',', ';', ':', '!'],
     correctAnswer: 1,
     explanation: 'A semicolon is used to connect two independent clauses, especially when the second clause begins with a transitional word like "therefore."',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'hard'
   },
   {
     id: 'e6',
@@ -131,7 +143,8 @@ const englishQuestions: Question[] = [
     ],
     correctAnswer: 1,
     explanation: 'Symbolism is a literary device where objects, colors, or actions represent ideas or concepts beyond their literal meaning.',
-    type: 'multiple-choice'
+    type: 'multiple-choice',
+    difficulty: 'easy'
   }
 ];
 
