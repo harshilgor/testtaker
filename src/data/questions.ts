@@ -6,6 +6,7 @@ export interface Question {
   options: string[];
   correctAnswer: number;
   explanation: string;
+  type: 'multiple-choice' | 'grid-in';
 }
 
 // Math Questions
@@ -16,7 +17,8 @@ const mathQuestions: Question[] = [
     question: 'If 3x + 7 = 22, what is the value of x?',
     options: ['3', '5', '7', '15'],
     correctAnswer: 1,
-    explanation: 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.'
+    explanation: 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.',
+    type: 'multiple-choice'
   },
   {
     id: 'm2',
@@ -24,7 +26,8 @@ const mathQuestions: Question[] = [
     question: 'What is the area of a circle with radius 4?',
     options: ['8π', '16π', '32π', '64π'],
     correctAnswer: 1,
-    explanation: 'The area of a circle is πr². With r = 4, the area is π(4)² = 16π.'
+    explanation: 'The area of a circle is πr². With r = 4, the area is π(4)² = 16π.',
+    type: 'multiple-choice'
   },
   {
     id: 'm3',
@@ -32,7 +35,8 @@ const mathQuestions: Question[] = [
     question: 'If f(x) = 2x² - 3x + 1, what is f(2)?',
     options: ['3', '5', '7', '9'],
     correctAnswer: 0,
-    explanation: 'f(2) = 2(2)² - 3(2) + 1 = 2(4) - 6 + 1 = 8 - 6 + 1 = 3.'
+    explanation: 'f(2) = 2(2)² - 3(2) + 1 = 2(4) - 6 + 1 = 8 - 6 + 1 = 3.',
+    type: 'multiple-choice'
   },
   {
     id: 'm4',
@@ -40,7 +44,8 @@ const mathQuestions: Question[] = [
     question: 'What is 25% of 80?',
     options: ['15', '20', '25', '30'],
     correctAnswer: 1,
-    explanation: '25% = 0.25, so 25% of 80 = 0.25 × 80 = 20.'
+    explanation: '25% = 0.25, so 25% of 80 = 0.25 × 80 = 20.',
+    type: 'multiple-choice'
   },
   {
     id: 'm5',
@@ -48,7 +53,8 @@ const mathQuestions: Question[] = [
     question: 'If a triangle has sides of length 3, 4, and 5, what type of triangle is it?',
     options: ['Acute', 'Right', 'Obtuse', 'Isosceles'],
     correctAnswer: 1,
-    explanation: 'Since 3² + 4² = 9 + 16 = 25 = 5², this satisfies the Pythagorean theorem, making it a right triangle.'
+    explanation: 'Since 3² + 4² = 9 + 16 = 25 = 5², this satisfies the Pythagorean theorem, making it a right triangle.',
+    type: 'multiple-choice'
   },
   {
     id: 'm6',
@@ -56,7 +62,8 @@ const mathQuestions: Question[] = [
     question: 'What is the slope of the line passing through points (2, 3) and (6, 11)?',
     options: ['1', '2', '3', '4'],
     correctAnswer: 1,
-    explanation: 'Slope = (y₂ - y₁)/(x₂ - x₁) = (11 - 3)/(6 - 2) = 8/4 = 2.'
+    explanation: 'Slope = (y₂ - y₁)/(x₂ - x₁) = (11 - 3)/(6 - 2) = 8/4 = 2.',
+    type: 'multiple-choice'
   }
 ];
 
@@ -68,7 +75,8 @@ const englishQuestions: Question[] = [
     question: 'Which word best completes the sentence? "The scientist\'s research was so _______ that it revolutionized the entire field."',
     options: ['mundane', 'groundbreaking', 'repetitive', 'confusing'],
     correctAnswer: 1,
-    explanation: 'Groundbreaking means innovative or pioneering, which fits with research that revolutionized a field.'
+    explanation: 'Groundbreaking means innovative or pioneering, which fits with research that revolutionized a field.',
+    type: 'multiple-choice'
   },
   {
     id: 'e2',
@@ -76,7 +84,8 @@ const englishQuestions: Question[] = [
     question: 'In the sentence "Running through the park, the dog chased the ball," what is the subject?',
     options: ['Running', 'park', 'dog', 'ball'],
     correctAnswer: 2,
-    explanation: 'The dog is performing the action (chased), making it the subject of the sentence.'
+    explanation: 'The dog is performing the action (chased), making it the subject of the sentence.',
+    type: 'multiple-choice'
   },
   {
     id: 'e3',
@@ -89,7 +98,8 @@ const englishQuestions: Question[] = [
       'She likes to hike, to swim, and bike.'
     ],
     correctAnswer: 1,
-    explanation: 'Parallel structure requires consistent grammatical forms. "Hiking, swimming, and biking" are all gerunds.'
+    explanation: 'Parallel structure requires consistent grammatical forms. "Hiking, swimming, and biking" are all gerunds.',
+    type: 'multiple-choice'
   },
   {
     id: 'e4',
@@ -97,7 +107,8 @@ const englishQuestions: Question[] = [
     question: 'What is the meaning of the word "ubiquitous"?',
     options: ['Rare', 'Present everywhere', 'Ancient', 'Mysterious'],
     correctAnswer: 1,
-    explanation: 'Ubiquitous means existing or being everywhere at the same time; omnipresent.'
+    explanation: 'Ubiquitous means existing or being everywhere at the same time; omnipresent.',
+    type: 'multiple-choice'
   },
   {
     id: 'e5',
@@ -105,7 +116,8 @@ const englishQuestions: Question[] = [
     question: 'Which punctuation mark should replace the blank? "The weather was terrible___ therefore, we stayed inside."',
     options: [',', ';', ':', '!'],
     correctAnswer: 1,
-    explanation: 'A semicolon is used to connect two independent clauses, especially when the second clause begins with a transitional word like "therefore."'
+    explanation: 'A semicolon is used to connect two independent clauses, especially when the second clause begins with a transitional word like "therefore."',
+    type: 'multiple-choice'
   },
   {
     id: 'e6',
@@ -118,7 +130,8 @@ const englishQuestions: Question[] = [
       'The setting of a story'
     ],
     correctAnswer: 1,
-    explanation: 'Symbolism is a literary device where objects, colors, or actions represent ideas or concepts beyond their literal meaning.'
+    explanation: 'Symbolism is a literary device where objects, colors, or actions represent ideas or concepts beyond their literal meaning.',
+    type: 'multiple-choice'
   }
 ];
 
