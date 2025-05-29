@@ -1,5 +1,4 @@
 
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -21,6 +20,9 @@ export interface DatabaseQuestion {
   domain: string;
   test_name: string;
   question_type: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
   metadata?: any;
 }
 
