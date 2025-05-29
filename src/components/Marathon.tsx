@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -50,33 +49,34 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
   const generateNextQuestion = async (marathonSettings: MarathonSettings, currentAttempts: QuestionAttempt[]) => {
     setIsLoadingQuestion(true);
     try {
-      let subject: 'math' | 'english';
+      let selectedSubject: 'math' | 'english';
       
       if (marathonSettings.subjects.includes('both')) {
-        subject = Math.random() > 0.5 ? 'math' : 'english';
+        selectedSubject = Math.random() > 0.5 ? 'math' : 'english';
       } else {
-        subject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
+        selectedSubject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
       }
 
       if (marathonSettings.adaptiveLearning && weakTopics.length > 0 && Math.random() > 0.3) {
         const weakTopic = weakTopics[Math.floor(Math.random() * weakTopics.length)];
-        subject = weakTopic.subject;
+        selectedSubject = weakTopic.subject;
       }
 
-      const newQuestion = await getRandomQuestion(subject);
+      const newQuestion = await getRandomQuestion(selectedSubject);
       setCurrentQuestion(newQuestion);
       setQuestionStartTime(Date.now());
     } catch (error) {
       console.error('Error loading question:', error);
       // Fallback to a simple question if database fails
+      const fallbackSubject: 'math' | 'english' = Math.random() > 0.5 ? 'math' : 'english';
       setCurrentQuestion({
         id: `fallback-${Date.now()}`,
-        question: subject === 'math' ? 'If 3x + 7 = 22, what is the value of x?' : 'Which sentence best supports the main idea?',
-        options: subject === 'math' ? ['3', '5', '7', '15'] : ['Option A', 'Option B', 'Option C', 'Option D'],
+        question: fallbackSubject === 'math' ? 'If 3x + 7 = 22, what is the value of x?' : 'Which sentence best supports the main idea?',
+        options: fallbackSubject === 'math' ? ['3', '5', '7', '15'] : ['Option A', 'Option B', 'Option C', 'Option D'],
         correctAnswer: 1,
-        explanation: subject === 'math' ? 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.' : 'This option best supports the main argument.',
-        subject,
-        topic: subject === 'math' ? 'Algebra' : 'Reading Comprehension',
+        explanation: fallbackSubject === 'math' ? 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.' : 'This option best supports the main argument.',
+        subject: fallbackSubject,
+        topic: fallbackSubject === 'math' ? 'Algebra' : 'Reading Comprehension',
         difficulty: 'medium',
         type: 'multiple-choice'
       });

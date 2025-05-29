@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Trophy, Clock, Target, BookOpen, Brain, RefreshCw, Eye } from 'lucide-react';
-import { SATQuestion, allSATQuestions } from '../data/satQuestions';
+import { SATQuestion } from '../data/satQuestions';
 
 interface SATResultsProps {
   userName: string;
@@ -24,6 +23,7 @@ const SATResults: React.FC<SATResultsProps> = ({
   userName,
   moduleResults,
   answers,
+  allQuestions,
   onBack,
   onRetake
 }) => {
@@ -49,7 +49,7 @@ const SATResults: React.FC<SATResultsProps> = ({
   const getTopicPerformance = () => {
     const topicStats: Record<string, { correct: number; total: number }> = {};
     
-    allSATQuestions.forEach(question => {
+    allQuestions.forEach(question => {
       const userAnswer = answers.get(question.id);
       if (userAnswer) {
         if (!topicStats[question.topic]) {
@@ -80,8 +80,8 @@ const SATResults: React.FC<SATResultsProps> = ({
   };
 
   const getQuestionsBySection = (section: 'reading-writing' | 'math' | 'all') => {
-    if (section === 'all') return allSATQuestions;
-    return allSATQuestions.filter(q => q.section === section);
+    if (section === 'all') return allQuestions;
+    return allQuestions.filter(q => q.section === section);
   };
 
   if (showDetailedReview) {
