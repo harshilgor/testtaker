@@ -1,18 +1,22 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Home, BarChart3 } from 'lucide-react';
+import { Home, BarChart3, Trophy, Activity } from 'lucide-react';
 
-type Screen = 'dashboard' | 'stats';
+type Screen = 'dashboard' | 'stats' | 'leaderboard' | 'performance-dashboard';
 
 interface NavigationProps {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
+  userName?: string;
+  onSignOut?: () => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({
   currentScreen,
-  onNavigate
+  onNavigate,
+  userName,
+  onSignOut
 }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
@@ -22,7 +26,7 @@ const Navigation: React.FC<NavigationProps> = ({
             <h1 className="text-2xl font-bold text-gray-900">TestTaker</h1>
           </div>
           
-          <div className="flex space-x-4">
+          <div className="flex items-center space-x-4">
             <Button 
               variant={currentScreen === 'dashboard' ? 'default' : 'ghost'} 
               onClick={() => onNavigate('dashboard')} 
@@ -33,13 +37,33 @@ const Navigation: React.FC<NavigationProps> = ({
             </Button>
             
             <Button 
-              variant={currentScreen === 'stats' ? 'default' : 'ghost'} 
-              onClick={() => onNavigate('stats')} 
+              variant={currentScreen === 'leaderboard' ? 'default' : 'ghost'} 
+              onClick={() => onNavigate('leaderboard')} 
               className="flex items-center space-x-2"
             >
-              <BarChart3 className="h-4 w-4" />
+              <Trophy className="h-4 w-4" />
+              <span>Leaderboard</span>
+            </Button>
+            
+            <Button 
+              variant={currentScreen === 'performance-dashboard' ? 'default' : 'ghost'} 
+              onClick={() => onNavigate('performance-dashboard')} 
+              className="flex items-center space-x-2"
+            >
+              <Activity className="h-4 w-4" />
               <span>Dashboard</span>
             </Button>
+
+            {userName && (
+              <div className="flex items-center space-x-3 border-l pl-4">
+                <span className="text-sm text-gray-600">Hello, {userName}</span>
+                {onSignOut && (
+                  <Button onClick={onSignOut} variant="outline" size="sm">
+                    Sign Out
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

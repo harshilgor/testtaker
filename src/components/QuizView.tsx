@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Flag, Calculator as CalculatorIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Flag, Calculator as CalculatorIcon, Trophy, Target, Check, X, Clock } from 'lucide-react';
 import { Question, getRandomQuestion } from '../data/questions';
 import Calculator from './Calculator';
 
@@ -31,6 +31,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [timeSpent, setTimeSpent] = useState(0);
   const [startTime] = useState(Date.now());
   const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [quizResults, setQuizResults] = useState<any>(null);
 
   useEffect(() => {
     const generatedQuestions = Array.from({ length: numQuestions }, () => 
@@ -65,9 +67,11 @@ const QuizView: React.FC<QuizViewProps> = ({
   };
 
   const handleSubmit = () => {
-    const score = Math.round((answers.filter((answer, index) => 
+    const correctAnswers = answers.filter((answer, index) => 
       answer === questions[index]?.correctAnswer
-    ).length / questions.length) * 100);
+    ).length;
+    
+    const score = Math.round((correctAnswers / questions.length) * 100);
 
     const results = {
       score,
@@ -77,22 +81,109 @@ const QuizView: React.FC<QuizViewProps> = ({
       topics,
       date: new Date().toISOString(),
       userName,
-      timeSpent: Math.floor(timeSpent / 1000)
+      timeSpent: Math.floor(timeSpent / 1000),
+      correctAnswers,
+      totalQuestions: questions.length
     };
+
+    setQuizResults(results);
+    setShowSummary(true);
 
     const existingResults = JSON.parse(localStorage.getItem('quizResults') || '[]');
     existingResults.push(results);
     localStorage.setItem('quizResults', JSON.stringify(existingResults));
-
-    onComplete(results);
   };
+
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  const getAnsweredCount = () => {
+    return answers.filter(answer => answer !== null).length;
+  };
+
+  if (showSummary && quizResults) {
+    const accuracy = Math.round((quizResults.correctAnswers / quizResults.totalQuestions) * 100);
+    
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <div className="text-center mb-8">
+              <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
+                accuracy >= 70 ? 'bg-green-100' : accuracy >= 50 ? 'bg-yellow-100' : 'bg-red-100'
+              }`}>
+                <Trophy className={`h-10 w-10 ${
+                  accuracy >= 70 ? 'text-green-600' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
+                }`} />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Quiz Complete!</h2>
+              <p className="text-gray-600">Great job, {userName}!</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Target className="h-6 w-6 text-green-600 mr-2" />
+                  <span className="text-sm text-green-700 font-medium">Questions Attempted</span>
+                </div>
+                <div className="text-2xl font-bold text-green-800">{quizResults.totalQuestions}</div>
+              </div>
+              
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Check className="h-6 w-6 text-blue-600 mr-2" />
+                  <span className="text-sm text-blue-700 font-medium">Correct Answers</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-800">{quizResults.correctAnswers}</div>
+              </div>
+              
+              <div className="bg-red-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <X className="h-6 w-6 text-red-600 mr-2" />
+                  <span className="text-sm text-red-700 font-medium">Wrong Answers</span>
+                </div>
+                <div className="text-2xl font-bold text-red-800">{quizResults.totalQuestions - quizResults.correctAnswers}</div>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <Clock className="h-6 w-6 text-purple-600 mr-2" />
+                  <span className="text-sm text-purple-700 font-medium">Time Spent</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-800">{formatTime(timeSpent)}</div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">{accuracy}%</div>
+              <div className="text-gray-600">Overall Accuracy</div>
+            </div>
+
+            <div className="flex justify-center space-x-4">
+              <Button
+                onClick={() => onComplete(quizResults)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (questions.length === 0) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const answeredCount = getAnsweredCount();
+  const progress = (answeredCount / questions.length) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -114,7 +205,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
-              <span className="text-sm text-gray-600">{Math.round(progress)}% Complete</span>
+              <span className="text-sm text-gray-600">{Math.round(progress)}% Answered</span>
             </div>
             <Progress value={progress} className="h-2" />
           </CardContent>
