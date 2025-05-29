@@ -64,7 +64,7 @@ export const useSATModuleHandler = ({
       timeUsed: currentProgress.module === 1 ? 32 * 60 - currentProgress.timeRemaining : 32 * 60 - currentProgress.timeRemaining
     };
 
-    setModuleResults(prev => [...prev, moduleResult]);
+    setModuleResults([...moduleResults, moduleResult]);
 
     // Advance to next module/section
     if (currentProgress.section === 'reading-writing' && currentProgress.module === 1) {
