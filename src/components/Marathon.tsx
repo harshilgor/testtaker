@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -40,7 +39,8 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
   const handleStartMarathon = (marathonSettings: MarathonSettings) => {
     setSettings(marathonSettings);
     startSession(marathonSettings);
-    setSessionStartTime(new Date());
+    const startTime = new Date();
+    setSessionStartTime(startTime);
     setCurrentScreen('question');
     generateNextQuestion(marathonSettings, []);
   };
@@ -54,9 +54,7 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
       subject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
     }
 
-    // Adaptive learning logic
     if (marathonSettings.adaptiveLearning && weakTopics.length > 0 && Math.random() > 0.3) {
-      // 70% chance to focus on weak topics when adaptive learning is on
       const weakTopic = weakTopics[Math.floor(Math.random() * weakTopics.length)];
       subject = weakTopic.subject;
     }
@@ -73,8 +71,8 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
     const attempt: QuestionAttempt = {
       questionId: currentQuestion.id,
       subject: currentQuestion.subject,
-      topic: 'General', // We'd need to add topic to Question interface
-      difficulty: 'medium', // We'd need to add difficulty to Question interface
+      topic: 'General',
+      difficulty: 'medium',
       isCorrect,
       timeSpent,
       hintsUsed,
@@ -85,14 +83,12 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
 
     recordAttempt(attempt);
 
-    // Update streak
     if (isCorrect && !showAnswerUsed) {
       setCurrentStreak(prev => prev + 1);
     } else {
       setCurrentStreak(0);
     }
 
-    // Generate next question after a brief delay
     setTimeout(() => {
       generateNextQuestion(settings, [...attempts, attempt]);
     }, 1500);
@@ -108,13 +104,9 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
     toggleFlag(currentQuestion.id);
   };
 
-  const elapsedTime = sessionStartTime ? Date.now() - sessionStartTime.getTime() : 0;
   const averageTime = attempts.length > 0 
     ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0) / attempts.length / 1000)
     : 0;
-
-  // Show mini report every 30 questions
-  const shouldShowMiniReport = session && session.totalQuestions > 0 && session.totalQuestions % 30 === 0;
 
   if (currentScreen === 'settings') {
     return (
@@ -140,7 +132,6 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
   return (
     <div className={`min-h-screen ${settings?.darkMode ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <Button
             onClick={handleEndMarathon}
@@ -155,15 +146,10 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
             Marathon Mode
           </h1>
           
-          <div className="text-right">
-            <p className={`text-sm ${settings?.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              {Math.floor(elapsedTime / 60000)}:{((elapsedTime % 60000) / 1000).toFixed(0).padStart(2, '0')}
-            </p>
-          </div>
+          <div></div>
         </div>
 
-        {/* Stats */}
-        {session && (
+        {session && sessionStartTime && (
           <MarathonStats
             totalQuestions={session.totalQuestions}
             correctAnswers={session.correctAnswers}
@@ -171,11 +157,10 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
             currentStreak={currentStreak}
             averageTime={averageTime}
             timeGoal={session.timeGoalMinutes}
-            elapsedTime={elapsedTime}
+            sessionStartTime={sessionStartTime}
           />
         )}
 
-        {/* Question */}
         <MarathonQuestion
           question={currentQuestion}
           onAnswer={handleAnswer}

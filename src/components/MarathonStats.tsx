@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Target, Clock, Zap } from 'lucide-react';
@@ -11,7 +11,7 @@ interface MarathonStatsProps {
   currentStreak: number;
   averageTime: number;
   timeGoal?: number;
-  elapsedTime: number;
+  sessionStartTime: Date;
 }
 
 const MarathonStats: React.FC<MarathonStatsProps> = ({
@@ -21,9 +21,20 @@ const MarathonStats: React.FC<MarathonStatsProps> = ({
   currentStreak,
   averageTime,
   timeGoal,
-  elapsedTime
+  sessionStartTime
 }) => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  const elapsedTime = currentTime.getTime() - sessionStartTime.getTime();
   const progressPercent = timeGoal ? Math.min((elapsedTime / (timeGoal * 60 * 1000)) * 100, 100) : 0;
   
   const formatElapsedTime = (milliseconds: number) => {
@@ -40,7 +51,6 @@ const MarathonStats: React.FC<MarathonStatsProps> = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-      {/* Compact stats for marathon mode */}
       <div className="lg:col-span-2">
         <Card className="p-4">
           <div className="flex items-center justify-between">

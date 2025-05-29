@@ -37,21 +37,21 @@ const Navigation: React.FC<NavigationProps> = ({
             </Button>
             
             <Button 
-              variant={currentScreen === 'leaderboard' ? 'default' : 'ghost'} 
-              onClick={() => onNavigate('leaderboard')} 
-              className="flex items-center space-x-2"
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Leaderboard</span>
-            </Button>
-            
-            <Button 
               variant={currentScreen === 'performance-dashboard' ? 'default' : 'ghost'} 
               onClick={() => onNavigate('performance-dashboard')} 
               className="flex items-center space-x-2"
             >
               <Activity className="h-4 w-4" />
               <span>Dashboard</span>
+            </Button>
+            
+            <Button 
+              variant={currentScreen === 'leaderboard' ? 'default' : 'ghost'} 
+              onClick={() => onNavigate('leaderboard')} 
+              className="flex items-center space-x-2"
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Leaderboard</span>
             </Button>
 
             {userName && (
