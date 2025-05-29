@@ -24,8 +24,8 @@ interface UserScore {
 const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
-  // Fetch leaderboard data from Supabase
-  const { data: leaderboard = [], isLoading, error } = useQuery({
+  // Fetch leaderboard data from Supabase with real-time updates
+  const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -41,8 +41,32 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
       return data || [];
     },
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 5000, // Refetch every 5 seconds for real-time updates
+    refetchInterval: 5000,
   });
+
+  // Set up real-time subscription for leaderboard updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('leaderboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leaderboard_stats'
+        },
+        () => {
+          console.log('Leaderboard updated, refetching...');
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   // Find current user rank
   useEffect(() => {

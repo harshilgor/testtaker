@@ -55,8 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         .from('marathon_sessions')
         .select('*')
         .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching marathon sessions:', error);
@@ -141,7 +140,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         {!isLoading && marathonSessions.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Recent Marathon Sessions</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <Zap className="h-5 w-5 text-orange-500" />
+                <span>Recent Marathon Sessions</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
