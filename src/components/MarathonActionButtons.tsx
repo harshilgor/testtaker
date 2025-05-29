@@ -51,8 +51,8 @@ const MarathonActionButtons: React.FC<MarathonActionButtonsProps> = ({
 
       <Button
         onClick={onSubmitAnswer}
-        disabled={selectedAnswer === null || isSubmitting}
-        className={`bg-orange-600 hover:bg-orange-700 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={selectedAnswer === null}
+        className="bg-orange-600 hover:bg-orange-700"
       >
         {isSubmitting ? 'Processing...' : 'Next Question'}
         <ArrowRight className="h-4 w-4 ml-2" />

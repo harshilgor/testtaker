@@ -47,6 +47,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
     return totalPoints;
   };
 
+  const generateSampleUsers = () => {
+    const sampleUsers = [
+      'Alex Chen', 'Sarah Johnson', 'Michael Brown', 'Emma Davis', 'Ryan Wilson',
+      'Jessica Lee', 'David Kim', 'Ashley Martinez', 'Chris Anderson', 'Maya Patel'
+    ];
+    
+    return sampleUsers.map(name => ({
+      userName: name,
+      totalPoints: Math.floor(Math.random() * 5000) + 500,
+      mockTests: Math.floor(Math.random() * 15) + 1,
+      quizzes: Math.floor(Math.random() * 25) + 5,
+      marathonQuestions: Math.floor(Math.random() * 500) + 50
+    }));
+  };
+
   const calculateLeaderboard = () => {
     const allUsers = new Set<string>();
     const userStats: { [key: string]: UserScore } = {};
@@ -86,8 +101,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
       };
     });
 
+    // Add sample users if leaderboard is empty or has few users
+    let finalUsers = Object.values(userStats);
+    if (finalUsers.length < 5) {
+      const sampleUsers = generateSampleUsers();
+      finalUsers = [...finalUsers, ...sampleUsers.slice(0, 10 - finalUsers.length)];
+    }
+
     // Sort by points and create leaderboard
-    const sortedUsers = Object.values(userStats).sort((a, b) => b.totalPoints - a.totalPoints);
+    const sortedUsers = finalUsers.sort((a, b) => b.totalPoints - a.totalPoints);
     setLeaderboard(sortedUsers);
 
     // Find current user rank
@@ -104,7 +126,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
       case 3:
         return <Award className="h-5 w-5 md:h-6 md:w-6 text-amber-600" />;
       default:
-        return <span className="text-sm md:text-lg font-bold text-gray-600">#{position}</span>;
+        return <span className="text-sm md:text-lg font-bold text-gray-600 min-w-[2rem] text-center">#{position}</span>;
     }
   };
 
@@ -156,7 +178,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
               <div className="space-y-3 md:space-y-4">
                 {leaderboard.map((user, index) => (
                   <div
-                    key={user.userName}
+                    key={`${user.userName}-${index}`}
                     className={`flex items-center justify-between p-3 md:p-4 rounded-lg border ${
                       user.userName === userName 
                         ? 'border-blue-300 bg-blue-50' 
@@ -164,24 +186,24 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
                     }`}
                   >
                     <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
-                      <div className="flex items-center justify-center w-8 md:w-12 flex-shrink-0">
+                      <div className="flex items-center justify-center w-10 md:w-12 flex-shrink-0">
                         {getRankIcon(index + 1)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm md:text-base truncate">
+                        <p className="font-semibold text-gray-900 text-sm md:text-base break-words">
                           {user.userName}
                           {user.userName === userName && (
                             <span className="ml-2 text-xs md:text-sm text-blue-600">(You)</span>
                           )}
                         </p>
-                        <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mt-1">
-                          <span>{user.mockTests} tests</span>
-                          <span>{user.quizzes} quizzes</span>
-                          <span className="hidden sm:inline">{user.marathonQuestions} marathon</span>
+                        <div className="flex flex-col sm:flex-row sm:gap-4 gap-1 text-xs md:text-sm text-gray-600 mt-1">
+                          <span className="whitespace-nowrap">{user.mockTests} tests</span>
+                          <span className="whitespace-nowrap">{user.quizzes} quizzes</span>
+                          <span className="whitespace-nowrap">{user.marathonQuestions} marathon</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right flex-shrink-0 ml-2">
                       <p className="text-lg md:text-xl font-bold text-gray-900">{user.totalPoints}</p>
                       <p className="text-xs md:text-sm text-gray-600">points</p>
                     </div>

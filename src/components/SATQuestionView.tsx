@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,10 +50,10 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
 
   const toggleStrikeOut = (optionIndex: number, event: React.MouseEvent) => {
     event.stopPropagation();
+    event.preventDefault();
     const newStruckOut = new Set(struckOutOptions);
     if (newStruckOut.has(optionIndex)) {
       newStruckOut.delete(optionIndex);
-      // If this was the selected answer and we're un-striking it, keep it selected
     } else {
       newStruckOut.add(optionIndex);
       // If we're striking out the selected answer, deselect it
@@ -110,12 +111,12 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
                       isSelected && !isStruckOut
                         ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : isStruckOut
-                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        ? 'border-gray-200 bg-gray-100 text-gray-400'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
-                    disabled={isStruckOut}
+                    style={{ pointerEvents: isStruckOut ? 'none' : 'auto' }}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center pr-8">
                       <span className={`font-medium mr-3 ${isStruckOut ? 'text-gray-400' : 'text-gray-500'}`}>
                         {String.fromCharCode(65 + index)}.
                       </span>
@@ -128,8 +129,8 @@ const SATQuestionView: React.FC<SATQuestionViewProps> = ({
                   
                   {/* Strike-out button */}
                   <button
-                    onClick={(e) => toggleStrikeOut(index, e)}
-                    className={`absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 transition-colors ${
+                    onMouseDown={(e) => toggleStrikeOut(index, e)}
+                    className={`absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 transition-colors z-10 ${
                       isStruckOut ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:text-gray-600'
                     }`}
                     title={isStruckOut ? 'Remove strike-out' : 'Strike out this option'}
