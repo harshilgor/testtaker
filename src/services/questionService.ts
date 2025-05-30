@@ -56,7 +56,11 @@ class QuestionService {
       query = query.eq('domain', filters.domain);
     }
     if (filters.excludeIds && filters.excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${filters.excludeIds.join(',')})`);
+      // Convert string IDs to numbers for main_question_bank
+      const numericIds = filters.excludeIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+      if (numericIds.length > 0) {
+        query = query.not('id', 'in', `(${numericIds.join(',')})`);
+      }
     }
 
     // Filter out null questions and add ordering
@@ -85,10 +89,17 @@ class QuestionService {
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
+    // Convert string ID to number for main_question_bank
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      console.error('Invalid question ID:', id);
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('main_question_bank')
       .select('*')
-      .eq('id', id)
+      .eq('id', numericId)
       .not('question_text', 'is', null)
       .single();
 

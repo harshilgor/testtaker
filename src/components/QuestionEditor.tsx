@@ -90,32 +90,50 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         difficulty: formData.difficulty || 'medium',
         domain: formData.domain || '',
         test_name: formData.test_name || 'SAT',
-        question_type: formData.question_type || 'multiple-choice',
-        metadata: formData.metadata || {},
-        updated_at: new Date().toISOString()
+        question_type: formData.question_type || 'multiple-choice'
       };
 
       if (question?.id) {
         // Update existing question
         const { data, error } = await supabase
-          .from('question_bank')
+          .from('main_question_bank')
           .update(updateData)
-          .eq('id', question.id)
+          .eq('id', parseInt(question.id))
           .select()
           .single();
 
         if (error) throw error;
-        onSave(data);
+        
+        // Convert the response to match DatabaseQuestion interface
+        const convertedData: DatabaseQuestion = {
+          ...data,
+          id: data.id?.toString() || '',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {}
+        };
+        onSave(convertedData);
       } else {
         // Create new question
         const { data, error } = await supabase
-          .from('question_bank')
+          .from('main_question_bank')
           .insert(updateData)
           .select()
           .single();
 
         if (error) throw error;
-        onSave(data);
+        
+        // Convert the response to match DatabaseQuestion interface
+        const convertedData: DatabaseQuestion = {
+          ...data,
+          id: data.id?.toString() || '',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {}
+        };
+        onSave(convertedData);
       }
 
       toast.success(question?.id ? 'Question updated successfully' : 'Question created successfully');
