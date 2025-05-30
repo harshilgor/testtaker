@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useMarathonSession } from '../hooks/useMarathonSession';
@@ -48,7 +47,7 @@ const Marathon: React.FC = () => {
     setLoading(true);
     try {
       const filters = {
-        section: session.subjects.includes('both') ? null : session.subjects[0],
+        section: session.subjects.includes('all') ? null : session.subjects[0],
         difficulty: session.difficulty === 'mixed' ? null : session.difficulty
       };
 
@@ -85,10 +84,8 @@ const Marathon: React.FC = () => {
       difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
       isCorrect,
       timeSpent,
-      hintsUsed: 0,
       showAnswerUsed,
-      flagged: flaggedQuestions.includes(currentQuestion.id),
-      timestamp: new Date()
+      flagged: flaggedQuestions.includes(currentQuestion.id)
     };
 
     recordAttempt(attempt);

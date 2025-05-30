@@ -58,7 +58,12 @@ const Index = () => {
           onSignOut={handleSignOut}
         />
         <div className="pt-16">
-          <Marathon />
+          <Marathon
+            userName={userName}
+            selectedSubject={selectedSubject}
+            onSubjectSelect={setSelectedSubject}
+            onBack={() => setCurrentScreen('dashboard')}
+          />
         </div>
       </div>
     );
