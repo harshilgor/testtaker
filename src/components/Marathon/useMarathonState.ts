@@ -1,78 +1,67 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { DatabaseQuestion } from '@/services/questionService';
 import { MarathonSession } from '../../types/marathon';
-import { getUserTotalPoints } from '@/services/pointsService';
 import { useQuestionSession } from '@/hooks/useQuestionSession';
+import { getUserTotalPoints } from '@/services/pointsService';
 
-interface SessionStats {
-  used: number;
-  total: number;
-}
-
-interface UseMarathonStateReturn {
-  currentQuestion: DatabaseQuestion | null;
-  setCurrentQuestion: (question: DatabaseQuestion | null) => void;
-  timeSpent: number;
-  setTimeSpent: (time: number) => void;
-  loading: boolean;
-  setLoading: (loading: boolean) => void;
-  sessionStats: SessionStats;
-  showEndConfirmation: boolean;
-  setShowEndConfirmation: (show: boolean) => void;
-  showSummary: boolean;
-  setShowSummary: (show: boolean) => void;
-  totalPoints: number;
-  sessionPoints: number;
-  setSessionPoints: (points: number | ((prev: number) => number)) => void;
-  loadUserPoints: () => Promise<void>;
-  loadSessionStats: () => Promise<void>;
-  initializeSessionData: () => Promise<void>;
-}
-
-export const useMarathonState = (session: MarathonSession | null): UseMarathonStateReturn => {
+export const useMarathonState = (session: MarathonSession | null) => {
   const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [sessionStats, setSessionStats] = useState<SessionStats>({ used: 0, total: 0 });
+  const [sessionStats, setSessionStats] = useState({ used: 0, total: 0 });
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
 
-  const { getSessionStats, initializeSession } = useQuestionSession();
+  const { getSessionStats, getTotalQuestions, initializeSession } = useQuestionSession();
 
-  const loadUserPoints = useCallback(async () => {
+  useEffect(() => {
+    if (!session || !currentQuestion) return;
+
+    const timer = setInterval(() => {
+      setTimeSpent(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [session, currentQuestion]);
+
+  const loadUserPoints = async () => {
     try {
       const points = await getUserTotalPoints();
       setTotalPoints(points);
     } catch (error) {
       console.error('Error loading user points:', error);
     }
-  }, []);
+  };
 
-  const loadSessionStats = useCallback(async () => {
+  const loadSessionStats = async () => {
     if (!session) return;
     
     try {
       const stats = await getSessionStats(session.id, 'marathon');
-      setSessionStats(stats);
+      const total = await getTotalQuestions();
+      setSessionStats({ used: stats.used, total: total });
     } catch (error) {
       console.error('Error loading session stats:', error);
     }
-  }, [session, getSessionStats]);
+  };
 
-  const initializeSessionData = useCallback(async () => {
+  const initializeSessionData = async () => {
     if (!session) return;
     
+    setLoading(true);
     try {
       await initializeSession(session.id, 'marathon');
-      await loadUserPoints();
       await loadSessionStats();
+      await loadUserPoints();
     } catch (error) {
-      console.error('Error initializing session data:', error);
+      console.error('Error initializing marathon session:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [session, initializeSession, loadUserPoints, loadSessionStats]);
+  };
 
   return {
     currentQuestion,
