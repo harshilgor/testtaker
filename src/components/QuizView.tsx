@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, Flag, Calculator as CalculatorIcon, Trophy, Targ
 import { Question, getRandomQuestion } from '../data/questions';
 import Calculator from './Calculator';
 import { getQuestionsBySubject, getQuestionsByTopics, questionService } from '../data/questions';
+import { recordQuestionAttempt, getUserTotalPoints, calculatePoints } from '@/services/pointsService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuizViewProps {
   subject: string;
@@ -36,6 +38,9 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [quizResults, setQuizResults] = useState<any>(null);
+  const [sessionId] = useState(() => `${mode}-${Date.now()}-${Math.random()}`);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [sessionPoints, setSessionPoints] = useState(0);
   
   // Marathon mode specific states
   const [showAnswer, setShowAnswer] = useState(false);
@@ -65,12 +70,17 @@ const QuizView: React.FC<QuizViewProps> = ({
         setFlaggedQuestions(new Array(loadedQuestions.length).fill(false));
       } catch (error) {
         console.error('Error loading questions:', error);
-        // Keep existing fallback behavior
       }
     };
 
     loadQuestions();
+    loadUserPoints();
   }, [subject, numQuestions, topics]);
+
+  const loadUserPoints = async () => {
+    const points = await getUserTotalPoints();
+    setTotalPoints(points);
+  };
 
   useEffect(() => {
     if (showSummary || finalTimeSpent !== null) return;
@@ -92,19 +102,38 @@ const QuizView: React.FC<QuizViewProps> = ({
     }
   }, [currentQuestionIndex, mode]);
 
-  const handleAnswerSelect = (answerIndex: number) => {
+  const handleAnswerSelect = async (answerIndex: number) => {
     if (mode === 'marathon' && showAnswer) return;
     
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
 
-    // Track question usage
-    if (questions[currentQuestionIndex]) {
-      questionService.trackQuestionUsage(
-        questions[currentQuestionIndex].id, 
-        mode === 'marathon' ? 'marathon' : 'quiz'
-      );
+    const currentQuestion = questions[currentQuestionIndex];
+    if (currentQuestion) {
+      const isCorrect = answerIndex === currentQuestion.correctAnswer;
+      
+      try {
+        // Record the attempt and earn points
+        const points = await recordQuestionAttempt({
+          question_id: currentQuestion.id,
+          session_id: sessionId,
+          session_type: mode === 'marathon' ? 'marathon' : 'quiz',
+          is_correct: isCorrect,
+          difficulty: currentQuestion.difficulty || 'medium',
+          subject: currentQuestion.subject,
+          topic: currentQuestion.topic || 'general',
+          time_spent: Math.floor((Date.now() - startTime) / 1000)
+        });
+
+        setSessionPoints(prev => prev + points);
+        await loadUserPoints();
+      } catch (error) {
+        console.error('Error recording answer:', error);
+      }
+
+      // Track question usage
+      questionService.trackQuestionUsage(currentQuestion.id, mode === 'marathon' ? 'marathon' : 'quiz');
     }
   };
 
@@ -148,7 +177,7 @@ const QuizView: React.FC<QuizViewProps> = ({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const finalTime = Date.now() - startTime;
     setFinalTimeSpent(finalTime);
     
@@ -169,7 +198,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       timeSpent: Math.floor(finalTime / 1000),
       correctAnswers,
       totalQuestions: questions.length,
-      mode
+      mode,
+      pointsEarned: sessionPoints
     };
 
     setQuizResults(results);
@@ -197,33 +227,33 @@ const QuizView: React.FC<QuizViewProps> = ({
     const accuracy = Math.round((quizResults.correctAnswers / quizResults.totalQuestions) * 100);
     
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-white py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm p-8">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
             <div className="text-center mb-8">
               <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
-                accuracy >= 70 ? 'bg-green-100' : accuracy >= 50 ? 'bg-yellow-100' : 'bg-red-100'
+                accuracy >= 70 ? 'bg-blue-100' : accuracy >= 50 ? 'bg-slate-100' : 'bg-red-100'
               }`}>
                 <Trophy className={`h-10 w-10 ${
-                  accuracy >= 70 ? 'text-green-600' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
+                  accuracy >= 70 ? 'text-blue-600' : accuracy >= 50 ? 'text-slate-600' : 'text-red-600'
                 }`} />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl font-bold text-slate-900 mb-2">
                 {mode === 'marathon' ? 'Marathon' : 'Quiz'} Complete!
               </h2>
-              <p className="text-gray-600">Great job, {userName}!</p>
+              <p className="text-slate-600">Great job, {userName}!</p>
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="bg-green-50 rounded-lg p-4">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <div className="flex items-center justify-center mb-2">
-                  <Target className="h-6 w-6 text-green-600 mr-2" />
-                  <span className="text-sm text-green-700 font-medium">Questions Attempted</span>
+                  <Target className="h-6 w-6 text-blue-600 mr-2" />
+                  <span className="text-sm text-blue-700 font-medium">Questions Attempted</span>
                 </div>
-                <div className="text-2xl font-bold text-green-800">{quizResults.totalQuestions}</div>
+                <div className="text-2xl font-bold text-blue-800">{quizResults.totalQuestions}</div>
               </div>
               
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <div className="flex items-center justify-center mb-2">
                   <Check className="h-6 w-6 text-blue-600 mr-2" />
                   <span className="text-sm text-blue-700 font-medium">Correct Answers</span>
@@ -231,26 +261,26 @@ const QuizView: React.FC<QuizViewProps> = ({
                 <div className="text-2xl font-bold text-blue-800">{quizResults.correctAnswers}</div>
               </div>
               
-              <div className="bg-red-50 rounded-lg p-4">
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
                 <div className="flex items-center justify-center mb-2">
-                  <X className="h-6 w-6 text-red-600 mr-2" />
-                  <span className="text-sm text-red-700 font-medium">Wrong Answers</span>
+                  <X className="h-6 w-6 text-slate-600 mr-2" />
+                  <span className="text-sm text-slate-700 font-medium">Wrong Answers</span>
                 </div>
-                <div className="text-2xl font-bold text-red-800">{quizResults.totalQuestions - quizResults.correctAnswers}</div>
+                <div className="text-2xl font-bold text-slate-800">{quizResults.totalQuestions - quizResults.correctAnswers}</div>
               </div>
               
-              <div className="bg-purple-50 rounded-lg p-4">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <div className="flex items-center justify-center mb-2">
-                  <Clock className="h-6 w-6 text-purple-600 mr-2" />
-                  <span className="text-sm text-purple-700 font-medium">Time Spent</span>
+                  <Trophy className="h-6 w-6 text-blue-600 mr-2" />
+                  <span className="text-sm text-blue-700 font-medium">Points Earned</span>
                 </div>
-                <div className="text-2xl font-bold text-purple-800">{formatTime(finalTimeSpent || 0)}</div>
+                <div className="text-2xl font-bold text-blue-800">{sessionPoints}</div>
               </div>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">{accuracy}%</div>
-              <div className="text-gray-600">Overall Accuracy</div>
+              <div className="text-slate-600">Overall Accuracy</div>
             </div>
 
             <div className="flex justify-center space-x-4">
@@ -268,7 +298,11 @@ const QuizView: React.FC<QuizViewProps> = ({
   }
 
   if (questions.length === 0) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -277,27 +311,35 @@ const QuizView: React.FC<QuizViewProps> = ({
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <Button onClick={onBack} variant="outline" className="flex items-center">
+          <Button onClick={onBack} variant="outline" className="flex items-center border-slate-300">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold">{mode === 'marathon' ? 'Marathon Mode' : 'Quiz'}</h1>
-          <div className="text-sm text-gray-600">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-slate-900">{mode === 'marathon' ? 'Marathon Mode' : 'Quiz'}</h1>
+            <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
+              <Trophy className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">
+                {totalPoints} pts (+{sessionPoints})
+              </span>
+            </div>
+          </div>
+          <div className="text-sm text-slate-600">
             {Math.floor(displayTime / 60000)}:{((displayTime % 60000) / 1000).toFixed(0).padStart(2, '0')}
           </div>
         </div>
 
         {/* Progress */}
         {mode === 'quiz' && (
-          <Card className="mb-6">
+          <Card className="mb-6 border-slate-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
-                <span className="text-sm text-gray-600">{Math.round(progress)}% Answered</span>
+                <span className="text-sm font-medium text-slate-700">Question {currentQuestionIndex + 1} of {questions.length}</span>
+                <span className="text-sm text-slate-600">{Math.round(progress)}% Answered</span>
               </div>
               <Progress value={progress} className="h-2" />
             </CardContent>
@@ -307,9 +349,9 @@ const QuizView: React.FC<QuizViewProps> = ({
         <div className={mode === 'quiz' ? 'grid grid-cols-1 lg:grid-cols-4 gap-6' : ''}>
           {/* Question Navigator - only for quiz mode */}
           {mode === 'quiz' && (
-            <Card className="lg:col-span-1">
+            <Card className="lg:col-span-1 border-slate-200">
               <CardHeader>
-                <CardTitle className="text-lg">Questions</CardTitle>
+                <CardTitle className="text-lg text-slate-900">Questions</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-5 lg:grid-cols-3 gap-2">
@@ -317,12 +359,12 @@ const QuizView: React.FC<QuizViewProps> = ({
                     <button
                       key={index}
                       onClick={() => goToQuestion(index)}
-                      className={`w-8 h-8 rounded text-sm font-medium border ${
+                      className={`w-8 h-8 rounded text-sm font-medium border transition-colors ${
                         index === currentQuestionIndex
                           ? 'bg-blue-600 text-white border-blue-600'
                           : answers[index] !== null
-                          ? 'bg-green-100 text-green-800 border-green-300'
-                          : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                          ? 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200'
+                          : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
                       } ${flaggedQuestions[index] ? 'ring-2 ring-yellow-400' : ''}`}
                     >
                       {index + 1}
@@ -332,19 +374,19 @@ const QuizView: React.FC<QuizViewProps> = ({
                 <div className="mt-4 space-y-2 text-xs">
                   <div className="flex items-center">
                     <div className="w-3 h-3 bg-blue-600 rounded mr-2"></div>
-                    <span>Current</span>
+                    <span className="text-slate-600">Current</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-100 border border-green-300 rounded mr-2"></div>
-                    <span>Answered</span>
+                    <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded mr-2"></div>
+                    <span className="text-slate-600">Answered</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded mr-2"></div>
-                    <span>Unanswered</span>
+                    <div className="w-3 h-3 bg-slate-100 border border-slate-300 rounded mr-2"></div>
+                    <span className="text-slate-600">Unanswered</span>
                   </div>
                   <div className="flex items-center">
                     <div className="w-3 h-3 bg-yellow-400 rounded mr-2"></div>
-                    <span>Flagged</span>
+                    <span className="text-slate-600">Flagged</span>
                   </div>
                 </div>
               </CardContent>
@@ -352,7 +394,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           )}
 
           {/* Question Content */}
-          <Card className={mode === 'quiz' ? 'lg:col-span-3' : ''}>
+          <Card className={`${mode === 'quiz' ? 'lg:col-span-3' : ''} border-slate-200`}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">

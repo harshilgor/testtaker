@@ -238,6 +238,59 @@ export type Database = {
           },
         ]
       }
+      question_attempts_v2: {
+        Row: {
+          created_at: string
+          difficulty: string
+          id: string
+          is_correct: boolean
+          points_earned: number
+          question_id: string
+          session_id: string | null
+          session_type: string
+          subject: string
+          time_spent: number | null
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty: string
+          id?: string
+          is_correct: boolean
+          points_earned?: number
+          question_id: string
+          session_id?: string | null
+          session_type: string
+          subject: string
+          time_spent?: number | null
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id?: string
+          session_id?: string | null
+          session_type?: string
+          subject?: string
+          time_spent?: number | null
+          topic?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_attempts_v2_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "question_bank"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_bank: {
         Row: {
           correct_answer: string
@@ -429,6 +482,10 @@ export type Database = {
         Args: { correct_answers: number; difficulty?: string }
         Returns: number
       }
+      calculate_user_total_points: {
+        Args: { target_user_id: string }
+        Returns: number
+      }
       get_random_questions: {
         Args: {
           p_section?: string
@@ -508,6 +565,10 @@ export type Database = {
         Returns: undefined
       }
       update_leaderboard_stats: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      update_leaderboard_stats_v2: {
         Args: { target_user_id: string }
         Returns: undefined
       }

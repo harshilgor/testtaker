@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -79,35 +79,42 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const getRankIcon = (position: number) => {
     switch (position) {
       case 1:
-        return <Trophy className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
+        return <Crown className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
       case 2:
-        return <Medal className="h-5 w-5 md:h-6 md:w-6 text-gray-400" />;
+        return <Trophy className="h-5 w-5 md:h-6 md:w-6 text-slate-400" />;
       case 3:
-        return <Award className="h-5 w-5 md:h-6 md:w-6 text-amber-600" />;
+        return <Medal className="h-5 w-5 md:h-6 md:w-6 text-amber-600" />;
       default:
-        return <span className="text-sm md:text-lg font-bold text-gray-600 min-w-[2rem] text-center">#{position}</span>;
+        return <span className="text-sm md:text-lg font-bold text-slate-600 min-w-[2rem] text-center">#{position}</span>;
     }
+  };
+
+  const getPointsBadge = (points: number) => {
+    if (points >= 1000) return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white";
+    if (points >= 500) return "bg-gradient-to-r from-blue-500 to-blue-600 text-white";
+    if (points >= 200) return "bg-gradient-to-r from-green-500 to-green-600 text-white";
+    return "bg-slate-100 text-slate-800";
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+      <div className="min-h-screen bg-white py-4 md:py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-6 md:mb-8">
             <Button
               onClick={onBack}
               variant="outline"
-              className="flex items-center mr-4"
+              className="flex items-center mr-4 border-slate-300"
               size="sm"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Leaderboard</h1>
           </div>
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading leaderboard...</span>
+            <span className="ml-3 text-slate-600">Loading leaderboard...</span>
           </div>
         </div>
       </div>
@@ -116,21 +123,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+      <div className="min-h-screen bg-white py-4 md:py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center mb-6 md:mb-8">
             <Button
               onClick={onBack}
               variant="outline"
-              className="flex items-center mr-4"
+              className="flex items-center mr-4 border-slate-300"
               size="sm"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Leaderboard</h1>
           </div>
-          <Card>
+          <Card className="border-red-200">
             <CardContent className="p-6">
               <p className="text-red-600 text-center">Failed to load leaderboard. Please try again later.</p>
             </CardContent>
@@ -141,19 +148,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+    <div className="min-h-screen bg-white py-4 md:py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-6 md:mb-8">
           <Button
             onClick={onBack}
             variant="outline"
-            className="flex items-center mr-4"
+            className="flex items-center mr-4 border-slate-300"
             size="sm"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leaderboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Leaderboard</h1>
         </div>
 
         {currentUserRank && (
@@ -174,16 +181,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           </Card>
         )}
 
-        <Card>
-          <CardHeader className="pb-3 md:pb-4">
-            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
-              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" />
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3 md:pb-4 bg-slate-50 border-b border-slate-200">
+            <CardTitle className="flex items-center space-x-2 text-lg md:text-xl text-slate-900">
+              <Trophy className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
               <span>Top Performers</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 md:p-6">
             {leaderboard.length === 0 ? (
-              <p className="text-gray-600 text-center py-8 text-sm md:text-base">
+              <p className="text-slate-600 text-center py-8 text-sm md:text-base">
                 No leaderboard data available yet. Complete some activities to see rankings!
               </p>
             ) : (
@@ -191,10 +198,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
                 {leaderboard.map((user, index) => (
                   <div
                     key={user.id}
-                    className={`flex items-center justify-between p-3 md:p-4 rounded-lg border ${
+                    className={`flex items-center justify-between p-3 md:p-4 rounded-lg border transition-all hover:shadow-sm ${
                       user.display_name === userName 
                         ? 'border-blue-300 bg-blue-50' 
-                        : 'border-gray-200 bg-white'
+                        : index < 3
+                        ? 'border-slate-300 bg-slate-50'
+                        : 'border-slate-200 bg-white'
                     }`}
                   >
                     <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
@@ -202,22 +211,24 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
                         {getRankIcon(index + 1)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-sm md:text-base break-words">
+                        <p className="font-semibold text-slate-900 text-sm md:text-base break-words">
                           {user.display_name}
                           {user.display_name === userName && (
                             <span className="ml-2 text-xs md:text-sm text-blue-600">(You)</span>
                           )}
                         </p>
-                        <div className="flex flex-col sm:flex-row sm:gap-4 gap-1 text-xs md:text-sm text-gray-600 mt-1">
+                        <div className="flex flex-col sm:flex-row sm:gap-4 gap-1 text-xs md:text-sm text-slate-600 mt-1">
                           <span className="whitespace-nowrap">{user.mock_test_count} tests</span>
                           <span className="whitespace-nowrap">{user.quiz_count} quizzes</span>
-                          <span className="whitespace-nowrap">{user.marathon_questions_count} marathon</span>
+                          <span className="whitespace-nowrap">{user.marathon_questions_count} marathon questions</span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <p className="text-lg md:text-xl font-bold text-gray-900">{user.total_points}</p>
-                      <p className="text-xs md:text-sm text-gray-600">points</p>
+                      <div className={`px-3 py-1 rounded-full text-sm font-bold ${getPointsBadge(user.total_points)}`}>
+                        {user.total_points}
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-600 mt-1">points</p>
                     </div>
                   </div>
                 ))}
