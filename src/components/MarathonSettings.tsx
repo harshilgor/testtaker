@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MarathonSettings } from '../types/marathon';
 import { supabase } from '@/integrations/supabase/client';
+
 interface MarathonSettingsProps {
   onStart: (settings: MarathonSettings) => void;
   onBack: () => void;
 }
+
 interface QuestionStats {
   math: {
     easy: number;
@@ -26,10 +28,12 @@ interface QuestionStats {
   };
   total: number;
 }
+
 interface UserProgress {
   questionsAttempted: number;
   totalAvailable: number;
 }
+
 const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
   onStart,
   onBack
@@ -343,7 +347,7 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
 
           {/* Font Size */}
           <div>
-            
+            <Label className="text-base font-medium mb-3 block">Font Size</Label>
             <div className="grid grid-cols-3 gap-3">
               {[{
               value: 'small',
@@ -354,7 +358,17 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
             }, {
               value: 'large',
               label: 'Large'
-            }].map(option => {})}
+            }].map(option => <Button 
+                key={option.value} 
+                variant={settings.fontSize === option.value ? 'default' : 'outline'} 
+                onClick={() => setSettings(prev => ({
+                  ...prev,
+                  fontSize: option.value as any
+                }))} 
+                className="w-full"
+              >
+                {option.label}
+              </Button>)}
             </div>
           </div>
         </div>
@@ -370,4 +384,5 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
       </Card>
     </div>;
 };
+
 export default MarathonSettingsComponent;
