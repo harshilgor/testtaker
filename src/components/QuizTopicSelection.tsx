@@ -29,10 +29,17 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [startQuiz, setStartQuiz] = useState(false);
   
-  const { mathTopics, englishTopics, loading, error } = useQuestionTopics();
+  const { mathTopics, englishTopics, loading } = useQuestionTopics();
 
-  const topics = subject === 'math' ? mathTopics : englishTopics;
-  const allTopics = [...topics, ...wrongQuestionsTopics];
+  // Convert TopicCounts to array format
+  const topicCounts = subject === 'math' ? mathTopics : englishTopics;
+  const availableTopics = Object.entries(topicCounts).map(([skill, count]) => ({
+    id: skill,
+    name: skill,
+    description: `${count} questions available`
+  }));
+  
+  const allTopics = [...availableTopics, ...wrongQuestionsTopics];
 
   const handleTopicToggle = (topicId: string) => {
     setSelectedTopics(prev => 
@@ -98,16 +105,6 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
             </div>
           )}
 
-          {error && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5" />
-              <div>
-                <p className="text-yellow-800 font-medium">Unable to load topics from database</p>
-                <p className="text-yellow-700 text-sm mt-1">Using default topic list. Error: {error}</p>
-              </div>
-            </div>
-          )}
-
           {!loading && (
             <>
               <div className="mb-8">
@@ -131,7 +128,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                   ))}
                 </div>
                 
-                {topics.length === 0 && !loading && (
+                {availableTopics.length === 0 && !loading && (
                   <p className="text-gray-500 text-center py-4">No topics available for {subject}</p>
                 )}
               </div>
