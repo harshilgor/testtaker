@@ -37,9 +37,9 @@ export interface QuestionFilters {
 
 class QuestionService {
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
-    // Use direct query to main_question_bank
+    // Use direct query to question_bank
     let query = supabase
-      .from('main_question_bank')
+      .from('question_bank')
       .select('*');
 
     // Apply filters
@@ -56,7 +56,7 @@ class QuestionService {
       query = query.eq('domain', filters.domain);
     }
     if (filters.excludeIds && filters.excludeIds.length > 0) {
-      // Convert string IDs to numbers for main_question_bank
+      // Convert string IDs to numbers for question_bank
       const numericIds = filters.excludeIds.map(id => parseInt(id)).filter(id => !isNaN(id));
       if (numericIds.length > 0) {
         query = query.not('id', 'in', `(${numericIds.join(',')})`);
@@ -73,14 +73,14 @@ class QuestionService {
       throw error;
     }
 
-    // Convert bigint IDs to strings and add missing fields
+    // Convert bigint IDs to strings and ensure all required fields are present
     const questions = (data || []).map(q => ({
       ...q,
       id: q.id?.toString() || '',
-      is_active: true, // main_question_bank doesn't have is_active, assume all active
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      metadata: {}
+      is_active: q.is_active ?? true,
+      created_at: q.created_at || new Date().toISOString(),
+      updated_at: q.updated_at || new Date().toISOString(),
+      metadata: q.metadata || {}
     }));
 
     // Shuffle the results to get random questions
@@ -89,7 +89,7 @@ class QuestionService {
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
-    // Convert string ID to number for main_question_bank
+    // Convert string ID to number for question_bank
     const numericId = parseInt(id);
     if (isNaN(numericId)) {
       console.error('Invalid question ID:', id);
@@ -97,7 +97,7 @@ class QuestionService {
     }
 
     const { data, error } = await supabase
-      .from('main_question_bank')
+      .from('question_bank')
       .select('*')
       .eq('id', numericId)
       .not('question_text', 'is', null)
@@ -113,10 +113,10 @@ class QuestionService {
     return {
       ...data,
       id: data.id?.toString() || '',
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      metadata: {}
+      is_active: data.is_active ?? true,
+      created_at: data.created_at || new Date().toISOString(),
+      updated_at: data.updated_at || new Date().toISOString(),
+      metadata: data.metadata || {}
     };
   }
 

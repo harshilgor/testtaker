@@ -36,7 +36,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface MainQuestionBankQuestion {
+interface QuestionBankQuestion {
   id: string;
   question_text: string;
   option_a: string;
@@ -65,8 +65,8 @@ interface QuestionStats {
 }
 
 const QuestionBankManagement: React.FC = () => {
-  const [questions, setQuestions] = useState<MainQuestionBankQuestion[]>([]);
-  const [filteredQuestions, setFilteredQuestions] = useState<MainQuestionBankQuestion[]>([]);
+  const [questions, setQuestions] = useState<QuestionBankQuestion[]>([]);
+  const [filteredQuestions, setFilteredQuestions] = useState<QuestionBankQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState<string>('all');
@@ -75,11 +75,11 @@ const QuestionBankManagement: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<QuestionStats | null>(null);
 
-  // Fetch all questions from main_question_bank
+  // Fetch all questions from question_bank
   const fetchQuestions = async () => {
     try {
       const { data, error } = await supabase
-        .from('main_question_bank')
+        .from('question_bank')
         .select('*')
         .not('question_text', 'is', null)
         .order('id', { ascending: false });
@@ -102,7 +102,7 @@ const QuestionBankManagement: React.FC = () => {
   };
 
   // Calculate statistics
-  const calculateStats = (questionList: MainQuestionBankQuestion[]): QuestionStats => {
+  const calculateStats = (questionList: QuestionBankQuestion[]): QuestionStats => {
     const stats: QuestionStats = {
       total: questionList.length,
       bySection: {},
@@ -203,7 +203,7 @@ const QuestionBankManagement: React.FC = () => {
   };
 
   // Get unique values for filters
-  const getUniqueValues = (field: keyof MainQuestionBankQuestion) => {
+  const getUniqueValues = (field: keyof QuestionBankQuestion) => {
     return Array.from(new Set(questions.map(q => q[field]).filter(Boolean) as string[])).sort();
   };
 

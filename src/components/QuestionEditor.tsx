@@ -96,7 +96,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       if (question?.id) {
         // Update existing question
         const { data, error } = await supabase
-          .from('main_question_bank')
+          .from('question_bank')
           .update(updateData)
           .eq('id', parseInt(question.id))
           .select()
@@ -108,16 +108,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         const convertedData: DatabaseQuestion = {
           ...data,
           id: data.id?.toString() || '',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: {}
+          is_active: data.is_active ?? true,
+          created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || new Date().toISOString(),
+          metadata: data.metadata || {}
         };
         onSave(convertedData);
       } else {
         // Create new question
         const { data, error } = await supabase
-          .from('main_question_bank')
+          .from('question_bank')
           .insert(updateData)
           .select()
           .single();
@@ -128,10 +128,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         const convertedData: DatabaseQuestion = {
           ...data,
           id: data.id?.toString() || '',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: {}
+          is_active: data.is_active ?? true,
+          created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || new Date().toISOString(),
+          metadata: data.metadata || {}
         };
         onSave(convertedData);
       }

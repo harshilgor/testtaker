@@ -29,9 +29,9 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch question statistics from main_question_bank
+        // Fetch question statistics from question_bank
         const { data: allQuestions } = await supabase
-          .from('main_question_bank')
+          .from('question_bank')
           .select('section, difficulty')
           .not('question_text', 'is', null);
 

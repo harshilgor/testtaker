@@ -185,7 +185,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
   const getTotalQuestions = useCallback(async (): Promise<number> => {
     try {
       const { count, error } = await supabase
-        .from('main_question_bank')
+        .from('question_bank')
         .select('*', { count: 'exact', head: true })
         .not('question_text', 'is', null);
 

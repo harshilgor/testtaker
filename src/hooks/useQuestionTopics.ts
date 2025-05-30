@@ -21,18 +21,18 @@ export const useQuestionTopics = () => {
       try {
         setError(null);
         
-        // Fetch math topics from main_question_bank
+        // Fetch math topics from question_bank
         const { data: mathData, error: mathError } = await supabase
-          .from('main_question_bank')
+          .from('question_bank')
           .select('skill')
           .eq('section', 'math')
           .not('question_text', 'is', null);
 
         if (mathError) throw mathError;
 
-        // Fetch English topics from main_question_bank
+        // Fetch English topics from question_bank
         const { data: englishData, error: englishError } = await supabase
-          .from('main_question_bank')
+          .from('question_bank')
           .select('skill')
           .eq('section', 'reading-writing')
           .not('question_text', 'is', null);

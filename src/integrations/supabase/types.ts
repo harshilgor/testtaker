@@ -53,69 +53,6 @@ export type Database = {
           },
         ]
       }
-      main_question_bank: {
-        Row: {
-          correct_answer: string | null
-          correct_rationale: string | null
-          difficulty: string | null
-          domain: string | null
-          id: number
-          incorrect_rationale_a: string | null
-          incorrect_rationale_b: string | null
-          incorrect_rationale_c: string | null
-          incorrect_rationale_d: string | null
-          option_a: string | null
-          option_b: string | null
-          option_c: string | null
-          option_d: string | null
-          question_text: string | null
-          question_type: string | null
-          section: string | null
-          skill: string | null
-          test_name: string | null
-        }
-        Insert: {
-          correct_answer?: string | null
-          correct_rationale?: string | null
-          difficulty?: string | null
-          domain?: string | null
-          id?: number
-          incorrect_rationale_a?: string | null
-          incorrect_rationale_b?: string | null
-          incorrect_rationale_c?: string | null
-          incorrect_rationale_d?: string | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          question_text?: string | null
-          question_type?: string | null
-          section?: string | null
-          skill?: string | null
-          test_name?: string | null
-        }
-        Update: {
-          correct_answer?: string | null
-          correct_rationale?: string | null
-          difficulty?: string | null
-          domain?: string | null
-          id?: number
-          incorrect_rationale_a?: string | null
-          incorrect_rationale_b?: string | null
-          incorrect_rationale_c?: string | null
-          incorrect_rationale_d?: string | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          question_text?: string | null
-          question_type?: string | null
-          section?: string | null
-          skill?: string | null
-          test_name?: string | null
-        }
-        Relationships: []
-      }
       marathon_sessions: {
         Row: {
           adaptive_learning: boolean | null
@@ -343,6 +280,69 @@ export type Database = {
           time_spent?: number | null
           topic?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      question_bank: {
+        Row: {
+          correct_answer: string | null
+          correct_rationale: string | null
+          difficulty: string | null
+          domain: string | null
+          id: number
+          incorrect_rationale_a: string | null
+          incorrect_rationale_b: string | null
+          incorrect_rationale_c: string | null
+          incorrect_rationale_d: string | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          question_text: string | null
+          question_type: string | null
+          section: string | null
+          skill: string | null
+          test_name: string | null
+        }
+        Insert: {
+          correct_answer?: string | null
+          correct_rationale?: string | null
+          difficulty?: string | null
+          domain?: string | null
+          id?: number
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string | null
+          question_type?: string | null
+          section?: string | null
+          skill?: string | null
+          test_name?: string | null
+        }
+        Update: {
+          correct_answer?: string | null
+          correct_rationale?: string | null
+          difficulty?: string | null
+          domain?: string | null
+          id?: number
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string | null
+          question_type?: string | null
+          section?: string | null
+          skill?: string | null
+          test_name?: string | null
         }
         Relationships: []
       }
