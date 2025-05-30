@@ -9,8 +9,10 @@ export const useMarathonSession = () => {
   const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>([]);
 
   const startSession = useCallback((settings: MarathonSettings) => {
+    console.log('Starting marathon session with settings:', settings);
+    
     const newSession: MarathonSession = {
-      id: `marathon_${Date.now()}`,
+      id: `marathon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       startTime: new Date(),
       totalQuestions: 0,
       correctAnswers: 0,
@@ -23,6 +25,8 @@ export const useMarathonSession = () => {
       timeGoalMinutes: settings.timeGoalMinutes,
     };
     
+    console.log('Created new marathon session:', newSession);
+    
     setSession(newSession);
     setAttempts([]);
     
@@ -31,6 +35,8 @@ export const useMarathonSession = () => {
   }, []);
 
   const recordAttempt = useCallback((attempt: QuestionAttempt) => {
+    console.log('Recording attempt:', attempt);
+    
     setAttempts(prev => {
       const newAttempts = [...prev, attempt];
       
@@ -96,6 +102,8 @@ export const useMarathonSession = () => {
     setSession(endedSession);
     localStorage.removeItem('currentMarathonSession');
     
+    console.log('Marathon session ended:', endedSession);
+    
     return {
       session: endedSession,
       attempts,
@@ -120,11 +128,23 @@ export const useMarathonSession = () => {
     const savedFlagged = localStorage.getItem('flaggedQuestions');
     
     if (savedSession) {
-      setSession(JSON.parse(savedSession));
+      try {
+        const parsed = JSON.parse(savedSession);
+        console.log('Restored marathon session from localStorage:', parsed);
+        setSession(parsed);
+      } catch (error) {
+        console.error('Error parsing saved session:', error);
+        localStorage.removeItem('currentMarathonSession');
+      }
     }
     
     if (savedFlagged) {
-      setFlaggedQuestions(JSON.parse(savedFlagged));
+      try {
+        setFlaggedQuestions(JSON.parse(savedFlagged));
+      } catch (error) {
+        console.error('Error parsing flagged questions:', error);
+        localStorage.removeItem('flaggedQuestions');
+      }
     }
   }, []);
 

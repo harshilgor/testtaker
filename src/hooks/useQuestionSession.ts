@@ -8,9 +8,58 @@ interface QuestionSessionHook {
   markQuestionUsed: (sessionId: string, sessionType: string, questionId: string) => Promise<void>;
   getSessionStats: (sessionId: string, sessionType: string) => Promise<{ used: number; total: number }>;
   getTotalQuestions: () => Promise<number>;
+  initializeSession: (sessionId: string, sessionType: string) => Promise<void>;
 }
 
 export const useQuestionSession = (): QuestionSessionHook => {
+  const initializeSession = useCallback(async (
+    sessionId: string,
+    sessionType: string
+  ): Promise<void> => {
+    try {
+      console.log('Initializing session:', sessionId, sessionType);
+      
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) {
+        console.error('No authenticated user for session initialization');
+        return;
+      }
+
+      // Check if session already exists
+      const { data: existingSession } = await supabase
+        .from('question_sessions')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('session_type', sessionType)
+        .eq('user_id', user.user.id)
+        .single();
+
+      if (existingSession) {
+        console.log('Session already exists:', existingSession);
+        return;
+      }
+
+      // Create new session with empty questions_used array
+      const { error } = await supabase
+        .from('question_sessions')
+        .insert({
+          user_id: user.user.id,
+          session_id: sessionId,
+          session_type: sessionType,
+          questions_used: [],
+          total_questions_available: await getTotalQuestions()
+        });
+
+      if (error) {
+        console.error('Error initializing session:', error);
+      } else {
+        console.log('Session initialized successfully');
+      }
+    } catch (error) {
+      console.error('Error in initializeSession:', error);
+    }
+  }, []);
+
   const getNextQuestion = useCallback(async (
     sessionId: string,
     sessionType: string,
@@ -19,11 +68,26 @@ export const useQuestionSession = (): QuestionSessionHook => {
     try {
       console.log('Fetching question with filters:', filters);
       
+      // Map subject filters to database section values
+      let sectionFilter = null;
+      if (filters.section) {
+        sectionFilter = filters.section;
+      } else if (filters.subjects) {
+        if (filters.subjects.includes('math') && !filters.subjects.includes('english')) {
+          sectionFilter = 'math';
+        } else if (filters.subjects.includes('english') && !filters.subjects.includes('math')) {
+          sectionFilter = 'reading-writing';
+        }
+        // If both or neither, leave sectionFilter as null for mixed
+      }
+
+      console.log('Mapped section filter:', sectionFilter);
+      
       const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
-        p_section: filters.section || null,
-        p_difficulty: filters.difficulty || null,
+        p_section: sectionFilter,
+        p_difficulty: filters.difficulty === 'mixed' ? null : filters.difficulty,
         p_limit: 1
       });
 
@@ -34,9 +98,8 @@ export const useQuestionSession = (): QuestionSessionHook => {
 
       if (data && data.length > 0) {
         const dbQuestion = data[0];
-        console.log('Successfully loaded question:', dbQuestion.id);
+        console.log('Successfully loaded question:', dbQuestion.id, 'Section:', dbQuestion.section);
         
-        // Map the database response to DatabaseQuestion type
         const mappedQuestion: DatabaseQuestion = {
           ...dbQuestion,
           is_active: true,
@@ -141,6 +204,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
     getNextQuestion,
     markQuestionUsed,
     getSessionStats,
-    getTotalQuestions
+    getTotalQuestions,
+    initializeSession
   };
 };

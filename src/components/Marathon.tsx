@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ interface MarathonProps {
 
 const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) => {
   const { session, recordAttempt, toggleFlag, flaggedQuestions, endSession } = useMarathonSession();
-  const { getNextQuestion, markQuestionUsed, getSessionStats, getTotalQuestions } = useQuestionSession();
+  const { getNextQuestion, markQuestionUsed, getSessionStats, getTotalQuestions, initializeSession } = useQuestionSession();
   const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   const [showSummary, setShowSummary] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
+  const [sessionInitialized, setSessionInitialized] = useState(false);
 
   // Timer effect
   useEffect(() => {
@@ -40,15 +42,35 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     return () => clearInterval(timer);
   }, [session, currentQuestion]);
 
-  // Load session stats and first question
+  // Initialize session and load first question
   useEffect(() => {
-    if (session) {
+    if (session && !sessionInitialized) {
       console.log('Marathon session started:', session);
-      loadSessionStats();
-      loadNextQuestion();
+      initializeAndLoadQuestion();
       loadUserPoints();
+      setSessionInitialized(true);
     }
-  }, [session]);
+  }, [session, sessionInitialized]);
+
+  const initializeAndLoadQuestion = async () => {
+    if (!session) return;
+    
+    setLoading(true);
+    try {
+      // Initialize the session first
+      await initializeSession(session.id, 'marathon');
+      
+      // Load session stats
+      await loadSessionStats();
+      
+      // Load first question
+      await loadNextQuestion();
+    } catch (error) {
+      console.error('Error initializing marathon session:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadUserPoints = async () => {
     try {
@@ -77,18 +99,15 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
     setLoading(true);
     try {
-      // Create better filters based on session settings
+      // Create filters based on session settings
       const filters: any = {};
       
       console.log('Session subjects:', session.subjects);
       console.log('Session difficulty:', session.difficulty);
       
+      // Map subjects to database sections
       if (session.subjects.length > 0 && !session.subjects.includes('both')) {
-        if (session.subjects.includes('math')) {
-          filters.section = 'math';
-        } else if (session.subjects.includes('english')) {
-          filters.section = 'reading-writing';
-        }
+        filters.subjects = session.subjects;
       }
       
       if (session.difficulty !== 'mixed') {
@@ -103,14 +122,10 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         setCurrentQuestion(question);
         setTimeSpent(0);
         
-        // Mark question as used
-        await markQuestionUsed(session.id, 'marathon', question.id);
-        
-        // Update stats
+        // Update stats after loading
         await loadSessionStats();
       } else {
         console.log('No more questions available');
-        // No more questions available - show summary
         setShowSummary(true);
       }
     } catch (error) {
@@ -125,6 +140,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
     try {
       console.log('Recording answer - correct:', isCorrect, 'question:', currentQuestion.id);
+      
+      // Mark question as used first
+      await markQuestionUsed(session.id, 'marathon', currentQuestion.id);
       
       // Record the attempt with points in the database
       const points = await recordQuestionAttempt({
@@ -193,6 +211,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   const handleRestartFromSummary = () => {
     setShowSummary(false);
     setCurrentQuestion(null);
+    setSessionInitialized(false);
     onBack();
   };
 
