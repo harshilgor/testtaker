@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue 
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Collapsible,
   CollapsibleContent,
@@ -31,14 +31,31 @@ import {
   BarChart3, 
   Filter,
   Download,
-  Eye,
-  EyeOff,
   Edit3
 } from 'lucide-react';
-import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
-import QuestionEditor from './QuestionEditor';
 import { toast } from 'sonner';
+
+interface MainQuestionBankQuestion {
+  id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: string;
+  correct_rationale: string;
+  incorrect_rationale_a?: string;
+  incorrect_rationale_b?: string;
+  incorrect_rationale_c?: string;
+  incorrect_rationale_d?: string;
+  section: string;
+  skill: string;
+  difficulty: string;
+  domain: string;
+  test_name: string;
+  question_type: string;
+}
 
 interface QuestionStats {
   total: number;
@@ -48,8 +65,8 @@ interface QuestionStats {
 }
 
 const QuestionBankManagement: React.FC = () => {
-  const [questions, setQuestions] = useState<DatabaseQuestion[]>([]);
-  const [filteredQuestions, setFilteredQuestions] = useState<DatabaseQuestion[]>([]);
+  const [questions, setQuestions] = useState<MainQuestionBankQuestion[]>([]);
+  const [filteredQuestions, setFilteredQuestions] = useState<MainQuestionBankQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState<string>('all');
@@ -57,47 +74,35 @@ const QuestionBankManagement: React.FC = () => {
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<QuestionStats | null>(null);
-  const [editingQuestion, setEditingQuestion] = useState<DatabaseQuestion | null>(null);
 
-  // Handle editing a question
-  const handleEditQuestion = (question: DatabaseQuestion) => {
-    setEditingQuestion(question);
-  };
-
-  // Handle saving a question after editing
-  const handleQuestionSaved = (updatedQuestion: DatabaseQuestion) => {
-    // Update the questions list with the saved question
-    setQuestions(prev => 
-      prev.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
-    );
-    
-    // Close the editor
-    setEditingQuestion(null);
-    
-    // Show success message
-    toast.success('Question updated successfully');
-  };
-
-  // Fetch all questions
+  // Fetch all questions from main_question_bank
   const fetchQuestions = async () => {
     try {
       const { data, error } = await supabase
-        .from('question_bank')
+        .from('main_question_bank')
         .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .not('question_text', 'is', null)
+        .order('id', { ascending: false });
 
       if (error) throw error;
-      setQuestions(data || []);
+      
+      // Convert bigint IDs to strings
+      const questionsWithStringIds = (data || []).map(q => ({
+        ...q,
+        id: q.id?.toString() || ''
+      }));
+      
+      setQuestions(questionsWithStringIds);
     } catch (error) {
       console.error('Error fetching questions:', error);
+      toast.error('Failed to fetch questions');
     } finally {
       setLoading(false);
     }
   };
 
   // Calculate statistics
-  const calculateStats = (questionList: DatabaseQuestion[]): QuestionStats => {
+  const calculateStats = (questionList: MainQuestionBankQuestion[]): QuestionStats => {
     const stats: QuestionStats = {
       total: questionList.length,
       bySection: {},
@@ -107,13 +112,19 @@ const QuestionBankManagement: React.FC = () => {
 
     questionList.forEach(q => {
       // Section stats
-      stats.bySection[q.section] = (stats.bySection[q.section] || 0) + 1;
+      if (q.section) {
+        stats.bySection[q.section] = (stats.bySection[q.section] || 0) + 1;
+      }
       
       // Difficulty stats
-      stats.byDifficulty[q.difficulty] = (stats.byDifficulty[q.difficulty] || 0) + 1;
+      if (q.difficulty) {
+        stats.byDifficulty[q.difficulty] = (stats.byDifficulty[q.difficulty] || 0) + 1;
+      }
       
       // Skill stats
-      stats.bySkill[q.skill] = (stats.bySkill[q.skill] || 0) + 1;
+      if (q.skill) {
+        stats.bySkill[q.skill] = (stats.bySkill[q.skill] || 0) + 1;
+      }
     });
 
     return stats;
@@ -126,9 +137,9 @@ const QuestionBankManagement: React.FC = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(q => 
-        q.question_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.skill.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.domain.toLowerCase().includes(searchTerm.toLowerCase())
+        (q.question_text && q.question_text.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (q.skill && q.skill.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (q.domain && q.domain.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -161,25 +172,6 @@ const QuestionBankManagement: React.FC = () => {
     setExpandedRows(newExpanded);
   };
 
-  // Toggle question active status
-  const toggleQuestionStatus = async (questionId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('question_bank')
-        .update({ is_active: !currentStatus })
-        .eq('id', questionId);
-
-      if (error) throw error;
-      
-      // Refresh questions
-      fetchQuestions();
-      toast.success(`Question ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
-      console.error('Error updating question status:', error);
-      toast.error('Failed to update question status');
-    }
-  };
-
   // Export questions as CSV
   const exportQuestions = () => {
     const csvContent = [
@@ -188,16 +180,16 @@ const QuestionBankManagement: React.FC = () => {
       // Data
       ...filteredQuestions.map(q => [
         q.id,
-        q.section,
-        q.skill,
-        q.difficulty,
-        `"${q.question_text.replace(/"/g, '""')}"`,
-        `"${q.option_a.replace(/"/g, '""')}"`,
-        `"${q.option_b.replace(/"/g, '""')}"`,
-        `"${q.option_c.replace(/"/g, '""')}"`,
-        `"${q.option_d.replace(/"/g, '""')}"`,
-        q.correct_answer,
-        q.question_type
+        q.section || '',
+        q.skill || '',
+        q.difficulty || '',
+        `"${(q.question_text || '').replace(/"/g, '""')}"`,
+        `"${(q.option_a || '').replace(/"/g, '""')}"`,
+        `"${(q.option_b || '').replace(/"/g, '""')}"`,
+        `"${(q.option_c || '').replace(/"/g, '""')}"`,
+        `"${(q.option_d || '').replace(/"/g, '""')}"`,
+        q.correct_answer || '',
+        q.question_type || ''
       ].join(','))
     ].join('\n');
 
@@ -211,8 +203,8 @@ const QuestionBankManagement: React.FC = () => {
   };
 
   // Get unique values for filters
-  const getUniqueValues = (field: keyof DatabaseQuestion) => {
-    return Array.from(new Set(questions.map(q => q[field] as string))).sort();
+  const getUniqueValues = (field: keyof MainQuestionBankQuestion) => {
+    return Array.from(new Set(questions.map(q => q[field]).filter(Boolean) as string[])).sort();
   };
 
   useEffect(() => {
@@ -360,7 +352,6 @@ const QuestionBankManagement: React.FC = () => {
                   <TableHead>Difficulty</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Answer</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -382,8 +373,8 @@ const QuestionBankManagement: React.FC = () => {
                       </TableCell>
                       <TableCell className="max-w-md">
                         <div className="truncate">
-                          {question.question_text.substring(0, 100)}
-                          {question.question_text.length > 100 && '...'}
+                          {(question.question_text || '').substring(0, 100)}
+                          {(question.question_text || '').length > 100 && '...'}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -404,34 +395,11 @@ const QuestionBankManagement: React.FC = () => {
                       <TableCell>
                         <Badge variant="outline">{question.correct_answer}</Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditQuestion(question)}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleQuestionStatus(question.id, question.is_active)}
-                          >
-                            {question.is_active ? (
-                              <Eye className="h-4 w-4" />
-                            ) : (
-                              <EyeOff className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
                     </TableRow>
                     
                     {expandedRows.has(question.id) && (
                       <TableRow>
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={7}>
                           <div className="p-4 bg-gray-50 rounded-lg space-y-4">
                             <div>
                               <h4 className="font-semibold mb-2">Full Question:</h4>
@@ -466,7 +434,7 @@ const QuestionBankManagement: React.FC = () => {
                                   <div className="text-sm space-y-1">
                                     <div><strong>Domain:</strong> {question.domain}</div>
                                     <div><strong>Test:</strong> {question.test_name}</div>
-                                    <div><strong>Created:</strong> {new Date(question.created_at).toLocaleDateString()}</div>
+                                    <div><strong>ID:</strong> {question.id}</div>
                                   </div>
                                 </div>
                               </div>
@@ -482,16 +450,6 @@ const QuestionBankManagement: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Question Editor Modal */}
-      {editingQuestion && (
-        <QuestionEditor
-          question={editingQuestion}
-          isOpen={!!editingQuestion}
-          onClose={() => setEditingQuestion(null)}
-          onSave={handleQuestionSaved}
-        />
-      )}
     </div>
   );
 };

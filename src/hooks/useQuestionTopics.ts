@@ -21,34 +21,38 @@ export const useQuestionTopics = () => {
       try {
         setError(null);
         
-        // Fetch math topics
+        // Fetch math topics from main_question_bank
         const { data: mathData, error: mathError } = await supabase
-          .from('question_bank')
+          .from('main_question_bank')
           .select('skill')
           .eq('section', 'math')
-          .eq('is_active', true);
+          .not('question_text', 'is', null);
 
         if (mathError) throw mathError;
 
-        // Fetch English topics
+        // Fetch English topics from main_question_bank
         const { data: englishData, error: englishError } = await supabase
-          .from('question_bank')
+          .from('main_question_bank')
           .select('skill')
           .eq('section', 'reading-writing')
-          .eq('is_active', true);
+          .not('question_text', 'is', null);
 
         if (englishError) throw englishError;
 
         // Count occurrences for math
         const mathTopicCounts: { [key: string]: number } = {};
         mathData?.forEach(item => {
-          mathTopicCounts[item.skill] = (mathTopicCounts[item.skill] || 0) + 1;
+          if (item.skill) {
+            mathTopicCounts[item.skill] = (mathTopicCounts[item.skill] || 0) + 1;
+          }
         });
 
         // Count occurrences for English
         const englishTopicCounts: { [key: string]: number } = {};
         englishData?.forEach(item => {
-          englishTopicCounts[item.skill] = (englishTopicCounts[item.skill] || 0) + 1;
+          if (item.skill) {
+            englishTopicCounts[item.skill] = (englishTopicCounts[item.skill] || 0) + 1;
+          }
         });
 
         // Convert to array format with proper structure

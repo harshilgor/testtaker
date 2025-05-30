@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -36,11 +37,10 @@ export interface QuestionFilters {
 
 class QuestionService {
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
-    // Use direct query instead of RPC to get all needed fields
+    // Use direct query to main_question_bank
     let query = supabase
-      .from('question_bank')
-      .select('*')
-      .eq('is_active', true);
+      .from('main_question_bank')
+      .select('*');
 
     // Apply filters
     if (filters.section) {
@@ -59,8 +59,8 @@ class QuestionService {
       query = query.not('id', 'in', `(${filters.excludeIds.join(',')})`);
     }
 
-    // Add random ordering and limit
-    query = query.order('id'); // Postgres requires deterministic ordering for consistent results
+    // Filter out null questions and add ordering
+    query = query.not('question_text', 'is', null).order('id');
     
     const { data, error } = await query.limit(filters.limit || 10);
 
@@ -69,17 +69,27 @@ class QuestionService {
       throw error;
     }
 
+    // Convert bigint IDs to strings and add missing fields
+    const questions = (data || []).map(q => ({
+      ...q,
+      id: q.id?.toString() || '',
+      is_active: true, // main_question_bank doesn't have is_active, assume all active
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {}
+    }));
+
     // Shuffle the results to get random questions
-    const shuffled = (data || []).sort(() => Math.random() - 0.5);
+    const shuffled = questions.sort(() => Math.random() - 0.5);
     return shuffled.slice(0, filters.limit || 10);
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
     const { data, error } = await supabase
-      .from('question_bank')
+      .from('main_question_bank')
       .select('*')
       .eq('id', id)
-      .eq('is_active', true)
+      .not('question_text', 'is', null)
       .single();
 
     if (error) {
@@ -87,7 +97,16 @@ class QuestionService {
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    return {
+      ...data,
+      id: data.id?.toString() || '',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {}
+    };
   }
 
   async importQuestions(questionsData: any[]): Promise<number> {

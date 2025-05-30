@@ -53,6 +53,69 @@ export type Database = {
           },
         ]
       }
+      main_question_bank: {
+        Row: {
+          correct_answer: string | null
+          correct_rationale: string | null
+          difficulty: string | null
+          domain: string | null
+          id: number
+          incorrect_rationale_a: string | null
+          incorrect_rationale_b: string | null
+          incorrect_rationale_c: string | null
+          incorrect_rationale_d: string | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          question_text: string | null
+          question_type: string | null
+          section: string | null
+          skill: string | null
+          test_name: string | null
+        }
+        Insert: {
+          correct_answer?: string | null
+          correct_rationale?: string | null
+          difficulty?: string | null
+          domain?: string | null
+          id?: number
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string | null
+          question_type?: string | null
+          section?: string | null
+          skill?: string | null
+          test_name?: string | null
+        }
+        Update: {
+          correct_answer?: string | null
+          correct_rationale?: string | null
+          difficulty?: string | null
+          domain?: string | null
+          id?: number
+          incorrect_rationale_a?: string | null
+          incorrect_rationale_b?: string | null
+          incorrect_rationale_c?: string | null
+          incorrect_rationale_d?: string | null
+          option_a?: string | null
+          option_b?: string | null
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string | null
+          question_type?: string | null
+          section?: string | null
+          skill?: string | null
+          test_name?: string | null
+        }
+        Relationships: []
+      }
       marathon_sessions: {
         Row: {
           adaptive_learning: boolean | null
@@ -281,89 +344,6 @@ export type Database = {
           topic?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "question_attempts_v2_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "question_bank"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      question_bank: {
-        Row: {
-          correct_answer: string
-          correct_rationale: string
-          created_at: string
-          difficulty: string
-          domain: string
-          id: string
-          incorrect_rationale_a: string | null
-          incorrect_rationale_b: string | null
-          incorrect_rationale_c: string | null
-          incorrect_rationale_d: string | null
-          is_active: boolean
-          metadata: Json | null
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
-          question_text: string
-          question_type: string
-          section: string
-          skill: string
-          test_name: string
-          updated_at: string
-        }
-        Insert: {
-          correct_answer: string
-          correct_rationale: string
-          created_at?: string
-          difficulty: string
-          domain: string
-          id?: string
-          incorrect_rationale_a?: string | null
-          incorrect_rationale_b?: string | null
-          incorrect_rationale_c?: string | null
-          incorrect_rationale_d?: string | null
-          is_active?: boolean
-          metadata?: Json | null
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
-          question_text: string
-          question_type: string
-          section: string
-          skill: string
-          test_name: string
-          updated_at?: string
-        }
-        Update: {
-          correct_answer?: string
-          correct_rationale?: string
-          created_at?: string
-          difficulty?: string
-          domain?: string
-          id?: string
-          incorrect_rationale_a?: string | null
-          incorrect_rationale_b?: string | null
-          incorrect_rationale_c?: string | null
-          incorrect_rationale_d?: string | null
-          is_active?: boolean
-          metadata?: Json | null
-          option_a?: string
-          option_b?: string
-          option_c?: string
-          option_d?: string
-          question_text?: string
-          question_type?: string
-          section?: string
-          skill?: string
-          test_name?: string
-          updated_at?: string
-        }
         Relationships: []
       }
       question_sessions: {
@@ -427,15 +407,7 @@ export type Database = {
           used_at?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "question_usage_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "question_bank"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       quiz_results: {
         Row: {
@@ -493,10 +465,10 @@ export type Database = {
           p_skill?: string
           p_domain?: string
           p_limit?: number
-          p_exclude_ids?: string[]
+          p_exclude_ids?: number[]
         }
         Returns: {
-          id: string
+          id: number
           question_text: string
           option_a: string
           option_b: string
@@ -526,7 +498,7 @@ export type Database = {
           p_limit?: number
         }
         Returns: {
-          id: string
+          id: number
           question_text: string
           option_a: string
           option_b: string

@@ -102,6 +102,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
         
         const mappedQuestion: DatabaseQuestion = {
           ...dbQuestion,
+          id: dbQuestion.id?.toString() || '',
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -184,9 +185,9 @@ export const useQuestionSession = (): QuestionSessionHook => {
   const getTotalQuestions = useCallback(async (): Promise<number> => {
     try {
       const { count, error } = await supabase
-        .from('question_bank')
+        .from('main_question_bank')
         .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+        .not('question_text', 'is', null);
 
       if (error) {
         console.error('Error getting total questions:', error);

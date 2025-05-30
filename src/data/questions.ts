@@ -1,5 +1,4 @@
 
-
 import { questionService } from '@/services/questionService';
 
 export interface Question {
@@ -131,4 +130,3 @@ export const mockTestQuestions = {
 
 // Export for backward compatibility
 export { questionService };
-

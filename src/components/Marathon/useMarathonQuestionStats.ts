@@ -29,11 +29,11 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch question statistics
+        // Fetch question statistics from main_question_bank
         const { data: allQuestions } = await supabase
-          .from('question_bank')
+          .from('main_question_bank')
           .select('section, difficulty')
-          .eq('is_active', true);
+          .not('question_text', 'is', null);
 
         if (allQuestions) {
           const stats = {
@@ -45,10 +45,14 @@ export const useMarathonQuestionStats = () => {
           allQuestions.forEach(q => {
             if (q.section === 'math') {
               stats.math.total++;
-              stats.math[q.difficulty as keyof QuestionStats]++;
+              if (q.difficulty === 'easy') stats.math.easy++;
+              else if (q.difficulty === 'medium') stats.math.medium++;
+              else if (q.difficulty === 'hard') stats.math.hard++;
             } else if (q.section === 'reading-writing') {
               stats.english.total++;
-              stats.english[q.difficulty as keyof QuestionStats]++;
+              if (q.difficulty === 'easy') stats.english.easy++;
+              else if (q.difficulty === 'medium') stats.english.medium++;
+              else if (q.difficulty === 'hard') stats.english.hard++;
             }
           });
 
