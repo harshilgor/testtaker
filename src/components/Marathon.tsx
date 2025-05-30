@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +43,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   // Load session stats and first question
   useEffect(() => {
     if (session) {
+      console.log('Marathon session started:', session);
       loadSessionStats();
       loadNextQuestion();
       loadUserPoints();
@@ -51,16 +51,25 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   }, [session]);
 
   const loadUserPoints = async () => {
-    const points = await getUserTotalPoints();
-    setTotalPoints(points);
+    try {
+      const points = await getUserTotalPoints();
+      setTotalPoints(points);
+    } catch (error) {
+      console.error('Error loading user points:', error);
+    }
   };
 
   const loadSessionStats = async () => {
     if (!session) return;
     
-    const stats = await getSessionStats(session.id, 'marathon');
-    const total = await getTotalQuestions();
-    setSessionStats({ used: stats.used, total: total });
+    try {
+      const stats = await getSessionStats(session.id, 'marathon');
+      const total = await getTotalQuestions();
+      setSessionStats({ used: stats.used, total: total });
+      console.log('Session stats:', { used: stats.used, total });
+    } catch (error) {
+      console.error('Error loading session stats:', error);
+    }
   };
 
   const loadNextQuestion = async () => {
@@ -70,6 +79,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     try {
       // Create better filters based on session settings
       const filters: any = {};
+      
+      console.log('Session subjects:', session.subjects);
+      console.log('Session difficulty:', session.difficulty);
       
       if (session.subjects.length > 0 && !session.subjects.includes('both')) {
         if (session.subjects.includes('math')) {
@@ -87,7 +99,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
       const question = await getNextQuestion(session.id, 'marathon', filters);
       
       if (question) {
-        console.log('Loaded question:', question);
+        console.log('Loaded question:', question.id, question.question_text.substring(0, 50) + '...');
         setCurrentQuestion(question);
         setTimeSpent(0);
         
@@ -112,6 +124,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     if (!currentQuestion || !session) return;
 
     try {
+      console.log('Recording answer - correct:', isCorrect, 'question:', currentQuestion.id);
+      
       // Record the attempt with points in the database
       const points = await recordQuestionAttempt({
         question_id: currentQuestion.id,
@@ -124,6 +138,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         time_spent: timeSpent
       });
 
+      console.log('Points earned:', points);
+      
       // Update session points
       setSessionPoints(prev => prev + points);
       

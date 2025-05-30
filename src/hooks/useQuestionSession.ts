@@ -17,6 +17,8 @@ export const useQuestionSession = (): QuestionSessionHook => {
     filters: any = {}
   ): Promise<DatabaseQuestion | null> => {
     try {
+      console.log('Fetching question with filters:', filters);
+      
       const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -32,16 +34,19 @@ export const useQuestionSession = (): QuestionSessionHook => {
 
       if (data && data.length > 0) {
         const dbQuestion = data[0];
+        console.log('Successfully loaded question:', dbQuestion.id);
+        
         // Map the database response to DatabaseQuestion type
         const mappedQuestion: DatabaseQuestion = {
           ...dbQuestion,
-          is_active: true, // Default value since we only get active questions
-          created_at: new Date().toISOString(), // Default value
-          updated_at: new Date().toISOString() // Default value
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
         return mappedQuestion;
       }
 
+      console.log('No questions available with current filters');
       return null;
     } catch (error) {
       console.error('Error in getNextQuestion:', error);
@@ -55,6 +60,8 @@ export const useQuestionSession = (): QuestionSessionHook => {
     questionId: string
   ): Promise<void> => {
     try {
+      console.log('Marking question as used:', questionId);
+      
       const { error } = await supabase.rpc('mark_question_used_in_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -63,9 +70,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
 
       if (error) {
         console.error('Error marking question as used:', error);
+        throw error;
       }
+
+      console.log('Question marked as used successfully');
     } catch (error) {
       console.error('Error in markQuestionUsed:', error);
+      throw error;
     }
   }, []);
 
@@ -74,18 +85,27 @@ export const useQuestionSession = (): QuestionSessionHook => {
     sessionType: string
   ): Promise<{ used: number; total: number }> => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log('No authenticated user');
+        return { used: 0, total: 0 };
+      }
+
       const { data, error } = await supabase
         .from('question_sessions')
         .select('questions_used, total_questions_available')
         .eq('session_id', sessionId)
         .eq('session_type', sessionType)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(1)
         .single();
 
       if (error || !data) {
-        return { used: 0, total: await getTotalQuestions() };
+        console.log('No session data found, returning defaults');
+        const total = await getTotalQuestions();
+        return { used: 0, total };
       }
 
       return {

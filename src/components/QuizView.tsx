@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Question, getQuestionsBySubject, getQuestionsByTopics, questionService } from '../data/questions';
 import Calculator from './Calculator';
@@ -41,6 +40,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [sessionId] = useState(() => `${mode}-${Date.now()}-${Math.random()}`);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Marathon mode specific states
   const [showAnswer, setShowAnswer] = useState(false);
@@ -51,6 +51,9 @@ const QuizView: React.FC<QuizViewProps> = ({
   useEffect(() => {
     const loadQuestions = async () => {
       try {
+        setIsLoading(true);
+        console.log('Loading questions for subject:', subject, 'topics:', topics);
+        
         let loadedQuestions;
         if (topics.length > 0) {
           loadedQuestions = await getQuestionsByTopics(
@@ -65,11 +68,19 @@ const QuizView: React.FC<QuizViewProps> = ({
           );
         }
         
+        console.log('Loaded questions:', loadedQuestions.length);
+        
+        if (loadedQuestions.length === 0) {
+          console.warn('No questions loaded for the given criteria');
+        }
+        
         setQuestions(loadedQuestions);
         setAnswers(new Array(loadedQuestions.length).fill(null));
         setFlaggedQuestions(new Array(loadedQuestions.length).fill(false));
       } catch (error) {
         console.error('Error loading questions:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -78,8 +89,12 @@ const QuizView: React.FC<QuizViewProps> = ({
   }, [subject, numQuestions, topics]);
 
   const loadUserPoints = async () => {
-    const points = await getUserTotalPoints();
-    setTotalPoints(points);
+    try {
+      const points = await getUserTotalPoints();
+      setTotalPoints(points);
+    } catch (error) {
+      console.error('Error loading user points:', error);
+    }
   };
 
   useEffect(() => {
@@ -114,6 +129,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       const isCorrect = answerIndex === currentQuestion.correctAnswer;
       
       try {
+        console.log('Recording quiz answer for question:', currentQuestion.id, 'correct:', isCorrect);
+        
         const points = await recordQuestionAttempt({
           question_id: currentQuestion.id,
           session_id: sessionId,
@@ -125,6 +142,8 @@ const QuizView: React.FC<QuizViewProps> = ({
           time_spent: Math.floor((Date.now() - startTime) / 1000)
         });
 
+        console.log('Quiz answer recorded, points earned:', points);
+        
         setSessionPoints(prev => prev + points);
         await loadUserPoints();
       } catch (error) {
@@ -224,10 +243,29 @@ const QuizView: React.FC<QuizViewProps> = ({
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading quiz questions...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (questions.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <p className="text-slate-600 mb-4">No questions available for the selected criteria.</p>
+          <button 
+            onClick={onBack}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }

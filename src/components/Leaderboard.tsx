@@ -29,6 +29,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
+      console.log('Fetching leaderboard data...');
+      
       const { data, error } = await supabase
         .from('leaderboard_stats')
         .select('*')
@@ -40,14 +42,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         throw error;
       }
 
+      console.log('Leaderboard data loaded:', data?.length, 'users');
       return data || [];
     },
-    staleTime: 5000, // Refetch every 5 seconds for real-time updates
-    refetchInterval: 5000,
+    staleTime: 1000, // Refetch every second for real-time updates
+    refetchInterval: 1000,
   });
 
   // Set up real-time subscription for leaderboard updates
   useEffect(() => {
+    console.log('Setting up real-time leaderboard subscription...');
+    
     const channel = supabase
       .channel('leaderboard-changes')
       .on(
@@ -57,14 +62,27 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           schema: 'public',
           table: 'leaderboard_stats'
         },
-        () => {
-          console.log('Leaderboard updated, refetching...');
+        (payload) => {
+          console.log('Leaderboard updated via real-time:', payload);
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'question_attempts_v2'
+        },
+        (payload) => {
+          console.log('Question attempt recorded, updating leaderboard:', payload);
           refetch();
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up leaderboard subscription');
       supabase.removeChannel(channel);
     };
   }, [refetch]);
@@ -74,6 +92,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
     if (leaderboard.length > 0) {
       const rank = leaderboard.findIndex(user => user.display_name === userName) + 1;
       setCurrentUserRank(rank > 0 ? rank : null);
+      console.log('Current user rank:', rank > 0 ? rank : 'Not found');
     }
   }, [leaderboard, userName]);
 
