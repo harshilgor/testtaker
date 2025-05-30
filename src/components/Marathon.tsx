@@ -1,25 +1,25 @@
 
 import React, { useEffect } from 'react';
-import { useMarathonSession } from '../hooks/useMarathonSession';
-import { MarathonSettings } from '../types/marathon';
-import MarathonQuestion from './MarathonQuestion';
-import MarathonSummary from './MarathonSummary';
-import MarathonHeader from './Marathon/MarathonHeader';
-import MarathonLoadingState from './Marathon/MarathonLoadingState';
-import MarathonCompletionState from './Marathon/MarathonCompletionState';
-import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
-import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
+import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
+import { useMarathonSession } from '@/hooks/useMarathonSession';
 import { useMarathonState } from './Marathon/useMarathonState';
 import { useMarathonActions } from './Marathon/useMarathonActions';
+import MarathonHeader from './Marathon/MarathonHeader';
+import MarathonQuestion from './Marathon/MarathonQuestion';
+import MarathonLoadingState from './Marathon/MarathonLoadingState';
+import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
+import MarathonCompletionState from './Marathon/MarathonCompletionState';
+import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
+import MarathonSummary from './MarathonSummary';
 
 interface MarathonProps {
-  settings?: MarathonSettings | null;
+  settings: MarathonSettings | null;
   onBack: () => void;
   onEndMarathon: () => void;
 }
 
 const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) => {
-  const { session, recordAttempt, toggleFlag, flaggedQuestions, endSession } = useMarathonSession();
+  const { session, attempts, recordAttempt, endSession } = useMarathonSession(settings);
   
   const {
     currentQuestion,
@@ -36,8 +36,6 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     totalPoints,
     sessionPoints,
     setSessionPoints,
-    sessionInitialized,
-    setSessionInitialized,
     loadUserPoints,
     loadSessionStats,
     initializeSessionData
@@ -53,7 +51,6 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     session,
     currentQuestion,
     timeSpent,
-    flaggedQuestions,
     setCurrentQuestion,
     setTimeSpent,
     setLoading,
@@ -66,70 +63,53 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     setShowEndConfirmation
   });
 
-  // Initialize session and load first question
   useEffect(() => {
-    if (session && !sessionInitialized) {
-      console.log('Marathon session started:', session);
-      const initialize = async () => {
-        await initializeSessionData();
-        await loadNextQuestion();
-      };
-      initialize();
-      setSessionInitialized(true);
+    if (session && !currentQuestion && !loading) {
+      initializeSessionData().then(() => {
+        loadNextQuestion();
+      });
     }
-  }, [session, sessionInitialized, initializeSessionData, loadNextQuestion, setSessionInitialized]);
+  }, [session, currentQuestion, loading]);
 
-  const handleFlag = () => {
-    if (currentQuestion) {
-      toggleFlag(currentQuestion.id);
-    }
-  };
+  if (!settings) {
+    return <MarathonNoSettingsState onBack={onBack} />;
+  }
 
-  const handleBackFromSummary = () => {
-    onBack();
-  };
-
-  const handleRestartFromSummary = () => {
-    setShowSummary(false);
-    setCurrentQuestion(null);
-    setSessionInitialized(false);
-    onBack();
-  };
-
-  // Show summary if session ended
   if (showSummary) {
     return (
       <MarathonSummary
-        session={session}
-        attempts={session?.attempts || []}
-        weakTopics={[]}
-        onBack={handleBackFromSummary}
-        onRestart={handleRestartFromSummary}
+        attempts={attempts}
+        onBack={onBack}
+        onRestart={() => {
+          setShowSummary(false);
+          loadNextQuestion();
+        }}
+        sessionPoints={sessionPoints}
       />
     );
-  }
-
-  if (!session && !settings) {
-    return <MarathonNoSettingsState onBack={onBack} />;
   }
 
   if (loading) {
     return <MarathonLoadingState />;
   }
 
-  if (!currentQuestion) {
+  if (!currentQuestion && sessionStats.used >= sessionStats.total) {
     return (
       <MarathonCompletionState
         sessionStats={sessionStats}
         onBack={onBack}
-        onEndMarathon={onEndMarathon}
+        onEndMarathon={confirmEndMarathon}
       />
     );
   }
 
+  if (!currentQuestion) {
+    return <MarathonLoadingState message="Loading first question..." />;
+  }
+
   return (
-    <div className="min-h-screen bg-white py-8">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-6xl mx-auto p-6">
         <MarathonHeader
           sessionStats={sessionStats}
           totalPoints={totalPoints}
@@ -140,13 +120,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         <MarathonQuestion
           question={currentQuestion}
           onAnswer={handleAnswer}
-          onFlag={handleFlag}
           onNext={handleNext}
-          isFlagged={flaggedQuestions.includes(currentQuestion.id)}
-          timeSpent={timeSpent}
-          questionNumber={sessionStats.used + 1}
-          totalQuestions={sessionStats.total}
-          questionsAttempted={sessionStats.used}
         />
 
         <MarathonEndConfirmation

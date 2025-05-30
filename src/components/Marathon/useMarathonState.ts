@@ -14,11 +14,9 @@ export const useMarathonState = (session: MarathonSession | null) => {
   const [showSummary, setShowSummary] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
-  const [sessionInitialized, setSessionInitialized] = useState(false);
 
   const { getSessionStats, getTotalQuestions, initializeSession } = useQuestionSession();
 
-  // Timer effect
   useEffect(() => {
     if (!session || !currentQuestion) return;
 
@@ -45,7 +43,6 @@ export const useMarathonState = (session: MarathonSession | null) => {
       const stats = await getSessionStats(session.id, 'marathon');
       const total = await getTotalQuestions();
       setSessionStats({ used: stats.used, total: total });
-      console.log('Session stats:', { used: stats.used, total });
     } catch (error) {
       console.error('Error loading session stats:', error);
     }
@@ -81,8 +78,6 @@ export const useMarathonState = (session: MarathonSession | null) => {
     totalPoints,
     sessionPoints,
     setSessionPoints,
-    sessionInitialized,
-    setSessionInitialized,
     loadUserPoints,
     loadSessionStats,
     initializeSessionData

@@ -9,7 +9,6 @@ interface UseMarathonActionsProps {
   session: MarathonSession | null;
   currentQuestion: DatabaseQuestion | null;
   timeSpent: number;
-  flaggedQuestions: string[];
   setCurrentQuestion: (question: DatabaseQuestion | null) => void;
   setTimeSpent: (time: number) => void;
   setLoading: (loading: boolean) => void;
@@ -26,7 +25,6 @@ export const useMarathonActions = ({
   session,
   currentQuestion,
   timeSpent,
-  flaggedQuestions,
   setCurrentQuestion,
   setTimeSpent,
   setLoading,
@@ -47,9 +45,6 @@ export const useMarathonActions = ({
     try {
       const filters: any = {};
       
-      console.log('Session subjects:', session.subjects);
-      console.log('Session difficulty:', session.difficulty);
-      
       if (session.subjects.length > 0 && !session.subjects.includes('both')) {
         filters.subjects = session.subjects;
       }
@@ -58,16 +53,13 @@ export const useMarathonActions = ({
         filters.difficulty = session.difficulty;
       }
 
-      console.log('Loading question with filters:', filters);
       const question = await getNextQuestion(session.id, 'marathon', filters);
       
       if (question) {
-        console.log('Loaded question:', question.id, question.question_text.substring(0, 50) + '...');
         setCurrentQuestion(question);
         setTimeSpent(0);
         await loadSessionStats();
       } else {
-        console.log('No more questions available');
         setShowSummary(true);
       }
     } catch (error) {
@@ -81,8 +73,6 @@ export const useMarathonActions = ({
     if (!currentQuestion || !session) return;
 
     try {
-      console.log('Recording answer - correct:', isCorrect, 'question:', currentQuestion.id);
-      
       await markQuestionUsed(session.id, 'marathon', currentQuestion.id);
       
       const points = await recordQuestionAttempt({
@@ -95,8 +85,6 @@ export const useMarathonActions = ({
         topic: currentQuestion.skill,
         time_spent: timeSpent
       });
-
-      console.log('Points earned:', points);
       
       setSessionPoints(prev => prev + points);
       await loadUserPoints();
@@ -110,7 +98,7 @@ export const useMarathonActions = ({
         timeSpent,
         hintsUsed: 0,
         showAnswerUsed,
-        flagged: flaggedQuestions.includes(currentQuestion.id),
+        flagged: false,
         timestamp: new Date()
       };
 
@@ -118,7 +106,7 @@ export const useMarathonActions = ({
     } catch (error) {
       console.error('Error recording answer:', error);
     }
-  }, [currentQuestion, session, timeSpent, flaggedQuestions, markQuestionUsed, recordQuestionAttempt, setSessionPoints, loadUserPoints, recordAttempt]);
+  }, [currentQuestion, session, timeSpent, markQuestionUsed, recordQuestionAttempt, setSessionPoints, loadUserPoints, recordAttempt]);
 
   const handleNext = useCallback(() => {
     loadNextQuestion();
