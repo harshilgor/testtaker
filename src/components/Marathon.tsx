@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useMarathonSession } from '../hooks/useMarathonSession';
@@ -47,7 +48,7 @@ const Marathon: React.FC = () => {
     setLoading(true);
     try {
       const filters = {
-        section: session.subjects.includes('all') ? null : session.subjects[0],
+        section: session.subjects.includes('both') ? null : session.subjects[0],
         difficulty: session.difficulty === 'mixed' ? null : session.difficulty
       };
 
@@ -76,7 +77,7 @@ const Marathon: React.FC = () => {
   const handleAnswer = async (answer: string, isCorrect: boolean, showAnswerUsed: boolean) => {
     if (!currentQuestion || !session) return;
 
-    // Record the attempt
+    // Record the attempt with all required properties
     const attempt: QuestionAttempt = {
       questionId: currentQuestion.id,
       subject: currentQuestion.section === 'math' ? 'math' : 'english',
@@ -84,8 +85,10 @@ const Marathon: React.FC = () => {
       difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
       isCorrect,
       timeSpent,
+      hintsUsed: 0, // Default value for marathon mode
       showAnswerUsed,
-      flagged: flaggedQuestions.includes(currentQuestion.id)
+      flagged: flaggedQuestions.includes(currentQuestion.id),
+      timestamp: new Date()
     };
 
     recordAttempt(attempt);

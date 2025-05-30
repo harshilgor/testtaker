@@ -30,7 +30,19 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return null;
       }
 
-      return data && data.length > 0 ? data[0] : null;
+      if (data && data.length > 0) {
+        const dbQuestion = data[0];
+        // Map the database response to DatabaseQuestion type
+        const mappedQuestion: DatabaseQuestion = {
+          ...dbQuestion,
+          is_active: true, // Default value since we only get active questions
+          created_at: new Date().toISOString(), // Default value
+          updated_at: new Date().toISOString() // Default value
+        };
+        return mappedQuestion;
+      }
+
+      return null;
     } catch (error) {
       console.error('Error in getNextQuestion:', error);
       return null;
