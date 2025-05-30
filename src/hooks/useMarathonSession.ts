@@ -2,14 +2,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MarathonSession, QuestionAttempt, WeakTopic, MarathonSettings } from '../types/marathon';
 
-export const useMarathonSession = () => {
+export const useMarathonSession = (settings?: MarathonSettings | null) => {
   const [session, setSession] = useState<MarathonSession | null>(null);
   const [attempts, setAttempts] = useState<QuestionAttempt[]>([]);
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>([]);
 
-  const startSession = useCallback((settings: MarathonSettings) => {
-    console.log('Starting marathon session with settings:', settings);
+  const startSession = useCallback((marathonSettings: MarathonSettings) => {
+    console.log('Starting marathon session with settings:', marathonSettings);
     
     const newSession: MarathonSession = {
       id: `marathon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -18,11 +18,11 @@ export const useMarathonSession = () => {
       correctAnswers: 0,
       incorrectAnswers: 0,
       showAnswerUsed: 0,
-      subjects: settings.subjects,
-      difficulty: settings.difficulty,
-      adaptiveLearning: settings.adaptiveLearning,
-      timedMode: settings.timedMode,
-      timeGoalMinutes: settings.timeGoalMinutes,
+      subjects: marathonSettings.subjects,
+      difficulty: marathonSettings.difficulty,
+      adaptiveLearning: marathonSettings.adaptiveLearning,
+      timedMode: marathonSettings.timedMode,
+      timeGoalMinutes: marathonSettings.timeGoalMinutes,
     };
     
     console.log('Created new marathon session:', newSession);
@@ -30,9 +30,15 @@ export const useMarathonSession = () => {
     setSession(newSession);
     setAttempts([]);
     
-    // Save to localStorage
     localStorage.setItem('currentMarathonSession', JSON.stringify(newSession));
   }, []);
+
+  // Auto-start session when settings are provided
+  useEffect(() => {
+    if (settings && !session) {
+      startSession(settings);
+    }
+  }, [settings, session, startSession]);
 
   const recordAttempt = useCallback((attempt: QuestionAttempt) => {
     console.log('Recording attempt:', attempt);
@@ -40,7 +46,6 @@ export const useMarathonSession = () => {
     setAttempts(prev => {
       const newAttempts = [...prev, attempt];
       
-      // Update session stats
       setSession(current => {
         if (!current) return current;
         
@@ -56,7 +61,6 @@ export const useMarathonSession = () => {
         return updated;
       });
       
-      // Analyze weak topics every 5 questions
       if (newAttempts.length % 5 === 0) {
         analyzeWeakTopics(newAttempts);
       }
@@ -122,7 +126,6 @@ export const useMarathonSession = () => {
     });
   }, []);
 
-  // Load saved data on mount
   useEffect(() => {
     const savedSession = localStorage.getItem('currentMarathonSession');
     const savedFlagged = localStorage.getItem('flaggedQuestions');

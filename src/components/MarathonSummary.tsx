@@ -4,39 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Clock, Target, TrendingUp, AlertTriangle } from 'lucide-react';
-import { MarathonSession, QuestionAttempt, WeakTopic } from '../types/marathon';
+import { QuestionAttempt } from '../types/marathon';
 
 interface MarathonSummaryProps {
-  session: MarathonSession | null;
   attempts: QuestionAttempt[];
-  weakTopics: WeakTopic[];
   onBack: () => void;
   onRestart: () => void;
+  sessionPoints: number;
 }
 
 const MarathonSummary: React.FC<MarathonSummaryProps> = ({
-  session,
   attempts,
-  weakTopics,
   onBack,
-  onRestart
+  onRestart,
+  sessionPoints
 }) => {
-  if (!session) return null;
-
-  const totalTime = session.endTime 
-    ? session.endTime.getTime() - session.startTime.getTime()
-    : 0;
-  
-  const hours = Math.floor(totalTime / (1000 * 60 * 60));
-  const minutes = Math.floor((totalTime % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((totalTime % (1000 * 60)) / 1000);
-
-  const accuracy = session.totalQuestions > 0 
-    ? Math.round((session.correctAnswers / session.totalQuestions) * 100)
-    : 0;
-
+  const totalQuestions = attempts.length;
+  const correctAnswers = attempts.filter(a => a.isCorrect).length;
+  const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
   const averageTime = attempts.length > 0
-    ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0) / attempts.length / 1000)
+    ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0) / attempts.length)
     : 0;
 
   const subjectBreakdown = attempts.reduce((acc, attempt) => {
@@ -48,6 +35,28 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
     return acc;
   }, {} as Record<string, { total: number; correct: number }>);
 
+  // Calculate weak topics
+  const topicStats: { [key: string]: { total: number; correct: number; subject: string } } = {};
+  attempts.forEach(attempt => {
+    const key = attempt.topic;
+    if (!topicStats[key]) {
+      topicStats[key] = { total: 0, correct: 0, subject: attempt.subject };
+    }
+    topicStats[key].total += 1;
+    if (attempt.isCorrect) topicStats[key].correct += 1;
+  });
+
+  const weakTopics = Object.entries(topicStats)
+    .map(([topic, stats]) => ({
+      topic,
+      subject: stats.subject,
+      totalAttempts: stats.total,
+      correctAttempts: stats.correct,
+      accuracy: stats.correct / stats.total,
+    }))
+    .filter(topic => topic.totalAttempts >= 2 && topic.accuracy < 0.7)
+    .sort((a, b) => a.accuracy - b.accuracy);
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="max-w-4xl mx-auto">
@@ -56,12 +65,11 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
           <p className="text-xl text-gray-600">Here's how you performed</p>
         </div>
 
-        {/* Key Stats */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card className="p-6 text-center">
             <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
             <h3 className="font-semibold text-gray-900">Questions</h3>
-            <p className="text-3xl font-bold text-blue-600">{session.totalQuestions}</p>
+            <p className="text-3xl font-bold text-blue-600">{totalQuestions}</p>
           </Card>
 
           <Card className="p-6 text-center">
@@ -72,22 +80,18 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
 
           <Card className="p-6 text-center">
             <Clock className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Time Spent</h3>
-            <p className="text-xl font-bold text-purple-600">
-              {hours > 0 && `${hours}h `}{minutes}m {seconds}s
-            </p>
+            <h3 className="font-semibold text-gray-900">Avg Time</h3>
+            <p className="text-3xl font-bold text-purple-600">{averageTime}s</p>
           </Card>
 
           <Card className="p-6 text-center">
             <TrendingUp className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Avg Time</h3>
-            <p className="text-3xl font-bold text-orange-600">{averageTime}s</p>
+            <h3 className="font-semibold text-gray-900">Points</h3>
+            <p className="text-3xl font-bold text-orange-600">{sessionPoints}</p>
           </Card>
         </div>
 
-        {/* Detailed Breakdown */}
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          {/* Performance by Subject */}
           <Card className="p-6">
             <h3 className="text-xl font-semibold mb-4">Performance by Subject</h3>
             <div className="space-y-4">
@@ -108,7 +112,6 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
             </div>
           </Card>
 
-          {/* Areas for Improvement */}
           <Card className="p-6">
             <h3 className="text-xl font-semibold mb-4 flex items-center">
               <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
@@ -139,49 +142,6 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
           </Card>
         </div>
 
-        {/* Session Details */}
-        <Card className="p-6 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Session Details</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium mb-2">Answer Breakdown</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Correct Answers:</span>
-                  <span className="font-medium text-green-600">{session.correctAnswers}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Incorrect Answers:</span>
-                  <span className="font-medium text-red-600">{session.incorrectAnswers}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Show Answer Used:</span>
-                  <span className="font-medium text-yellow-600">{session.showAnswerUsed}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">Settings Used</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Subjects:</span>
-                  <span className="font-medium capitalize">{session.subjects.join(', ')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Difficulty:</span>
-                  <span className="font-medium capitalize">{session.difficulty}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Adaptive Learning:</span>
-                  <span className="font-medium">{session.adaptiveLearning ? 'On' : 'Off'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Action Buttons */}
         <div className="flex justify-center space-x-4">
           <Button onClick={onBack} variant="outline" size="lg">
             Back to Dashboard
