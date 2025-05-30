@@ -59,6 +59,25 @@ const QuestionBankManagement: React.FC = () => {
   const [stats, setStats] = useState<QuestionStats | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<DatabaseQuestion | null>(null);
 
+  // Handle editing a question
+  const handleEditQuestion = (question: DatabaseQuestion) => {
+    setEditingQuestion(question);
+  };
+
+  // Handle saving a question after editing
+  const handleQuestionSaved = (updatedQuestion: DatabaseQuestion) => {
+    // Update the questions list with the saved question
+    setQuestions(prev => 
+      prev.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
+    );
+    
+    // Close the editor
+    setEditingQuestion(null);
+    
+    // Show success message
+    toast.success('Question updated successfully');
+  };
+
   // Fetch all questions
   const fetchQuestions = async () => {
     try {
