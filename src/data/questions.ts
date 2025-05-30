@@ -1,15 +1,19 @@
 
-import { questionService } from '@/services/questionService';
+import { supabase } from '@/integrations/supabase/client';
+import { questionService, DatabaseQuestion } from '@/services/questionService';
 
 export interface Question {
   id: string;
   question: string;
-  options: string[];
-  correctAnswer: number;
+  options?: string[];
+  correctAnswer: number | string;
   explanation: string;
   subject: 'math' | 'english';
   topic: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  section?: string;
+  type?: string;
+  imageUrl?: string;
   rationales?: {
     correct: string;
     incorrect: {
@@ -21,51 +25,32 @@ export interface Question {
   };
 }
 
-// Cache for questions
-const questionCache = new Map<string, Question[]>();
-const cacheTimeout = 5 * 60 * 1000; // 5 minutes
-
 export const getRandomQuestion = async (subject: 'math' | 'english'): Promise<Question> => {
-  const questions = await getQuestionsBySubject(subject, 1);
-  return questions[0] || getFallbackQuestion(subject);
+  const filters = {
+    section: subject === 'math' ? 'math' : 'reading-writing',
+    limit: 1
+  };
+  
+  const questions = await questionService.getRandomQuestions(filters);
+  
+  if (questions.length === 0) {
+    throw new Error(`No questions available for ${subject}`);
+  }
+  
+  return questionService.convertToLegacyFormat(questions[0]);
 };
 
 export const getQuestionsBySubject = async (
   subject: 'math' | 'english', 
   count: number = 10
 ): Promise<Question[]> => {
-  const cacheKey = `${subject}-${count}`;
+  const filters = {
+    section: subject === 'math' ? 'math' : 'reading-writing',
+    limit: count
+  };
   
-  if (questionCache.has(cacheKey)) {
-    const cached = questionCache.get(cacheKey)!;
-    return cached;
-  }
-
-  try {
-    const section = subject === 'math' ? 'math' : 'reading-writing';
-    const filters = {
-      section,
-      limit: count
-    };
-
-    const dbQuestions = await questionService.getRandomQuestions(filters);
-    const questions = dbQuestions.map(q => {
-      const converted = questionService.convertToLegacyFormat(q);
-      // Ensure subject is properly typed
-      return {
-        ...converted,
-        subject: converted.subject as 'math' | 'english'
-      };
-    });
-    
-    questionCache.set(cacheKey, questions);
-    setTimeout(() => questionCache.delete(cacheKey), cacheTimeout);
-    
-    return questions;
-  } catch (error) {
-    console.error('Error fetching questions:', error);
-    return Array(count).fill(null).map(() => getFallbackQuestion(subject));
-  }
+  const questions = await questionService.getRandomQuestions(filters);
+  return questions.map(q => questionService.convertToLegacyFormat(q));
 };
 
 export const getQuestionsByTopics = async (
@@ -74,59 +59,50 @@ export const getQuestionsByTopics = async (
   count: number = 10
 ): Promise<Question[]> => {
   try {
-    const section = subject === 'math' ? 'math' : 'reading-writing';
-    const allQuestions: Question[] = [];
-    
-    for (const topic of topics) {
-      const filters = {
-        section,
-        skill: topic,
-        limit: Math.ceil(count / topics.length)
-      };
-
-      const dbQuestions = await questionService.getRandomQuestions(filters);
-      const questions = dbQuestions.map(q => {
-        const converted = questionService.convertToLegacyFormat(q);
-        // Ensure subject is properly typed
-        return {
-          ...converted,
-          subject: converted.subject as 'math' | 'english'
-        };
-      });
-      allQuestions.push(...questions);
+    // If no specific topics, get all questions for the subject
+    if (topics.length === 0) {
+      return getQuestionsBySubject(subject, count);
     }
-    
-    // Shuffle and limit to requested count
-    const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+
+    // Get questions for specific topics from main_question_bank
+    let query = supabase
+      .from('main_question_bank')
+      .select('*')
+      .eq('section', subject === 'math' ? 'math' : 'reading-writing')
+      .not('question_text', 'is', null);
+
+    // Filter by topics if provided
+    if (topics.length > 0) {
+      query = query.in('skill', topics);
+    }
+
+    const { data, error } = await query.limit(count);
+
+    if (error) {
+      console.error('Error fetching questions by topics:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn(`No questions found for ${subject} with topics:`, topics);
+      return [];
+    }
+
+    // Convert to DatabaseQuestion format and then to legacy format
+    const dbQuestions: DatabaseQuestion[] = data.map(q => ({
+      ...q,
+      id: q.id?.toString() || '',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {}
+    }));
+
+    return dbQuestions.map(q => questionService.convertToLegacyFormat(q));
   } catch (error) {
-    console.error('Error fetching questions by topics:', error);
-    return Array(count).fill(null).map(() => getFallbackQuestion(subject));
+    console.error('Error in getQuestionsByTopics:', error);
+    return [];
   }
 };
 
-const getFallbackQuestion = (subject: 'math' | 'english'): Question => ({
-  id: `fallback-${Date.now()}-${Math.random()}`,
-  question: subject === 'math' 
-    ? 'If 3x + 7 = 22, what is the value of x?'
-    : 'Which sentence best supports the main idea?',
-  options: subject === 'math' 
-    ? ['3', '5', '7', '15']
-    : ['Option A', 'Option B', 'Option C', 'Option D'],
-  correctAnswer: 1,
-  explanation: subject === 'math' 
-    ? 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.'
-    : 'This option best supports the main argument.',
-  subject,
-  topic: subject === 'math' ? 'Algebra' : 'Reading Comprehension',
-  difficulty: 'medium'
-});
-
-// Export mock test questions for backward compatibility
-export const mockTestQuestions = {
-  math: [] as Question[],
-  english: [] as Question[]
-};
-
-// Export for backward compatibility
 export { questionService };

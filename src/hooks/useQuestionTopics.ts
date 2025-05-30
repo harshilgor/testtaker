@@ -2,82 +2,49 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface TopicData {
-  id: string;
-  skill: string;
-  name: string;
-  description: string;
-  count: number;
+interface TopicCounts {
+  [topic: string]: number;
 }
 
 export const useQuestionTopics = () => {
-  const [mathTopics, setMathTopics] = useState<TopicData[]>([]);
-  const [englishTopics, setEnglishTopics] = useState<TopicData[]>([]);
+  const [mathTopics, setMathTopics] = useState<TopicCounts>({});
+  const [englishTopics, setEnglishTopics] = useState<TopicCounts>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-        setError(null);
-        
-        // Fetch math topics from main_question_bank
-        const { data: mathData, error: mathError } = await supabase
+        // Fetch all questions from main_question_bank
+        const { data: questions, error } = await supabase
           .from('main_question_bank')
-          .select('skill')
-          .eq('section', 'math')
-          .not('question_text', 'is', null);
+          .select('section, skill')
+          .not('question_text', 'is', null)
+          .not('skill', 'is', null);
 
-        if (mathError) throw mathError;
+        if (error) {
+          console.error('Error fetching topics:', error);
+          return;
+        }
 
-        // Fetch English topics from main_question_bank
-        const { data: englishData, error: englishError } = await supabase
-          .from('main_question_bank')
-          .select('skill')
-          .eq('section', 'reading-writing')
-          .not('question_text', 'is', null);
+        if (questions) {
+          const mathCounts: TopicCounts = {};
+          const englishCounts: TopicCounts = {};
 
-        if (englishError) throw englishError;
+          questions.forEach(q => {
+            if (q.skill) {
+              if (q.section === 'math') {
+                mathCounts[q.skill] = (mathCounts[q.skill] || 0) + 1;
+              } else if (q.section === 'reading-writing') {
+                englishCounts[q.skill] = (englishCounts[q.skill] || 0) + 1;
+              }
+            }
+          });
 
-        // Count occurrences for math
-        const mathTopicCounts: { [key: string]: number } = {};
-        mathData?.forEach(item => {
-          if (item.skill) {
-            mathTopicCounts[item.skill] = (mathTopicCounts[item.skill] || 0) + 1;
-          }
-        });
-
-        // Count occurrences for English
-        const englishTopicCounts: { [key: string]: number } = {};
-        englishData?.forEach(item => {
-          if (item.skill) {
-            englishTopicCounts[item.skill] = (englishTopicCounts[item.skill] || 0) + 1;
-          }
-        });
-
-        // Convert to array format with proper structure
-        setMathTopics(
-          Object.entries(mathTopicCounts).map(([skill, count]) => ({
-            id: skill.toLowerCase().replace(/\s+/g, '-'),
-            skill,
-            name: skill,
-            description: `Practice ${skill} problems`,
-            count
-          }))
-        );
-        
-        setEnglishTopics(
-          Object.entries(englishTopicCounts).map(([skill, count]) => ({
-            id: skill.toLowerCase().replace(/\s+/g, '-'),
-            skill,
-            name: skill,
-            description: `Practice ${skill} problems`,
-            count
-          }))
-        );
-      } catch (err) {
-        console.error('Error fetching topics:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load topics');
+          setMathTopics(mathCounts);
+          setEnglishTopics(englishCounts);
+        }
+      } catch (error) {
+        console.error('Error fetching question topics:', error);
       } finally {
         setLoading(false);
       }
@@ -86,5 +53,9 @@ export const useQuestionTopics = () => {
     fetchTopics();
   }, []);
 
-  return { mathTopics, englishTopics, loading, error };
+  return {
+    mathTopics,
+    englishTopics,
+    loading
+  };
 };

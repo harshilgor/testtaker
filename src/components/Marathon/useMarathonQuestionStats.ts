@@ -63,7 +63,7 @@ export const useMarathonQuestionStats = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: attempts } = await supabase
-            .from('question_attempts')
+            .from('question_attempts_v2')
             .select('is_correct')
             .eq('user_id', user.id);
 
