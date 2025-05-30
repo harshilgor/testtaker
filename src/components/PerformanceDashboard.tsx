@@ -2,9 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import PerformanceSummaryCards from './Performance/PerformanceSummaryCards';
 import QuizHistorySection from './Performance/QuizHistorySection';
 import MockTestHistorySection from './Performance/MockTestHistorySection';
+import MarathonHistorySection from './Performance/MarathonHistorySection';
 import ResultDetailView from './Performance/ResultDetailView';
 
 interface PerformanceDashboardProps {
@@ -30,11 +33,43 @@ interface MockTestResult {
   userName: string;
 }
 
+interface MarathonSession {
+  id: string;
+  total_questions: number;
+  correct_answers: number;
+  difficulty: string;
+  subjects: string[];
+  created_at: string;
+}
+
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
-  const [selectedView, setSelectedView] = useState<'quiz' | 'mock' | null>(null);
+  const [selectedView, setSelectedView] = useState<'quiz' | 'mock' | 'marathon' | null>(null);
   const [selectedResult, setSelectedResult] = useState<any>(null);
+
+  // Fetch marathon sessions from Supabase
+  const { data: marathonSessions = [] } = useQuery({
+    queryKey: ['marathon-sessions-performance', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const { data, error } = await supabase
+        .from('marathon_sessions')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching marathon sessions:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!userName,
+  });
 
   useEffect(() => {
     const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
@@ -52,6 +87,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     ? Math.round(mockTestResults.reduce((sum, result) => sum + result.score, 0) / mockTestResults.length)
     : 0;
 
+  const averageMarathonScore = marathonSessions.length > 0
+    ? Math.round(marathonSessions.reduce((sum, session) => {
+        return sum + (session.total_questions > 0 ? (session.correct_answers / session.total_questions) * 100 : 0);
+      }, 0) / marathonSessions.length)
+    : 0;
+
   const handleViewQuizResult = (result: QuizResult) => {
     setSelectedView('quiz');
     setSelectedResult(result);
@@ -60,6 +101,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   const handleViewMockResult = (result: MockTestResult) => {
     setSelectedView('mock');
     setSelectedResult(result);
+  };
+
+  const handleViewMarathonResult = (session: MarathonSession) => {
+    setSelectedView('marathon');
+    setSelectedResult(session);
   };
 
   const handleBackToResults = () => {
@@ -97,6 +143,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           averageQuizScore={averageQuizScore}
           mockTestCount={mockTestResults.length}
           averageMockScore={averageMockScore}
+          marathonCount={marathonSessions.length}
+          averageMarathonScore={averageMarathonScore}
         />
 
         <QuizHistorySection
@@ -107,6 +155,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         <MockTestHistorySection
           mockTestResults={mockTestResults}
           onViewResult={handleViewMockResult}
+        />
+
+        <MarathonHistorySection
+          marathonSessions={marathonSessions}
+          onViewResult={handleViewMarathonResult}
         />
       </div>
     </div>

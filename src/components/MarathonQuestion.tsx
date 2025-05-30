@@ -83,6 +83,15 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     }
   };
 
+  const getAllIncorrectRationales = () => {
+    return {
+      A: question.incorrect_rationale_a,
+      B: question.incorrect_rationale_b,
+      C: question.incorrect_rationale_c,
+      D: question.incorrect_rationale_d
+    };
+  };
+
   const getImageUrl = () => {
     return question.metadata?.image_url || null;
   };
@@ -216,6 +225,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
         correctAnswer={question.correct_answer}
         correctRationale={question.correct_rationale}
         incorrectRationale={getIncorrectRationale()}
+        allIncorrectRationales={getAllIncorrectRationales()}
         onNext={handleNextQuestion}
       />
     </>

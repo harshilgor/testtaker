@@ -11,6 +11,12 @@ interface FeedbackModalProps {
   correctAnswer: string;
   correctRationale: string;
   incorrectRationale?: string;
+  allIncorrectRationales: {
+    A?: string;
+    B?: string;
+    C?: string;
+    D?: string;
+  };
   onNext: () => void;
 }
 
@@ -21,11 +27,12 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   correctAnswer,
   correctRationale,
   incorrectRationale,
+  allIncorrectRationales,
   onNext
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isCorrect ? (
@@ -42,7 +49,8 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Your Answer Section (only if incorrect) */}
           {!isCorrect && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
               <h4 className="font-semibold text-red-800 mb-2">Your Answer: {selectedAnswer}</h4>
@@ -52,6 +60,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
             </div>
           )}
 
+          {/* Correct Answer Section */}
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
             <h4 className="font-semibold text-green-800 mb-2">
               Correct Answer: {correctAnswer}
@@ -59,7 +68,40 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
             <p className="text-green-700">{correctRationale}</p>
           </div>
 
-          <div className="flex justify-end">
+          {/* All Wrong Answer Explanations */}
+          {Object.keys(allIncorrectRationales).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-800 mb-3">Why Other Answers Are Wrong:</h4>
+              
+              {Object.entries(allIncorrectRationales).map(([option, rationale]) => {
+                if (!rationale || option === correctAnswer) return null;
+                
+                return (
+                  <div 
+                    key={option}
+                    className={`p-3 rounded-lg border ${
+                      option === selectedAnswer 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <h5 className={`font-medium mb-1 ${
+                      option === selectedAnswer ? 'text-red-700' : 'text-gray-700'
+                    }`}>
+                      Option {option}:
+                    </h5>
+                    <p className={`text-sm ${
+                      option === selectedAnswer ? 'text-red-600' : 'text-gray-600'
+                    }`}>
+                      {rationale}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4">
             <Button onClick={onNext} className="min-w-32">
               Next Question
             </Button>
