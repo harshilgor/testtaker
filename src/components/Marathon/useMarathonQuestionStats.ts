@@ -10,9 +10,8 @@ interface QuestionStats {
 }
 
 interface UserProgress {
-  totalAttempted: number;
-  totalCorrect: number;
-  accuracy: number;
+  questionsAttempted: number;
+  totalAvailable: number;
 }
 
 export const useMarathonQuestionStats = () => {
@@ -22,9 +21,8 @@ export const useMarathonQuestionStats = () => {
     english: { total: 0, easy: 0, medium: 0, hard: 0 } as QuestionStats
   });
   const [userProgress, setUserProgress] = useState<UserProgress>({
-    totalAttempted: 0,
-    totalCorrect: 0,
-    accuracy: 0
+    questionsAttempted: 0,
+    totalAvailable: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -66,12 +64,9 @@ export const useMarathonQuestionStats = () => {
             .eq('user_id', user.id);
 
           if (attempts) {
-            const totalAttempted = attempts.length;
-            const totalCorrect = attempts.filter(a => a.is_correct).length;
             setUserProgress({
-              totalAttempted,
-              totalCorrect,
-              accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0
+              questionsAttempted: attempts.length,
+              totalAvailable: allQuestions?.length || 0
             });
           }
         }
