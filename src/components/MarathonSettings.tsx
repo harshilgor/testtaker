@@ -7,23 +7,29 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MarathonSettings } from '../types/marathon';
 import { supabase } from '@/integrations/supabase/client';
-
 interface MarathonSettingsProps {
   onStart: (settings: MarathonSettings) => void;
   onBack: () => void;
 }
-
 interface QuestionStats {
-  math: { easy: number; medium: number; hard: number; total: number };
-  english: { easy: number; medium: number; hard: number; total: number };
+  math: {
+    easy: number;
+    medium: number;
+    hard: number;
+    total: number;
+  };
+  english: {
+    easy: number;
+    medium: number;
+    hard: number;
+    total: number;
+  };
   total: number;
 }
-
 interface UserProgress {
   questionsAttempted: number;
   totalAvailable: number;
 }
-
 const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
   onStart,
   onBack
@@ -38,63 +44,69 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
     darkMode: false,
     fontSize: 'medium'
   });
-
   const [questionStats, setQuestionStats] = useState<QuestionStats>({
-    math: { easy: 0, medium: 0, hard: 0, total: 0 },
-    english: { easy: 0, medium: 0, hard: 0, total: 0 },
+    math: {
+      easy: 0,
+      medium: 0,
+      hard: 0,
+      total: 0
+    },
+    english: {
+      easy: 0,
+      medium: 0,
+      hard: 0,
+      total: 0
+    },
     total: 0
   });
-
   const [userProgress, setUserProgress] = useState<UserProgress>({
     questionsAttempted: 0,
     totalAvailable: 0
   });
-
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     loadQuestionStats();
     loadUserProgress();
   }, []);
-
   const loadQuestionStats = async () => {
     try {
       // Get question counts by section and difficulty
-      const { data: mathQuestions } = await supabase
-        .from('question_bank')
-        .select('difficulty')
-        .eq('section', 'math')
-        .eq('is_active', true);
-
-      const { data: englishQuestions } = await supabase
-        .from('question_bank')
-        .select('difficulty')
-        .eq('section', 'reading-writing')
-        .eq('is_active', true);
-
-      const { count: totalCount } = await supabase
-        .from('question_bank')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+      const {
+        data: mathQuestions
+      } = await supabase.from('question_bank').select('difficulty').eq('section', 'math').eq('is_active', true);
+      const {
+        data: englishQuestions
+      } = await supabase.from('question_bank').select('difficulty').eq('section', 'reading-writing').eq('is_active', true);
+      const {
+        count: totalCount
+      } = await supabase.from('question_bank').select('*', {
+        count: 'exact',
+        head: true
+      }).eq('is_active', true);
 
       // Count by difficulty for math
-      const mathStats = { easy: 0, medium: 0, hard: 0, total: 0 };
+      const mathStats = {
+        easy: 0,
+        medium: 0,
+        hard: 0,
+        total: 0
+      };
       mathQuestions?.forEach(q => {
-        if (q.difficulty === 'easy') mathStats.easy++;
-        else if (q.difficulty === 'medium') mathStats.medium++;
-        else if (q.difficulty === 'hard') mathStats.hard++;
+        if (q.difficulty === 'easy') mathStats.easy++;else if (q.difficulty === 'medium') mathStats.medium++;else if (q.difficulty === 'hard') mathStats.hard++;
         mathStats.total++;
       });
 
       // Count by difficulty for english
-      const englishStats = { easy: 0, medium: 0, hard: 0, total: 0 };
+      const englishStats = {
+        easy: 0,
+        medium: 0,
+        hard: 0,
+        total: 0
+      };
       englishQuestions?.forEach(q => {
-        if (q.difficulty === 'easy') englishStats.easy++;
-        else if (q.difficulty === 'medium') englishStats.medium++;
-        else if (q.difficulty === 'hard') englishStats.hard++;
+        if (q.difficulty === 'easy') englishStats.easy++;else if (q.difficulty === 'medium') englishStats.medium++;else if (q.difficulty === 'hard') englishStats.hard++;
         englishStats.total++;
       });
-
       setQuestionStats({
         math: mathStats,
         english: englishStats,
@@ -104,21 +116,18 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
       console.error('Error loading question stats:', error);
     }
   };
-
   const loadUserProgress = async () => {
     try {
-      const { data: user } = await supabase.auth.getUser();
+      const {
+        data: user
+      } = await supabase.auth.getUser();
       if (!user.user) return;
 
       // Get user's marathon session stats
-      const { data: sessions } = await supabase
-        .from('marathon_sessions')
-        .select('total_questions')
-        .eq('user_id', user.user.id);
-
-      const questionsAttempted = sessions?.reduce((sum, session) => 
-        sum + (session.total_questions || 0), 0) || 0;
-
+      const {
+        data: sessions
+      } = await supabase.from('marathon_sessions').select('total_questions').eq('user_id', user.user.id);
+      const questionsAttempted = sessions?.reduce((sum, session) => sum + (session.total_questions || 0), 0) || 0;
       setUserProgress({
         questionsAttempted,
         totalAvailable: questionStats.total
@@ -129,14 +138,12 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
       setLoading(false);
     }
   };
-
   const getAvailableQuestions = () => {
     if (settings.subjects.includes('both')) {
       if (settings.difficulty === 'mixed') {
         return questionStats.total;
       } else {
-        return questionStats.math[settings.difficulty as keyof typeof questionStats.math] + 
-               questionStats.english[settings.difficulty as keyof typeof questionStats.english];
+        return questionStats.math[settings.difficulty as keyof typeof questionStats.math] + questionStats.english[settings.difficulty as keyof typeof questionStats.english];
       }
     } else if (settings.subjects.includes('math')) {
       if (settings.difficulty === 'mixed') {
@@ -153,24 +160,18 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
     }
     return 0;
   };
-
   const handleStart = () => {
     onStart(settings);
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+    return <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p>Loading question statistics...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+  return <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       <Card className="max-w-2xl w-full p-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Marathon Mode Settings</h1>
@@ -250,27 +251,22 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
           <div>
             <Label className="text-base font-medium mb-3 block">Subject Focus</Label>
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'math', label: 'Math Only' },
-                { value: 'english', label: 'English Only' },
-                { value: 'both', label: 'Both Subjects' }
-              ].map(option => (
-                <Button
-                  key={option.value}
-                  variant={settings.subjects.includes(option.value as any) ? 'default' : 'outline'}
-                  onClick={() => setSettings(prev => ({
-                    ...prev,
-                    subjects: [option.value as any]
-                  }))}
-                  className="w-full"
-                  disabled={option.value === 'english' && questionStats.english.total === 0}
-                >
+              {[{
+              value: 'math',
+              label: 'Math Only'
+            }, {
+              value: 'english',
+              label: 'English Only'
+            }, {
+              value: 'both',
+              label: 'Both Subjects'
+            }].map(option => <Button key={option.value} variant={settings.subjects.includes(option.value as any) ? 'default' : 'outline'} onClick={() => setSettings(prev => ({
+              ...prev,
+              subjects: [option.value as any]
+            }))} className="w-full" disabled={option.value === 'english' && questionStats.english.total === 0}>
                   {option.label}
-                  {option.value === 'english' && questionStats.english.total === 0 && (
-                    <Badge variant="destructive" className="ml-2">No Questions</Badge>
-                  )}
-                </Button>
-              ))}
+                  {option.value === 'english' && questionStats.english.total === 0 && <Badge variant="destructive" className="ml-2">No Questions</Badge>}
+                </Button>)}
             </div>
           </div>
 
@@ -278,24 +274,24 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
           <div>
             <Label className="text-base font-medium mb-3 block">Difficulty Level</Label>
             <div className="grid grid-cols-4 gap-3">
-              {[
-                { value: 'easy', label: 'Easy' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'hard', label: 'Hard' },
-                { value: 'mixed', label: 'Mixed' }
-              ].map(option => (
-                <Button
-                  key={option.value}
-                  variant={settings.difficulty === option.value ? 'default' : 'outline'}
-                  onClick={() => setSettings(prev => ({
-                    ...prev,
-                    difficulty: option.value as any
-                  }))}
-                  className="w-full"
-                >
+              {[{
+              value: 'easy',
+              label: 'Easy'
+            }, {
+              value: 'medium',
+              label: 'Medium'
+            }, {
+              value: 'hard',
+              label: 'Hard'
+            }, {
+              value: 'mixed',
+              label: 'Mixed'
+            }].map(option => <Button key={option.value} variant={settings.difficulty === option.value ? 'default' : 'outline'} onClick={() => setSettings(prev => ({
+              ...prev,
+              difficulty: option.value as any
+            }))} className="w-full">
                   {option.label}
-                </Button>
-              ))}
+                </Button>)}
             </div>
           </div>
 
@@ -340,30 +336,25 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
                 <p className="text-sm text-gray-600">Enable or disable the in-app calculator</p>
               </div>
               <Switch checked={settings.calculatorEnabled} onCheckedChange={checked => setSettings(prev => ({
-                ...prev,
-                calculatorEnabled: checked
-              }))} />
+            ...prev,
+            calculatorEnabled: checked
+          }))} />
             </div>}
 
           {/* Font Size */}
           <div>
-            <Label className="text-base font-medium mb-3 block">Font Size</Label>
+            
             <div className="grid grid-cols-3 gap-3">
               {[{
-                value: 'small',
-                label: 'Small'
-              }, {
-                value: 'medium',
-                label: 'Medium'
-              }, {
-                value: 'large',
-                label: 'Large'
-              }].map(option => <Button key={option.value} variant={settings.fontSize === option.value ? 'default' : 'outline'} onClick={() => setSettings(prev => ({
-                ...prev,
-                fontSize: option.value as any
-              }))} className="w-full">
-                  {option.label}
-                </Button>)}
+              value: 'small',
+              label: 'Small'
+            }, {
+              value: 'medium',
+              label: 'Medium'
+            }, {
+              value: 'large',
+              label: 'Large'
+            }].map(option => {})}
             </div>
           </div>
         </div>
@@ -372,17 +363,11 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
           <Button variant="outline" onClick={onBack}>
             Back to Dashboard
           </Button>
-          <Button 
-            onClick={handleStart} 
-            className="bg-orange-600 hover:bg-orange-700"
-            disabled={getAvailableQuestions() === 0}
-          >
+          <Button onClick={handleStart} className="bg-orange-600 hover:bg-orange-700" disabled={getAvailableQuestions() === 0}>
             Start Marathon ({getAvailableQuestions()} questions)
           </Button>
         </div>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default MarathonSettingsComponent;
