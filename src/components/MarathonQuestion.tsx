@@ -1,168 +1,224 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Flag, Lightbulb, Eye } from 'lucide-react';
-
-interface Question {
-  id: string;
-  question: string;
-  options?: string[];
-  correctAnswer: number | string;
-  explanation: string;
-  subject: 'math' | 'english';
-  type?: 'multiple-choice' | 'grid-in';
-}
+import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Flag, Clock, Target } from 'lucide-react';
+import { DatabaseQuestion } from '@/services/questionService';
+import QuestionImage from './QuestionImage';
+import FeedbackModal from './FeedbackModal';
 
 interface MarathonQuestionProps {
-  question: Question;
-  onAnswer: (answer: number | string, isCorrect: boolean, showAnswerUsed: boolean, hintsUsed: number) => void;
+  question: DatabaseQuestion;
+  onAnswer: (answer: string, isCorrect: boolean, showAnswerUsed: boolean) => void;
   onFlag: () => void;
+  onNext: () => void;
   isFlagged: boolean;
-  calculatorEnabled: boolean;
-  fontSize: 'small' | 'medium' | 'large';
-  darkMode: boolean;
+  timeSpent: number;
+  questionNumber: number;
+  totalQuestions: number;
+  questionsAttempted: number;
 }
 
 const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   question,
   onAnswer,
   onFlag,
+  onNext,
   isFlagged,
-  calculatorEnabled,
-  fontSize,
-  darkMode
+  timeSpent,
+  questionNumber,
+  totalQuestions,
+  questionsAttempted
 }) => {
-  const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
-  const [gridInValue, setGridInValue] = useState<string>('');
-  const [showHint, setShowHint] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
   const [showAnswer, setShowAnswer] = useState(false);
-  const [hintsUsed, setHintsUsed] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
-  const questionType = question.type || 'multiple-choice';
-
-  const handleSubmit = () => {
-    if (selectedAnswer === null && !gridInValue) return;
-    
-    const answer = questionType === 'grid-in' ? gridInValue : selectedAnswer;
-    const isCorrect = answer === question.correctAnswer;
-    
-    onAnswer(answer!, isCorrect, showAnswer, hintsUsed);
-    
-    // Reset for next question
-    setSelectedAnswer(null);
-    setGridInValue('');
-    setShowHint(false);
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedAnswer('');
     setShowAnswer(false);
-    setHintsUsed(0);
+    setAnswered(false);
+    setShowFeedback(false);
+  }, [question.id]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleShowHint = () => {
-    setShowHint(true);
-    setHintsUsed(prev => prev + 1);
+  const handleSubmit = () => {
+    if (!selectedAnswer && !showAnswer) return;
+    
+    const isCorrect = selectedAnswer === question.correct_answer;
+    setAnswered(true);
+    setShowFeedback(true);
+    
+    // Call onAnswer with the result
+    onAnswer(selectedAnswer || 'No Answer', isCorrect, showAnswer);
   };
 
   const handleShowAnswer = () => {
     setShowAnswer(true);
-    if (questionType === 'multiple-choice') {
-      setSelectedAnswer(question.correctAnswer as number);
-    } else {
-      setGridInValue(question.correctAnswer as string);
+    setSelectedAnswer(question.correct_answer);
+  };
+
+  const handleNextQuestion = () => {
+    setShowFeedback(false);
+    onNext();
+  };
+
+  const getIncorrectRationale = () => {
+    switch (selectedAnswer) {
+      case 'A': return question.incorrect_rationale_a;
+      case 'B': return question.incorrect_rationale_b;
+      case 'C': return question.incorrect_rationale_c;
+      case 'D': return question.incorrect_rationale_d;
+      default: return undefined;
     }
   };
 
-  const fontSizeClass = fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base';
+  const getImageUrl = () => {
+    return question.metadata?.image_url || null;
+  };
 
   return (
-    <div className={`rounded-lg p-6 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
-      {/* Question Header */}
-      <div className="flex justify-between items-center mb-4">
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          question.subject === 'math' 
-            ? 'bg-blue-100 text-blue-800' 
-            : 'bg-green-100 text-green-800'
-        }`}>
-          {question.subject === 'math' ? 'Math' : 'English'}
-        </span>
-        
-        <Button
-          onClick={onFlag}
-          variant="outline"
-          size="sm"
-          className={isFlagged ? 'text-yellow-600 border-yellow-300' : ''}
-        >
-          <Flag className={`h-4 w-4 mr-2 ${isFlagged ? 'fill-yellow-400' : ''}`} />
-          {isFlagged ? 'Flagged' : 'Flag'}
-        </Button>
-      </div>
+    <>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardContent className="p-8">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center space-x-4">
+              <Badge variant="outline" className="text-sm">
+                Question {questionNumber}
+              </Badge>
+              <Badge variant="outline" className="text-sm">
+                {question.section}
+              </Badge>
+              <Badge variant="outline" className="text-sm">
+                {question.difficulty}
+              </Badge>
+              <Badge variant="outline" className="text-sm">
+                {question.skill}
+              </Badge>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Target className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-gray-600">
+                  {questionsAttempted} / {totalQuestions} solved
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">{formatTime(timeSpent)}</span>
+              </div>
+              <Button
+                variant={isFlagged ? "default" : "outline"}
+                size="sm"
+                onClick={onFlag}
+                disabled={answered}
+              >
+                <Flag className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-      {/* Question */}
-      <h2 className={`font-semibold mb-6 leading-relaxed ${fontSizeClass}`}>
-        {question.question}
-      </h2>
+          {/* Question */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 leading-relaxed mb-4">
+              {question.question_text}
+            </h2>
+            
+            {/* Display image if available */}
+            {getImageUrl() && (
+              <QuestionImage imageUrl={getImageUrl()!} alt="Question diagram" />
+            )}
+          </div>
 
-      {/* Answer Options */}
-      {questionType === 'multiple-choice' && question.options && (
-        <div className="space-y-3 mb-6">
-          {question.options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => setSelectedAnswer(index)}
-              className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                selectedAnswer === index
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
+          {/* Answer Options */}
+          <div className="mb-8">
+            <RadioGroup
+              value={selectedAnswer}
+              onValueChange={setSelectedAnswer}
+              disabled={answered}
+              className="space-y-4"
             >
-              <span className="font-medium mr-3">{String.fromCharCode(65 + index)}.</span>
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
+              {[
+                { value: 'A', text: question.option_a },
+                { value: 'B', text: question.option_b },
+                { value: 'C', text: question.option_c },
+                { value: 'D', text: question.option_d }
+              ].map((option) => (
+                <div key={option.value} className="flex items-start space-x-3">
+                  <RadioGroupItem
+                    value={option.value}
+                    id={option.value}
+                    className="mt-1"
+                    disabled={answered}
+                  />
+                  <Label 
+                    htmlFor={option.value} 
+                    className={`flex-1 text-base leading-relaxed cursor-pointer p-3 rounded-lg border transition-colors ${
+                      selectedAnswer === option.value 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'hover:bg-gray-50 border-gray-200'
+                    } ${answered ? 'cursor-default' : ''}`}
+                  >
+                    <span className="font-semibold mr-2">{option.value}.</span>
+                    {option.text}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
 
-      {/* Grid-In Input */}
-      {questionType === 'grid-in' && (
-        <div className="mb-6">
-          <Input
-            type="text"
-            value={gridInValue}
-            onChange={(e) => setGridInValue(e.target.value)}
-            placeholder="Enter your answer"
-            className="text-lg text-center"
-          />
-        </div>
-      )}
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center">
+            <div>
+              {!answered && !showAnswer && (
+                <Button
+                  variant="outline"
+                  onClick={handleShowAnswer}
+                  className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                >
+                  Show Answer
+                </Button>
+              )}
+            </div>
+            
+            <div className="space-x-4">
+              {!answered && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!selectedAnswer && !showAnswer}
+                  className="min-w-32"
+                >
+                  Submit Answer
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Hint */}
-      {showHint && (
-        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">Hint: Think about the fundamental concepts involved.</p>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-2">
-          <Button onClick={handleShowHint} variant="outline" size="sm">
-            <Lightbulb className="h-4 w-4 mr-2" />
-            Hint
-          </Button>
-          <Button onClick={handleShowAnswer} variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            Show Answer
-          </Button>
-        </div>
-        
-        <Button 
-          onClick={handleSubmit}
-          disabled={selectedAnswer === null && !gridInValue}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          Submit Answer
-        </Button>
-      </div>
-    </div>
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={showFeedback}
+        isCorrect={selectedAnswer === question.correct_answer}
+        selectedAnswer={selectedAnswer}
+        correctAnswer={question.correct_answer}
+        correctRationale={question.correct_rationale}
+        incorrectRationale={getIncorrectRationale()}
+        onNext={handleNextQuestion}
+      />
+    </>
   );
 };
 

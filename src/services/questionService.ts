@@ -158,7 +158,9 @@ class QuestionService {
           C: dbQuestion.incorrect_rationale_c,
           D: dbQuestion.incorrect_rationale_d
         }
-      }
+      },
+      // Include image URL from metadata
+      imageUrl: dbQuestion.metadata?.image_url
     };
   }
 
@@ -191,7 +193,9 @@ class QuestionService {
           C: dbQuestion.incorrect_rationale_c,
           D: dbQuestion.incorrect_rationale_d
         }
-      }
+      },
+      // Include image URL from metadata
+      imageUrl: dbQuestion.metadata?.image_url
     };
   }
 }

@@ -313,6 +313,42 @@ export type Database = {
         }
         Relationships: []
       }
+      question_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          questions_used: string[]
+          session_id: string
+          session_type: string
+          started_at: string
+          total_questions_available: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          questions_used?: string[]
+          session_id: string
+          session_type: string
+          started_at?: string
+          total_questions_available?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          questions_used?: string[]
+          session_id?: string
+          session_type?: string
+          started_at?: string
+          total_questions_available?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       question_usage: {
         Row: {
           id: string
@@ -424,9 +460,48 @@ export type Database = {
           metadata: Json
         }[]
       }
+      get_unused_questions_for_session: {
+        Args: {
+          p_session_id: string
+          p_session_type: string
+          p_section?: string
+          p_difficulty?: string
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          question_text: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          correct_answer: string
+          correct_rationale: string
+          incorrect_rationale_a: string
+          incorrect_rationale_b: string
+          incorrect_rationale_c: string
+          incorrect_rationale_d: string
+          section: string
+          skill: string
+          difficulty: string
+          domain: string
+          test_name: string
+          question_type: string
+          metadata: Json
+        }[]
+      }
       import_questions_batch: {
         Args: { questions_data: Json }
         Returns: number
+      }
+      mark_question_used_in_session: {
+        Args: {
+          p_session_id: string
+          p_session_type: string
+          p_question_id: string
+          p_total_available?: number
+        }
+        Returns: undefined
       }
       refresh_all_leaderboard_stats: {
         Args: Record<PropertyKey, never>

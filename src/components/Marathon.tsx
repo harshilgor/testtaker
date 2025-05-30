@@ -1,123 +1,94 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import MarathonSettingsComponent from './MarathonSettings';
-import MarathonQuestion from './MarathonQuestion';
-import MarathonStats from './MarathonStats';
-import MarathonSummary from './MarathonSummary';
+import { Card, CardContent } from '@/components/ui/card';
 import { useMarathonSession } from '../hooks/useMarathonSession';
-import { getRandomQuestion } from '../data/questions';
-import { MarathonSettings, QuestionAttempt } from '../types/marathon';
-import { Subject } from '../pages/Index';
+import { DatabaseQuestion } from '@/services/questionService';
+import { QuestionAttempt } from '../types/marathon';
+import { useQuestionSession } from '@/hooks/useQuestionSession';
+import MarathonQuestion from './MarathonQuestion';
 
-interface MarathonProps {
-  userName: string;
-  selectedSubject: Subject | null;
-  onSubjectSelect: (subject: Subject) => void;
-  onBack: () => void;
-}
+const Marathon: React.FC = () => {
+  const { session, recordAttempt, toggleFlag, flaggedQuestions } = useMarathonSession();
+  const { getNextQuestion, markQuestionUsed, getSessionStats, getTotalQuestions } = useQuestionSession();
+  const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ used: 0, total: 0 });
 
-const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjectSelect, onBack }) => {
-  const [currentScreen, setCurrentScreen] = useState<'settings' | 'question' | 'summary'>('settings');
-  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
-  const [settings, setSettings] = useState<MarathonSettings | null>(null);
-  const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  
-  const {
-    session,
-    attempts,
-    weakTopics,
-    flaggedQuestions,
-    startSession,
-    recordAttempt,
-    endSession,
-    toggleFlag,
-  } = useMarathonSession();
+  // Timer effect
+  useEffect(() => {
+    if (!session || !currentQuestion) return;
 
-  const handleStartMarathon = async (marathonSettings: MarathonSettings) => {
-    setSettings(marathonSettings);
-    startSession(marathonSettings);
-    const startTime = new Date();
-    setSessionStartTime(startTime);
-    setCurrentScreen('question');
-    await generateNextQuestion(marathonSettings, []);
+    const timer = setInterval(() => {
+      setTimeSpent(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [session, currentQuestion]);
+
+  // Load session stats and first question
+  useEffect(() => {
+    if (session) {
+      loadSessionStats();
+      loadNextQuestion();
+    }
+  }, [session]);
+
+  const loadSessionStats = async () => {
+    if (!session) return;
+    
+    const stats = await getSessionStats(session.id, 'marathon');
+    const total = await getTotalQuestions();
+    setSessionStats({ used: stats.used, total: total });
   };
 
-  const generateNextQuestion = async (marathonSettings: MarathonSettings, currentAttempts: QuestionAttempt[]) => {
-    setIsLoadingQuestion(true);
+  const loadNextQuestion = async () => {
+    if (!session) return;
+
+    setLoading(true);
     try {
-      let selectedSubject: 'math' | 'english';
+      const filters = {
+        section: session.subjects.includes('all') ? null : session.subjects[0],
+        difficulty: session.difficulty === 'mixed' ? null : session.difficulty
+      };
+
+      const question = await getNextQuestion(session.id, 'marathon', filters);
       
-      if (marathonSettings.subjects.includes('both')) {
-        selectedSubject = Math.random() > 0.5 ? 'math' : 'english';
+      if (question) {
+        setCurrentQuestion(question);
+        setTimeSpent(0);
+        
+        // Mark question as used
+        await markQuestionUsed(session.id, 'marathon', question.id);
+        
+        // Update stats
+        await loadSessionStats();
       } else {
-        selectedSubject = marathonSettings.subjects[0] === 'math' ? 'math' : 'english';
+        // No more questions available
+        setCurrentQuestion(null);
       }
-
-      if (marathonSettings.adaptiveLearning && weakTopics.length > 0 && Math.random() > 0.3) {
-        const weakTopic = weakTopics[Math.floor(Math.random() * weakTopics.length)];
-        selectedSubject = weakTopic.subject;
-      }
-
-      const newQuestion = await getRandomQuestion(selectedSubject);
-      setCurrentQuestion(newQuestion);
-      setQuestionStartTime(Date.now());
     } catch (error) {
-      console.error('Error loading question:', error);
-      // Fallback to a simple question if database fails
-      const fallbackSubject: 'math' | 'english' = Math.random() > 0.5 ? 'math' : 'english';
-      setCurrentQuestion({
-        id: `fallback-${Date.now()}`,
-        question: fallbackSubject === 'math' ? 'If 3x + 7 = 22, what is the value of x?' : 'Which sentence best supports the main idea?',
-        options: fallbackSubject === 'math' ? ['3', '5', '7', '15'] : ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: 1,
-        explanation: fallbackSubject === 'math' ? 'Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.' : 'This option best supports the main argument.',
-        subject: fallbackSubject,
-        topic: fallbackSubject === 'math' ? 'Algebra' : 'Reading Comprehension',
-        difficulty: 'medium',
-        type: 'multiple-choice'
-      });
+      console.error('Error loading next question:', error);
     } finally {
-      setIsLoadingQuestion(false);
+      setLoading(false);
     }
   };
 
-  const handleAnswer = async (answer: number | string, isCorrect: boolean, showAnswerUsed: boolean, hintsUsed: number) => {
-    if (!session || !settings || !currentQuestion) return;
+  const handleAnswer = async (answer: string, isCorrect: boolean, showAnswerUsed: boolean) => {
+    if (!currentQuestion || !session) return;
 
-    const timeSpent = Date.now() - questionStartTime;
+    // Record the attempt
     const attempt: QuestionAttempt = {
       questionId: currentQuestion.id,
-      subject: currentQuestion.subject,
-      topic: 'General',
-      difficulty: 'medium',
+      subject: currentQuestion.section === 'math' ? 'math' : 'english',
+      topic: currentQuestion.skill,
+      difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
       isCorrect,
       timeSpent,
-      hintsUsed,
       showAnswerUsed,
-      flagged: flaggedQuestions.includes(currentQuestion.id),
-      timestamp: new Date(),
+      flagged: flaggedQuestions.includes(currentQuestion.id)
     };
 
     recordAttempt(attempt);
-
-    if (isCorrect && !showAnswerUsed) {
-      setCurrentStreak(prev => prev + 1);
-    } else {
-      setCurrentStreak(0);
-    }
-
-    // Generate next question
-    await generateNextQuestion(settings, [...attempts, attempt]);
-  };
-
-  const handleEndMarathon = () => {
-    const summary = endSession();
-    setCurrentScreen('summary');
-    return summary;
   };
 
   const handleFlag = () => {
@@ -126,86 +97,67 @@ const Marathon: React.FC<MarathonProps> = ({ userName, selectedSubject, onSubjec
     }
   };
 
-  const averageTime = attempts.length > 0 
-    ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0) / attempts.length / 1000)
-    : 0;
+  const handleNext = () => {
+    loadNextQuestion();
+  };
 
-  if (currentScreen === 'settings') {
+  if (!session) {
     return (
-      <MarathonSettingsComponent
-        onStart={handleStartMarathon}
-        onBack={onBack}
-      />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8">
+          <CardContent>
+            <p className="text-center text-gray-600">Please start a marathon session first.</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  if (currentScreen === 'summary') {
+  if (loading) {
     return (
-      <MarathonSummary
-        session={session}
-        attempts={attempts}
-        weakTopics={weakTopics}
-        onBack={onBack}
-        onRestart={() => setCurrentScreen('settings')}
-      />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8">
+          <CardContent>
+            <p className="text-center text-gray-600">Loading next question...</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  if (isLoadingQuestion || !currentQuestion) {
+  if (!currentQuestion) {
     return (
-      <div className={`min-h-screen ${settings?.darkMode ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="text-center">
-            <p className={`text-lg ${settings?.darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Loading question...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8">
+          <CardContent className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Congratulations! 🎉
+            </h2>
+            <p className="text-gray-600 mb-4">
+              You've completed all available questions in your current filter settings.
             </p>
-          </div>
-        </div>
+            <p className="text-sm text-gray-500">
+              Solved {sessionStats.used} out of {sessionStats.total} total questions
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${settings?.darkMode ? 'bg-gray-900' : 'bg-gray-50'} transition-colors`}>
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <Button
-            onClick={handleEndMarathon}
-            variant="outline"
-            className="flex items-center"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            End Marathon
-          </Button>
-          
-          <h1 className={`text-2xl font-bold ${settings?.darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Marathon Mode
-          </h1>
-          
-          <div></div>
-        </div>
-
-        {session && sessionStartTime && (
-          <MarathonStats
-            totalQuestions={session.totalQuestions}
-            correctAnswers={session.correctAnswers}
-            incorrectAnswers={session.incorrectAnswers}
-            currentStreak={currentStreak}
-            averageTime={averageTime}
-            timeGoal={session.timedMode ? session.timeGoalMinutes : undefined}
-            sessionStartTime={sessionStartTime}
-            showStreak={false}
-          />
-        )}
-
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
         <MarathonQuestion
           question={currentQuestion}
           onAnswer={handleAnswer}
           onFlag={handleFlag}
-          isFlagged={currentQuestion ? flaggedQuestions.includes(currentQuestion.id) : false}
-          calculatorEnabled={settings?.calculatorEnabled || false}
-          fontSize={settings?.fontSize || 'medium'}
-          darkMode={settings?.darkMode || false}
+          onNext={handleNext}
+          isFlagged={flaggedQuestions.includes(currentQuestion.id)}
+          timeSpent={timeSpent}
+          questionNumber={sessionStats.used + 1}
+          totalQuestions={sessionStats.total}
+          questionsAttempted={sessionStats.used}
         />
       </div>
     </div>
