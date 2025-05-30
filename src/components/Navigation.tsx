@@ -1,9 +1,7 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Home, BarChart3, Trophy, Activity } from 'lucide-react';
-
-type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
+import { Screen } from '@/pages/Index';
 
 interface NavigationProps {
   currentScreen: Screen;

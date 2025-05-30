@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LandingScreen from '@/components/LandingScreen';
@@ -14,7 +13,7 @@ import Navigation from '@/components/Navigation';
 import { MarathonSettings as MarathonSettingsType } from '@/types/marathon';
 
 export type Subject = 'math' | 'english' | 'both';
-type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon-settings' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon-settings' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
 
 const Index = () => {
   const { user, session, loading, signOut } = useAuth();
