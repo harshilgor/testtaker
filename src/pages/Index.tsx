@@ -4,19 +4,21 @@ import LandingScreen from '@/components/LandingScreen';
 import AuthPage from '@/components/AuthPage';
 import Dashboard from '@/components/Dashboard';
 import Marathon from '@/components/Marathon';
+import MarathonSettings from '@/components/MarathonSettings';
 import Quiz from '@/components/Quiz';
 import MockTest from '@/components/MockTest';
 import Leaderboard from '@/components/Leaderboard';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
 import Navigation from '@/components/Navigation';
+import { MarathonSettings as MarathonSettingsType } from '@/types/marathon';
 
 export type Subject = 'math' | 'english' | 'both';
-type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
+type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon-settings' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
 
 const Index = () => {
   const { user, session, loading, signOut } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [marathonSettings, setMarathonSettings] = useState<MarathonSettingsType | null>(null);
 
   // Show loading spinner while checking auth state
   if (loading) {
@@ -47,7 +49,32 @@ const Index = () => {
     setCurrentScreen(screen);
   };
 
-  // Show different screens based on current state
+  const handleMarathonSettingsComplete = (settings: MarathonSettingsType) => {
+    setMarathonSettings(settings);
+    setCurrentScreen('marathon');
+  };
+
+  // Show marathon settings page
+  if (currentScreen === 'marathon-settings') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          userName={userName}
+          onSignOut={handleSignOut}
+        />
+        <div className="pt-16">
+          <MarathonSettings
+            onStart={handleMarathonSettingsComplete}
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Show marathon with settings
   if (currentScreen === 'marathon') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -58,12 +85,17 @@ const Index = () => {
           onSignOut={handleSignOut}
         />
         <div className="pt-16">
-          <Marathon />
+          <Marathon 
+            settings={marathonSettings}
+            onBack={() => setCurrentScreen('dashboard')}
+            onEndMarathon={() => setCurrentScreen('dashboard')}
+          />
         </div>
       </div>
     );
   }
 
+  // Show different screens based on current state
   if (currentScreen === 'quiz') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -152,7 +184,7 @@ const Index = () => {
       <div className="pt-16">
         <Dashboard
           userName={userName}
-          onMarathonSelect={() => setCurrentScreen('marathon')}
+          onMarathonSelect={() => setCurrentScreen('marathon-settings')}
           onMockTestSelect={() => setCurrentScreen('mocktest')}
           onQuizSelect={() => setCurrentScreen('quiz')}
         />

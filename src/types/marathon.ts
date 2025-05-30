@@ -12,6 +12,7 @@ export interface MarathonSession {
   adaptiveLearning: boolean;
   timedMode: boolean;
   timeGoalMinutes?: number;
+  attempts?: QuestionAttempt[];
 }
 
 export interface QuestionAttempt {

@@ -1,19 +1,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useMarathonSession } from '../hooks/useMarathonSession';
 import { DatabaseQuestion } from '@/services/questionService';
-import { QuestionAttempt } from '../types/marathon';
+import { QuestionAttempt, MarathonSettings } from '../types/marathon';
 import { useQuestionSession } from '@/hooks/useQuestionSession';
 import MarathonQuestion from './MarathonQuestion';
+import MarathonSummary from './MarathonSummary';
+import { AlertTriangle, LogOut } from 'lucide-react';
 
-const Marathon: React.FC = () => {
-  const { session, recordAttempt, toggleFlag, flaggedQuestions } = useMarathonSession();
+interface MarathonProps {
+  settings?: MarathonSettings | null;
+  onBack: () => void;
+  onEndMarathon: () => void;
+}
+
+const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) => {
+  const { session, recordAttempt, toggleFlag, flaggedQuestions, endSession } = useMarathonSession();
   const { getNextQuestion, markQuestionUsed, getSessionStats, getTotalQuestions } = useQuestionSession();
   const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sessionStats, setSessionStats] = useState({ used: 0, total: 0 });
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   // Timer effect
   useEffect(() => {
@@ -48,7 +59,8 @@ const Marathon: React.FC = () => {
     setLoading(true);
     try {
       const filters = {
-        section: session.subjects.includes('both') ? null : session.subjects[0],
+        section: session.subjects.includes('both') ? null : 
+                session.subjects.includes('math') ? 'math' : 'reading-writing',
         difficulty: session.difficulty === 'mixed' ? null : session.difficulty
       };
 
@@ -64,8 +76,8 @@ const Marathon: React.FC = () => {
         // Update stats
         await loadSessionStats();
       } else {
-        // No more questions available
-        setCurrentQuestion(null);
+        // No more questions available - show summary
+        setShowSummary(true);
       }
     } catch (error) {
       console.error('Error loading next question:', error);
@@ -85,7 +97,7 @@ const Marathon: React.FC = () => {
       difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
       isCorrect,
       timeSpent,
-      hintsUsed: 0, // Default value for marathon mode
+      hintsUsed: 0,
       showAnswerUsed,
       flagged: flaggedQuestions.includes(currentQuestion.id),
       timestamp: new Date()
@@ -104,12 +116,49 @@ const Marathon: React.FC = () => {
     loadNextQuestion();
   };
 
-  if (!session) {
+  const handleEndMarathon = () => {
+    setShowEndConfirmation(true);
+  };
+
+  const confirmEndMarathon = () => {
+    endSession();
+    setShowSummary(true);
+    setShowEndConfirmation(false);
+  };
+
+  const handleBackFromSummary = () => {
+    onBack();
+  };
+
+  const handleRestartFromSummary = () => {
+    // Reset state and go back to settings
+    setShowSummary(false);
+    setCurrentQuestion(null);
+    onBack();
+  };
+
+  // Show summary if session ended
+  if (showSummary) {
+    return (
+      <MarathonSummary
+        session={session}
+        attempts={session?.attempts || []}
+        weakTopics={[]} // TODO: Calculate weak topics
+        onBack={handleBackFromSummary}
+        onRestart={handleRestartFromSummary}
+      />
+    );
+  }
+
+  if (!session && !settings) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="p-8">
           <CardContent>
-            <p className="text-center text-gray-600">Please start a marathon session first.</p>
+            <p className="text-center text-gray-600">Please configure your marathon settings first.</p>
+            <Button onClick={onBack} className="mt-4 w-full">
+              Back to Settings
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -121,7 +170,10 @@ const Marathon: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="p-8">
           <CardContent>
-            <p className="text-center text-gray-600">Loading next question...</p>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading next question...</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -139,9 +191,17 @@ const Marathon: React.FC = () => {
             <p className="text-gray-600 mb-4">
               You've completed all available questions in your current filter settings.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mb-6">
               Solved {sessionStats.used} out of {sessionStats.total} total questions
             </p>
+            <div className="space-x-4">
+              <Button onClick={onBack} variant="outline">
+                Back to Settings
+              </Button>
+              <Button onClick={onEndMarathon} className="bg-orange-600 hover:bg-orange-700">
+                View Summary
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -151,6 +211,24 @@ const Marathon: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
+        {/* Marathon Header with End Button */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Marathon Mode</h1>
+            <p className="text-gray-600">
+              Question {sessionStats.used + 1} of {sessionStats.total}
+            </p>
+          </div>
+          <Button
+            onClick={handleEndMarathon}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            End Marathon
+          </Button>
+        </div>
+
         <MarathonQuestion
           question={currentQuestion}
           onAnswer={handleAnswer}
@@ -162,6 +240,37 @@ const Marathon: React.FC = () => {
           totalQuestions={sessionStats.total}
           questionsAttempted={sessionStats.used}
         />
+
+        {/* End Marathon Confirmation Modal */}
+        {showEndConfirmation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="p-6 max-w-md w-full mx-4">
+              <div className="text-center">
+                <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">End Marathon Session?</h3>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to end your marathon session? Your progress will be saved.
+                </p>
+                <div className="flex space-x-4">
+                  <Button
+                    onClick={() => setShowEndConfirmation(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Continue
+                  </Button>
+                  <Button
+                    onClick={confirmEndMarathon}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    End Session
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
