@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,10 +32,13 @@ import {
   Filter,
   Download,
   Eye,
-  EyeOff
+  EyeOff,
+  Edit3
 } from 'lucide-react';
 import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
+import QuestionEditor from './QuestionEditor';
+import { toast } from 'sonner';
 
 interface QuestionStats {
   total: number;
@@ -55,6 +57,7 @@ const QuestionBankManagement: React.FC = () => {
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<QuestionStats | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<DatabaseQuestion | null>(null);
 
   // Fetch all questions
   const fetchQuestions = async () => {
@@ -151,8 +154,10 @@ const QuestionBankManagement: React.FC = () => {
       
       // Refresh questions
       fetchQuestions();
+      toast.success(`Question ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       console.error('Error updating question status:', error);
+      toast.error('Failed to update question status');
     }
   };
 
@@ -381,17 +386,27 @@ const QuestionBankManagement: React.FC = () => {
                         <Badge variant="outline">{question.correct_answer}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleQuestionStatus(question.id, question.is_active)}
-                        >
-                          {question.is_active ? (
-                            <Eye className="h-4 w-4" />
-                          ) : (
-                            <EyeOff className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditQuestion(question)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleQuestionStatus(question.id, question.is_active)}
+                          >
+                            {question.is_active ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     
@@ -448,6 +463,16 @@ const QuestionBankManagement: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Question Editor Modal */}
+      {editingQuestion && (
+        <QuestionEditor
+          question={editingQuestion}
+          isOpen={!!editingQuestion}
+          onClose={() => setEditingQuestion(null)}
+          onSave={handleQuestionSaved}
+        />
+      )}
     </div>
   );
 };
