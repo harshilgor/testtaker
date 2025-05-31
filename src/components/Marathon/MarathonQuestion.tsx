@@ -5,6 +5,7 @@ import { DatabaseQuestion } from '@/services/questionService';
 import QuestionContent from './QuestionContent';
 import AnswerOptions from './AnswerOptions';
 import QuestionActions from './QuestionActions';
+import AnswerFeedback from './AnswerFeedback';
 
 interface MarathonQuestionProps {
   question: DatabaseQuestion;
@@ -20,6 +21,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const handleAnswerSelect = (answer: string) => {
     if (answered) return;
@@ -28,6 +30,8 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
 
   const handleShowAnswer = () => {
     setShowAnswer(true);
+    setShowFeedback(true);
+    setSelectedAnswer(question.correct_answer);
   };
 
   const handleSubmit = () => {
@@ -35,6 +39,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     
     const isCorrect = selectedAnswer === question.correct_answer;
     setAnswered(true);
+    setShowFeedback(true);
     onAnswer(selectedAnswer, isCorrect, showAnswer);
   };
 
@@ -42,6 +47,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     setSelectedAnswer('');
     setAnswered(false);
     setShowAnswer(false);
+    setShowFeedback(false);
     onNext();
   };
 
@@ -62,9 +68,20 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
             selectedAnswer={selectedAnswer}
             onAnswerChange={handleAnswerSelect}
             answered={answered}
+            correctAnswer={showFeedback ? question.correct_answer : ''}
           />
 
-          {!answered && (
+          {showFeedback && (
+            <AnswerFeedback
+              isCorrect={selectedAnswer === question.correct_answer}
+              selectedAnswer={selectedAnswer}
+              correctAnswer={question.correct_answer}
+              correctRationale={question.correct_rationale}
+              showAnswerUsed={showAnswer}
+            />
+          )}
+
+          {!showFeedback && (
             <QuestionActions
               answered={answered}
               showAnswer={showAnswer}
@@ -74,7 +91,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
             />
           )}
 
-          {answered && (
+          {showFeedback && (
             <div className="flex justify-end">
               <button
                 onClick={handleNext}
