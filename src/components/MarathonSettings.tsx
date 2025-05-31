@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -48,9 +47,8 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
   };
 
   const userProgress = {
-    totalAnswered: 0,
-    correctAnswered: 0,
-    accuracy: 0
+    questionsAttempted: 0,
+    totalAvailable: 1000
   };
 
   const getAvailableQuestions = () => {
