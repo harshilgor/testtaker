@@ -1,16 +1,14 @@
-
 import React from 'react';
 import { GraduationCap, Brain, Target, Award, Users, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
-
-const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+const LandingScreen: React.FC<LandingScreenProps> = ({
+  onGetStarted
+}) => {
+  return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="flex justify-between items-center p-6 max-w-7xl mx-auto">
         <div className="flex items-center space-x-3">
@@ -42,18 +40,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button 
-              onClick={onGetStarted} 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-            >
+            <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
               Start Learning Today
             </Button>
-            <Button 
-              variant="outline" 
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 px-8 py-4 text-lg font-semibold rounded-xl"
-            >
-              See How It Works
-            </Button>
+            
           </div>
 
           <div className="flex items-center justify-center space-x-2 text-slate-500">
@@ -108,10 +98,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
                   <Target className="h-8 w-8 text-green-600" />
                 </div>
                 <h4 className="text-2xl font-bold text-slate-900 mb-4">Unlimited Practice</h4>
-                <p className="text-slate-600 leading-relaxed">
-                  Marathon mode provides endless practice questions in Math and English, 
-                  with instant feedback and detailed explanations.
-                </p>
+                <p className="text-slate-600 leading-relaxed">Solve from over 3000 questions, 30+ mock tests and unlimited AI generated questions </p>
               </CardContent>
             </Card>
             
@@ -143,7 +130,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
             <div>
               <div className="flex items-center justify-center mb-4">
                 <TrendingUp className="h-8 w-8 text-green-600 mr-2" />
-                <span className="text-4xl font-bold text-slate-900">150+</span>
+                <span className="text-4xl font-bold text-slate-900">350+</span>
               </div>
               <p className="text-slate-600 font-medium">Average Score Improvement</p>
             </div>
@@ -163,17 +150,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             Join thousands of students who have improved their scores with our AI-powered platform.
           </p>
-          <Button 
-            onClick={onGetStarted} 
-            className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-          >
+          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
             Start Your Free Trial
           </Button>
           <p className="text-sm text-blue-200 mt-4">No credit card required • 7-day free trial</p>
         </div>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingScreen;
