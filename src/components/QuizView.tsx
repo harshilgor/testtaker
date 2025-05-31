@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Question, getQuestionsBySubject, getQuestionsByTopics, questionService } from '../data/questions';
+import { questionService, DatabaseQuestion } from '@/services/questionService';
 import Calculator from './Calculator';
 import { recordQuestionAttempt, getUserTotalPoints } from '@/services/pointsService';
 import QuizHeader from './Quiz/QuizHeader';
@@ -7,6 +7,7 @@ import QuizProgress from './Quiz/QuizProgress';
 import QuestionNavigator from './Quiz/QuestionNavigator';
 import QuizSummary from './Quiz/QuizSummary';
 import QuizContent from './Quiz/QuizContent';
+import { useQuestionSession } from '@/hooks/useQuestionSession';
 
 interface QuizViewProps {
   subject: string;
@@ -16,6 +17,26 @@ interface QuizViewProps {
   onComplete: (results: any) => void;
   userName: string;
   mode?: 'quiz' | 'marathon';
+}
+
+interface Question {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  subject: 'math' | 'english';
+  topic: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  rationales?: {
+    correct: string;
+    incorrect: {
+      A?: string;
+      B?: string;
+      C?: string;
+      D?: string;
+    };
+  };
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -48,35 +69,60 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [hintsUsed, setHintsUsed] = useState(0);
   const [hintText, setHintText] = useState('');
 
+  const { initializeSession } = useQuestionSession();
+
   useEffect(() => {
     const loadQuestions = async () => {
       try {
         setIsLoading(true);
         console.log('Loading questions for subject:', subject, 'topics:', topics);
         
-        let loadedQuestions;
-        if (topics.length > 0) {
-          loadedQuestions = await getQuestionsByTopics(
-            subject === 'math' ? 'math' : 'english',
-            topics,
-            numQuestions
-          );
+        // Initialize session for question tracking
+        await initializeSession(sessionId, mode === 'marathon' ? 'marathon' : 'quiz');
+        
+        // Map subject to database section
+        const section = subject === 'math' ? 'math' : 'reading-writing';
+        
+        let dbQuestions: DatabaseQuestion[] = [];
+        
+        if (topics.length > 0 && !topics.includes('wrong-questions')) {
+          // Load questions by specific topics/skills
+          for (const topic of topics) {
+            const filters = {
+              section,
+              skill: topic,
+              limit: Math.ceil(numQuestions / topics.length)
+            };
+            const topicQuestions = await questionService.getRandomQuestions(filters);
+            dbQuestions.push(...topicQuestions);
+          }
         } else {
-          loadedQuestions = await getQuestionsBySubject(
-            subject === 'math' ? 'math' : 'english',
-            numQuestions
-          );
+          // Load questions by subject only
+          const filters = {
+            section,
+            limit: numQuestions
+          };
+          dbQuestions = await questionService.getRandomQuestions(filters);
         }
         
-        console.log('Loaded questions:', loadedQuestions.length);
+        // Convert database questions to quiz format
+        const convertedQuestions = dbQuestions.map(q => {
+          const converted = questionService.convertToLegacyFormat(q);
+          return {
+            ...converted,
+            subject: converted.subject as 'math' | 'english'
+          };
+        }).slice(0, numQuestions); // Ensure we don't exceed requested count
         
-        if (loadedQuestions.length === 0) {
+        console.log('Loaded questions:', convertedQuestions.length);
+        
+        if (convertedQuestions.length === 0) {
           console.warn('No questions loaded for the given criteria');
         }
         
-        setQuestions(loadedQuestions);
-        setAnswers(new Array(loadedQuestions.length).fill(null));
-        setFlaggedQuestions(new Array(loadedQuestions.length).fill(false));
+        setQuestions(convertedQuestions);
+        setAnswers(new Array(convertedQuestions.length).fill(null));
+        setFlaggedQuestions(new Array(convertedQuestions.length).fill(false));
       } catch (error) {
         console.error('Error loading questions:', error);
       } finally {
@@ -86,7 +132,7 @@ const QuizView: React.FC<QuizViewProps> = ({
 
     loadQuestions();
     loadUserPoints();
-  }, [subject, numQuestions, topics]);
+  }, [subject, numQuestions, topics, sessionId, mode, initializeSession]);
 
   const loadUserPoints = async () => {
     try {
@@ -150,7 +196,12 @@ const QuizView: React.FC<QuizViewProps> = ({
         console.error('Error recording answer:', error);
       }
 
-      questionService.trackQuestionUsage(currentQuestion.id, mode === 'marathon' ? 'marathon' : 'quiz');
+      // Track question usage
+      try {
+        await questionService.trackQuestionUsage(currentQuestion.id, mode === 'marathon' ? 'marathon' : 'quiz', sessionId);
+      } catch (error) {
+        console.error('Error tracking question usage:', error);
+      }
     }
   };
 

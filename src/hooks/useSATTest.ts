@@ -1,9 +1,31 @@
 
 import { useState, useEffect } from 'react';
-import { SATQuestion, getSATQuestions, getAdaptiveQuestions } from '../data/satQuestions';
+import { questionService, DatabaseQuestion } from '@/services/questionService';
+import { useQuestionSession } from './useQuestionSession';
 
 type SATSection = 'reading-writing' | 'math';
 type SATModule = 1 | 2;
+
+interface SATQuestion {
+  id: string;
+  question: string;
+  options?: string[];
+  correctAnswer: number | string;
+  explanation: string;
+  section: 'reading-writing' | 'math';
+  topic: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  type: 'multiple-choice' | 'grid-in';
+  rationales?: {
+    correct: string;
+    incorrect: {
+      A?: string;
+      B?: string;
+      C?: string;
+      D?: string;
+    };
+  };
+}
 
 interface TestProgress {
   section: SATSection;
@@ -41,6 +63,9 @@ export const useSATTest = (userName: string) => {
   const [answers, setAnswers] = useState<Map<string, TestAnswer>>(new Map());
   const [moduleResults, setModuleResults] = useState<ModuleResult[]>([]);
   const [startTime, setStartTime] = useState<Date | null>(null);
+  const [sessionId] = useState(() => `sat-${Date.now()}-${Math.random()}`);
+
+  const { initializeSession, markQuestionUsed } = useQuestionSession();
 
   // Timer effect
   useEffect(() => {
@@ -64,20 +89,51 @@ export const useSATTest = (userName: string) => {
 
     const loadQuestions = async () => {
       try {
+        console.log(`Loading SAT questions for ${currentProgress.section} Module ${currentProgress.module}`);
+        
+        let dbQuestions: DatabaseQuestion[] = [];
+        
         if (currentProgress.module === 1) {
-          const questions = await getSATQuestions(currentProgress.section, 1);
-          setCurrentQuestions(questions);
+          // Module 1: Standard difficulty mix
+          const filters = {
+            section: currentProgress.section,
+            limit: 27
+          };
+          dbQuestions = await questionService.getRandomQuestions(filters);
         } else {
+          // Module 2: Adaptive based on Module 1 performance
           const module1Results = moduleResults.find(
             r => r.section === currentProgress.section && r.module === 1
           );
           
           if (module1Results) {
             const performance = module1Results.score / module1Results.totalQuestions;
-            const adaptiveQuestions = await getAdaptiveQuestions(currentProgress.section, performance);
-            setCurrentQuestions(adaptiveQuestions);
+            const difficulty = performance >= 0.7 ? 'hard' : performance >= 0.4 ? 'medium' : 'easy';
+            
+            const filters = {
+              section: currentProgress.section,
+              difficulty,
+              limit: 27
+            };
+            dbQuestions = await questionService.getRandomQuestions(filters);
           }
         }
+
+        // Convert database questions to SAT format
+        const satQuestions = dbQuestions.map(q => questionService.convertToSATFormat(q));
+        
+        console.log(`Loaded ${satQuestions.length} SAT questions`);
+        setCurrentQuestions(satQuestions);
+
+        // Mark questions as used in session
+        for (const question of dbQuestions) {
+          try {
+            await markQuestionUsed(sessionId, 'mocktest', question.id);
+          } catch (error) {
+            console.error('Error marking question as used:', error);
+          }
+        }
+        
       } catch (error) {
         console.error('Error loading SAT questions:', error);
         setCurrentQuestions([]);
@@ -85,14 +141,35 @@ export const useSATTest = (userName: string) => {
     };
 
     loadQuestions();
-  }, [currentProgress.section, currentProgress.module, testStarted, moduleResults]);
+  }, [currentProgress.section, currentProgress.module, testStarted, moduleResults, sessionId, markQuestionUsed]);
 
   const startTest = async () => {
-    setTestStarted(true);
-    setStartTime(new Date());
     try {
-      const questions = await getSATQuestions('reading-writing', 1);
-      setCurrentQuestions(questions);
+      setTestStarted(true);
+      setStartTime(new Date());
+      
+      // Initialize session for question tracking
+      await initializeSession(sessionId, 'mocktest');
+      
+      // Load initial questions for reading-writing module 1
+      const filters = {
+        section: 'reading-writing' as const,
+        limit: 27
+      };
+      const dbQuestions = await questionService.getRandomQuestions(filters);
+      const satQuestions = dbQuestions.map(q => questionService.convertToSATFormat(q));
+      
+      setCurrentQuestions(satQuestions);
+
+      // Mark questions as used
+      for (const question of dbQuestions) {
+        try {
+          await markQuestionUsed(sessionId, 'mocktest', question.id);
+        } catch (error) {
+          console.error('Error marking question as used:', error);
+        }
+      }
+      
     } catch (error) {
       console.error('Error starting test:', error);
       setCurrentQuestions([]);
