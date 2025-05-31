@@ -194,6 +194,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return 0;
       }
 
+      console.log('Total questions in question_bank:', count);
       return count || 0;
     } catch (error) {
       console.error('Error in getTotalQuestions:', error);

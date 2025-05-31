@@ -37,58 +37,40 @@ export interface QuestionFilters {
 
 class QuestionService {
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
-    // Use direct query to question_bank
-    let query = supabase
-      .from('question_bank')
-      .select('*');
-
-    // Apply filters
-    if (filters.section) {
-      query = query.eq('section', filters.section);
-    }
-    if (filters.difficulty) {
-      query = query.eq('difficulty', filters.difficulty);
-    }
-    if (filters.skill) {
-      query = query.eq('skill', filters.skill);
-    }
-    if (filters.domain) {
-      query = query.eq('domain', filters.domain);
-    }
-    if (filters.excludeIds && filters.excludeIds.length > 0) {
-      // Convert string IDs to numbers for question_bank
-      const numericIds = filters.excludeIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-      if (numericIds.length > 0) {
-        query = query.not('id', 'in', `(${numericIds.join(',')})`);
-      }
-    }
-
-    // Filter out null questions and add ordering
-    query = query.not('question_text', 'is', null).order('id');
+    console.log('Getting random questions with filters:', filters);
     
-    const { data, error } = await query.limit(filters.limit || 10);
+    // Use the database function for better consistency
+    const { data, error } = await supabase.rpc('get_random_questions', {
+      p_section: filters.section || null,
+      p_difficulty: filters.difficulty || null,
+      p_skill: filters.skill || null,
+      p_domain: filters.domain || null,
+      p_limit: filters.limit || 10,
+      p_exclude_ids: filters.excludeIds ? filters.excludeIds.map(id => parseInt(id)).filter(id => !isNaN(id)) : []
+    });
 
     if (error) {
       console.error('Error fetching questions:', error);
       throw error;
     }
 
-    // Convert bigint IDs to strings and provide default values for missing properties
+    // Convert and provide default values for missing properties
     const questions = (data || []).map(q => ({
       ...q,
       id: q.id?.toString() || '',
-      is_active: true, // Default value since question_bank doesn't have this column
+      is_active: true, // Default value
       created_at: new Date().toISOString(), // Default value
       updated_at: new Date().toISOString(), // Default value
-      metadata: {} // Default value since question_bank doesn't have this column
+      metadata: {} // Default value
     }));
 
-    // Shuffle the results to get random questions
-    const shuffled = questions.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, filters.limit || 10);
+    console.log(`Loaded ${questions.length} questions from question_bank`);
+    return questions;
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
+    console.log('Getting question by ID:', id);
+    
     // Convert string ID to number for question_bank
     const numericId = parseInt(id);
     if (isNaN(numericId)) {
