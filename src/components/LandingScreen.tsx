@@ -146,14 +146,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
 
         {/* CTA Section */}
         <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-white">
-          <h3 className="text-4xl font-bold mb-4">Ready to ace your SAT?</h3>
+          <h3 className="font-bold mb-4 text-3xl">FREE 💰- from a student who faced problems finding resources to practice for SAT</h3>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             Join thousands of students who have improved their scores with our AI-powered platform.
           </p>
-          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
-            Start Your Free Trial
-          </Button>
-          <p className="text-sm text-blue-200 mt-4">No credit card required • 7-day free trial</p>
+          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">Start now</Button>
+          <p className="text-sm text-blue-200 mt-4">Lets get that dream SAT score 🚀</p>
         </div>
       </main>
     </div>;
