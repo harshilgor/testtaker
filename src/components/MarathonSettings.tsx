@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import SubjectSelection from './Marathon/SubjectSelection';
 import DifficultySelection from './Marathon/DifficultySelection';
 import SettingsToggles from './Marathon/SettingsToggles';
 import FontSizeSelection from './Marathon/FontSizeSelection';
+import { useMarathonQuestionStats } from './Marathon/useMarathonQuestionStats';
 
 interface MarathonSettingsProps {
   onStart: (settings: MarathonSettings) => void;
@@ -29,27 +31,7 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
     fontSize: 'medium'
   });
 
-  // Mock question stats for now - this will be properly implemented when needed
-  const questionStats = {
-    total: 1000,
-    math: {
-      total: 500,
-      easy: 150,
-      medium: 200,
-      hard: 150
-    },
-    english: {
-      total: 500,
-      easy: 150,
-      medium: 200,
-      hard: 150
-    }
-  };
-
-  const userProgress = {
-    questionsAttempted: 0,
-    totalAvailable: 1000
-  };
+  const { questionStats, userProgress, loading } = useMarathonQuestionStats();
 
   const getAvailableQuestions = () => {
     if (settings.subjects.includes('both')) {
@@ -78,6 +60,17 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
   const handleStart = () => {
     onStart(settings);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p>Loading question statistics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">

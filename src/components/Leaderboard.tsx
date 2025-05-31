@@ -25,18 +25,12 @@ interface UserScore {
 const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
-  // Fetch leaderboard data with faster refresh for real-time points
+  // Fetch leaderboard data from Supabase with real-time updates
   const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
-      console.log('Fetching updated leaderboard data...');
+      console.log('Fetching leaderboard data...');
       
-      // First refresh the leaderboard stats to ensure we have latest points
-      const { error: refreshError } = await supabase.rpc('refresh_all_leaderboard_stats');
-      if (refreshError) {
-        console.error('Error refreshing leaderboard stats:', refreshError);
-      }
-
       const { data, error } = await supabase
         .from('leaderboard_stats')
         .select('*')
@@ -48,32 +42,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         throw error;
       }
 
-      console.log('Fresh leaderboard data loaded:', data?.length, 'users');
+      console.log('Leaderboard data loaded:', data?.length, 'users');
       return data || [];
     },
-    staleTime: 0, // Always fetch fresh data
-    refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
+    staleTime: 1000, // Refetch every second for real-time updates
+    refetchInterval: 1000,
   });
 
-  // Set up real-time subscription for immediate updates
+  // Set up real-time subscription for leaderboard updates
   useEffect(() => {
     console.log('Setting up real-time leaderboard subscription...');
     
     const channel = supabase
-      .channel('leaderboard-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'question_attempts_v2'
-        },
-        (payload) => {
-          console.log('Question attempt recorded, refreshing leaderboard:', payload);
-          // Immediate refresh when points are earned
-          refetch();
-        }
-      )
+      .channel('leaderboard-changes')
       .on(
         'postgres_changes',
         {
@@ -82,7 +63,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           table: 'leaderboard_stats'
         },
         (payload) => {
-          console.log('Leaderboard stats updated:', payload);
+          console.log('Leaderboard updated via real-time:', payload);
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'question_attempts_v2'
+        },
+        (payload) => {
+          console.log('Question attempt recorded, updating leaderboard:', payload);
           refetch();
         }
       )

@@ -11,8 +11,8 @@ const QuestionImport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const csvTemplate = `question_text,option_a,option_b,option_c,option_d,correct_answer,correct_rationale,incorrect_rationale_a,incorrect_rationale_b,incorrect_rationale_c,incorrect_rationale_d,section,skill,difficulty,domain,test_name,question_type
-"If 3x + 7 = 22, what is the value of x?","3","5","7","15","B","Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.","This would be incorrect.","","This is the coefficient, not the value.","This would be if you forgot to divide.","math","Linear Equations","easy","Algebra","SAT Practice","multiple-choice"
-"What is the area of a circle with radius 4?","8π","16π","32π","64π","B","Area = πr². With r = 4, area = π(4)² = 16π.","This is circumference formula.","","This uses wrong formula.","This uses wrong calculation.","math","Geometry","medium","Geometry","SAT Practice","multiple-choice"`;
+"If 3x + 7 = 22, what is the value of x?","3","5","7","15","B","Subtract 7 from both sides: 3x = 15. Then divide by 3: x = 5.","This would be the result if you divided 22 by 7 instead of solving correctly.","","This is the coefficient of x, not the value of x itself.","This would be the result if you forgot to divide by 3 after subtracting 7.","math","Linear Equations","easy","Algebra","SAT Practice Test 1","multiple-choice"
+"What is the area of a circle with radius 4?","8π","16π","32π","64π","B","The area of a circle is πr². With r = 4, the area is π(4)² = 16π.","This would be the circumference formula (2πr) result, not area.","","This results from incorrectly using 2πr² instead of πr².","This results from incorrectly using π(2r)² instead of πr².","math","Geometry","medium","Geometry and Trigonometry","SAT Practice Test 1","multiple-choice"`;
 
   const downloadTemplate = () => {
     const blob = new Blob([csvTemplate], { type: 'text/csv' });
@@ -81,11 +81,6 @@ const QuestionImport: React.FC = () => {
 
       const insertedCount = await questionService.importQuestions(questionsData);
       setImportResult(`Successfully imported ${insertedCount} questions!`);
-      
-      // Clear question cache after import
-      if ('marathonQuestionService' in window) {
-        (window as any).marathonQuestionService.clearCache();
-      }
     } catch (err: any) {
       setError(`Import failed: ${err.message}`);
     } finally {
@@ -103,31 +98,14 @@ const QuestionImport: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Required Columns */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold mb-2">Required CSV Columns:</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <code>question_text</code>
-              <code>option_a, option_b, option_c, option_d</code>
-              <code>correct_answer</code>
-              <code>correct_rationale</code>
-              <code>section</code>
-              <code>skill</code>
-              <code>difficulty</code>
-              <code>domain</code>
-              <code>test_name</code>
-              <code>question_type</code>
-            </div>
-          </div>
-
           {/* Download Template */}
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold mb-2 flex items-center">
               <Download className="h-4 w-4 mr-2" />
-              Download CSV Template
+              Step 1: Download CSV Template
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              Download the template with correct format and example questions.
+              Download the CSV template with the correct format for importing your 3,000 questions.
             </p>
             <Button onClick={downloadTemplate} variant="outline">
               <Download className="h-4 w-4 mr-2" />
@@ -135,12 +113,39 @@ const QuestionImport: React.FC = () => {
             </Button>
           </div>
 
+          {/* Template Structure */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold mb-2 flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              CSV Template Structure
+            </h3>
+            <div className="text-sm space-y-2">
+              <p><strong>Required columns:</strong></p>
+              <ul className="list-disc list-inside space-y-1 text-gray-600">
+                <li><code>question_text</code> - The question text</li>
+                <li><code>option_a, option_b, option_c, option_d</code> - Answer choices</li>
+                <li><code>correct_answer</code> - Correct option (A, B, C, or D)</li>
+                <li><code>correct_rationale</code> - Explanation for correct answer</li>
+                <li><code>incorrect_rationale_a/b/c/d</code> - Explanations for wrong answers (optional)</li>
+                <li><code>section</code> - Either "math" or "reading-writing"</li>
+                <li><code>skill</code> - Specific skill/topic being tested</li>
+                <li><code>difficulty</code> - "easy", "medium", or "hard"</li>
+                <li><code>domain</code> - Subject domain</li>
+                <li><code>test_name</code> - Source test name</li>
+                <li><code>question_type</code> - "multiple-choice" or "grid-in"</li>
+              </ul>
+            </div>
+          </div>
+
           {/* Upload Section */}
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold mb-2 flex items-center">
               <Upload className="h-4 w-4 mr-2" />
-              Upload Questions
+              Step 2: Upload Your Questions
             </h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Upload your CSV file with all 3,000 questions formatted according to the template.
+            </p>
             <input
               type="file"
               accept=".csv"

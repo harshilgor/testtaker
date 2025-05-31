@@ -1,7 +1,7 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DatabaseQuestion } from '@/services/questionService';
-import { marathonQuestionService } from '@/services/marathonQuestionService';
 
 interface QuestionSessionHook {
   getNextQuestion: (sessionId: string, sessionType: string, filters?: any) => Promise<DatabaseQuestion | null>;
@@ -12,8 +12,6 @@ interface QuestionSessionHook {
 }
 
 export const useQuestionSession = (): QuestionSessionHook => {
-  const [questionBuffer, setQuestionBuffer] = useState<DatabaseQuestion[]>([]);
-
   const initializeSession = useCallback(async (
     sessionId: string,
     sessionType: string
@@ -37,11 +35,11 @@ export const useQuestionSession = (): QuestionSessionHook => {
         .single();
 
       if (existingSession) {
-        console.log('Session already exists');
+        console.log('Session already exists:', existingSession);
         return;
       }
 
-      // Create new session
+      // Create new session with empty questions_used array
       const { error } = await supabase
         .from('question_sessions')
         .insert({
@@ -68,59 +66,57 @@ export const useQuestionSession = (): QuestionSessionHook => {
     filters: any = {}
   ): Promise<DatabaseQuestion | null> => {
     try {
-      // Check buffer first for immediate response
-      if (questionBuffer.length > 0) {
-        const question = questionBuffer[0];
-        setQuestionBuffer(prev => prev.slice(1));
-        console.log('Using buffered question for instant loading');
-        
-        // Prefetch more questions in background if buffer is getting low
-        if (questionBuffer.length <= 2) {
-          marathonQuestionService.getQuestionsForSession(sessionId, sessionType, {
-            section: filters.section,
-            difficulty: filters.difficulty,
-            limit: 10
-          }).then(questions => {
-            setQuestionBuffer(prev => [...prev, ...questions.slice(1)]);
-          });
-        }
-        
-        return question;
-      }
-
-      // If no buffer, fetch immediately
-      console.log('Fetching questions with filters:', filters);
+      console.log('Fetching question with filters:', filters);
       
-      const sectionFilter = filters.subjects?.includes('math') && !filters.subjects?.includes('english') 
-        ? 'math' 
-        : filters.subjects?.includes('english') && !filters.subjects?.includes('math')
-        ? 'reading-writing'
-        : filters.section;
-
-      const questions = await marathonQuestionService.getQuestionsForSession(
-        sessionId,
-        sessionType,
-        {
-          section: sectionFilter,
-          difficulty: filters.difficulty === 'mixed' ? undefined : filters.difficulty,
-          limit: 10
+      // Map subject filters to database section values
+      let sectionFilter = null;
+      if (filters.section) {
+        sectionFilter = filters.section;
+      } else if (filters.subjects) {
+        if (filters.subjects.includes('math') && !filters.subjects.includes('english')) {
+          sectionFilter = 'math';
+        } else if (filters.subjects.includes('english') && !filters.subjects.includes('math')) {
+          sectionFilter = 'reading-writing';
         }
-      );
-
-      if (questions.length > 0) {
-        const question = questions[0];
-        setQuestionBuffer(questions.slice(1)); // Buffer the rest
-        console.log('Successfully loaded question:', question.id);
-        return question;
+        // If both or neither, leave sectionFilter as null for mixed
       }
 
-      console.log('No questions available');
+      console.log('Mapped section filter:', sectionFilter);
+      
+      const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
+        p_session_id: sessionId,
+        p_session_type: sessionType,
+        p_section: sectionFilter,
+        p_difficulty: filters.difficulty === 'mixed' ? null : filters.difficulty,
+        p_limit: 1
+      });
+
+      if (error) {
+        console.error('Error getting next question:', error);
+        return null;
+      }
+
+      if (data && data.length > 0) {
+        const dbQuestion = data[0];
+        console.log('Successfully loaded question:', dbQuestion.id, 'Section:', dbQuestion.section);
+        
+        const mappedQuestion: DatabaseQuestion = {
+          ...dbQuestion,
+          id: dbQuestion.id?.toString() || '',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        return mappedQuestion;
+      }
+
+      console.log('No questions available with current filters');
       return null;
     } catch (error) {
       console.error('Error in getNextQuestion:', error);
       return null;
     }
-  }, [questionBuffer]);
+  }, []);
 
   const markQuestionUsed = useCallback(async (
     sessionId: string,
@@ -140,6 +136,8 @@ export const useQuestionSession = (): QuestionSessionHook => {
         console.error('Error marking question as used:', error);
         throw error;
       }
+
+      console.log('Question marked as used successfully');
     } catch (error) {
       console.error('Error in markQuestionUsed:', error);
       throw error;
@@ -154,6 +152,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
+        console.log('No authenticated user');
         return { used: 0, total: 0 };
       }
 
@@ -168,6 +167,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
         .single();
 
       if (error || !data) {
+        console.log('No session data found, returning defaults');
         const total = await getTotalQuestions();
         return { used: 0, total };
       }
@@ -194,6 +194,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return 0;
       }
 
+      console.log('Total questions in question_bank:', count);
       return count || 0;
     } catch (error) {
       console.error('Error in getTotalQuestions:', error);
