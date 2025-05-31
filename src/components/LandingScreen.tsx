@@ -59,7 +59,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
 
         {/* Trusted By Section */}
         <div className="text-center mb-20">
-          <p className="text-slate-500 font-medium mb-8">Trusted by top students preparing for elite universities</p>
+          <p className="text-slate-500 font-medium mb-8">Our students have gotten into top elite universities</p>
           <div className="flex justify-center items-center space-x-12 opacity-60">
             <div className="text-2xl font-bold text-slate-400">Harvard</div>
             <div className="text-2xl font-bold text-slate-400">MIT</div>
