@@ -104,14 +104,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
         if (error) throw error;
         
-        // Convert the response to match DatabaseQuestion interface
+        // Convert the response to match DatabaseQuestion interface with default values
         const convertedData: DatabaseQuestion = {
           ...data,
           id: data.id?.toString() || '',
-          is_active: data.is_active ?? true,
-          created_at: data.created_at || new Date().toISOString(),
-          updated_at: data.updated_at || new Date().toISOString(),
-          metadata: data.metadata || {}
+          is_active: true, // Default value since question_bank doesn't have this
+          created_at: new Date().toISOString(), // Default value
+          updated_at: new Date().toISOString(), // Default value
+          metadata: {} // Default value since question_bank doesn't have this
         };
         onSave(convertedData);
       } else {
@@ -124,14 +124,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
         if (error) throw error;
         
-        // Convert the response to match DatabaseQuestion interface
+        // Convert the response to match DatabaseQuestion interface with default values
         const convertedData: DatabaseQuestion = {
           ...data,
           id: data.id?.toString() || '',
-          is_active: data.is_active ?? true,
-          created_at: data.created_at || new Date().toISOString(),
-          updated_at: data.updated_at || new Date().toISOString(),
-          metadata: data.metadata || {}
+          is_active: true, // Default value
+          created_at: new Date().toISOString(), // Default value
+          updated_at: new Date().toISOString(), // Default value
+          metadata: {} // Default value
         };
         onSave(convertedData);
       }

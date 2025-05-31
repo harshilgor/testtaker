@@ -73,14 +73,14 @@ class QuestionService {
       throw error;
     }
 
-    // Convert bigint IDs to strings and ensure all required fields are present
+    // Convert bigint IDs to strings and provide default values for missing properties
     const questions = (data || []).map(q => ({
       ...q,
       id: q.id?.toString() || '',
-      is_active: q.is_active ?? true,
-      created_at: q.created_at || new Date().toISOString(),
-      updated_at: q.updated_at || new Date().toISOString(),
-      metadata: q.metadata || {}
+      is_active: true, // Default value since question_bank doesn't have this column
+      created_at: new Date().toISOString(), // Default value
+      updated_at: new Date().toISOString(), // Default value
+      metadata: {} // Default value since question_bank doesn't have this column
     }));
 
     // Shuffle the results to get random questions
@@ -113,10 +113,10 @@ class QuestionService {
     return {
       ...data,
       id: data.id?.toString() || '',
-      is_active: data.is_active ?? true,
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-      metadata: data.metadata || {}
+      is_active: true, // Default value
+      created_at: new Date().toISOString(), // Default value
+      updated_at: new Date().toISOString(), // Default value
+      metadata: {} // Default value
     };
   }
 
@@ -189,7 +189,7 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      // Include image URL from metadata
+      // Include image URL from metadata (will be empty object for question_bank)
       imageUrl: dbQuestion.metadata?.image_url
     };
   }
@@ -224,7 +224,7 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      // Include image URL from metadata
+      // Include image URL from metadata (will be empty for question_bank)
       imageUrl: dbQuestion.metadata?.image_url
     };
   }
