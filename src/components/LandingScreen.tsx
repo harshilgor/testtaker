@@ -1,20 +1,15 @@
-
 import React from 'react';
 import { GraduationCap, Brain, Target, Award, Users, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
-
 const LandingScreen: React.FC<LandingScreenProps> = ({
   onGetStarted
 }) => {
   console.log('LandingScreen: Rendering landing screen');
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+  return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="flex justify-between items-center p-6 max-w-7xl mx-auto">
         <div className="flex items-center space-x-3">
@@ -37,13 +32,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           
           <h2 className="text-6xl font-bold text-slate-900 mb-6 leading-tight">
             An AI tutor made for
-            <span className="text-blue-600"> SAT success</span>
+            <span className="text-blue-600"> SAT </span>
           </h2>
           
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Transform your SAT preparation with personalized AI tutoring. Get unlimited practice questions, 
-            real-time feedback, and comprehensive mock tests designed to maximize your score.
-          </p>
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">Transform your SAT preparation with personalized AI tutoring. Get more than 3000 + questions to practice from, real-time feedback, and comprehensive mock tests designed to maximize your score.</p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
@@ -163,8 +155,6 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           <p className="text-sm text-blue-200 mt-4">Lets get that dream SAT score 🚀</p>
         </div>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingScreen;
