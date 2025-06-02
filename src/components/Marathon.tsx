@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -64,18 +65,32 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   });
 
   useEffect(() => {
+    console.log('Marathon: useEffect triggered', { session: !!session, currentQuestion: !!currentQuestion, loading });
     if (session && !currentQuestion && !loading) {
+      console.log('Marathon: Initializing session data');
       initializeSessionData().then(() => {
         loadNextQuestion();
       });
     }
   }, [session, currentQuestion, loading]);
 
+  console.log('Marathon: Rendering state', {
+    hasSettings: !!settings,
+    hasSession: !!session,
+    hasCurrentQuestion: !!currentQuestion,
+    loading,
+    showSummary,
+    sessionStatsUsed: sessionStats.used,
+    sessionStatsTotal: sessionStats.total
+  });
+
   if (!settings) {
+    console.log('Marathon: No settings, showing NoSettingsState');
     return <MarathonNoSettingsState onBack={onBack} />;
   }
 
   if (showSummary) {
+    console.log('Marathon: Showing summary');
     return (
       <MarathonSummary
         attempts={attempts}
@@ -90,10 +105,12 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   }
 
   if (loading) {
+    console.log('Marathon: Loading state');
     return <MarathonLoadingState />;
   }
 
   if (!currentQuestion && sessionStats.used >= sessionStats.total) {
+    console.log('Marathon: No more questions available');
     return (
       <MarathonCompletionState
         sessionStats={sessionStats}
@@ -104,9 +121,11 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   }
 
   if (!currentQuestion) {
+    console.log('Marathon: Loading first question');
     return <MarathonLoadingState message="Loading first question..." />;
   }
 
+  console.log('Marathon: Rendering main question interface');
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto p-6">
@@ -119,7 +138,11 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
         <MarathonQuestion
           question={currentQuestion}
-          onAnswer={handleAnswer}
+          onAnswer={(selectedAnswer: string) => {
+            console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer });
+            const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+            handleAnswer(selectedAnswer);
+          }}
           onNext={handleNext}
         />
 

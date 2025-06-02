@@ -9,7 +9,7 @@ import AnswerFeedback from './AnswerFeedback';
 
 interface MarathonQuestionProps {
   question: DatabaseQuestion;
-  onAnswer: (answer: string, isCorrect: boolean, showAnswerUsed: boolean) => void;
+  onAnswer: (answer: string) => void;
   onNext: () => void;
 }
 
@@ -23,27 +23,33 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [showAnswer, setShowAnswer] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
+  console.log('MarathonQuestion: Rendering', { questionId: question.id, answered, showFeedback });
+
   const handleAnswerSelect = (answer: string) => {
     if (answered) return;
+    console.log('MarathonQuestion: Answer selected', answer);
     setSelectedAnswer(answer);
   };
 
   const handleShowAnswer = () => {
+    console.log('MarathonQuestion: Show answer clicked');
     setShowAnswer(true);
     setShowFeedback(true);
     setSelectedAnswer(question.correct_answer);
+    onAnswer(question.correct_answer);
   };
 
   const handleSubmit = () => {
     if (!selectedAnswer && !showAnswer) return;
     
-    const isCorrect = selectedAnswer === question.correct_answer;
+    console.log('MarathonQuestion: Submit clicked', { selectedAnswer, showAnswer });
     setAnswered(true);
     setShowFeedback(true);
-    onAnswer(selectedAnswer, isCorrect, showAnswer);
+    onAnswer(selectedAnswer);
   };
 
   const handleNext = () => {
+    console.log('MarathonQuestion: Next clicked');
     setSelectedAnswer('');
     setAnswered(false);
     setShowAnswer(false);
