@@ -19,20 +19,25 @@ export const useQuestionSession = (): QuestionSessionHook => {
     try {
       console.log('Initializing session:', sessionId, sessionType);
       
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) {
-        console.error('No authenticated user for session initialization');
+      const { data: user, error: userError } = await supabase.auth.getUser();
+      if (userError || !user.user) {
+        console.error('No authenticated user for session initialization:', userError);
         return;
       }
 
       // Check if session already exists
-      const { data: existingSession } = await supabase
+      const { data: existingSession, error: sessionError } = await supabase
         .from('question_sessions')
         .select('*')
         .eq('session_id', sessionId)
         .eq('session_type', sessionType)
         .eq('user_id', user.user.id)
-        .single();
+        .maybeSingle();
+
+      if (sessionError) {
+        console.error('Error checking existing session:', sessionError);
+        return;
+      }
 
       if (existingSession) {
         console.log('Session already exists:', existingSession);
@@ -40,6 +45,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
       }
 
       // Create new session with empty questions_used array
+      const totalQuestions = await getTotalQuestions();
       const { error } = await supabase
         .from('question_sessions')
         .insert({
@@ -47,7 +53,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
           session_id: sessionId,
           session_type: sessionType,
           questions_used: [],
-          total_questions_available: await getTotalQuestions()
+          total_questions_available: totalQuestions
         });
 
       if (error) {
@@ -68,6 +74,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
     try {
       console.log('Fetching question with filters:', filters);
       
+      // Check if user is authenticated
+      const { data: user, error: userError } = await supabase.auth.getUser();
+      if (userError || !user.user) {
+        console.error('User not authenticated:', userError);
+        return null;
+      }
+
       // Map subject filters to database section values
       let sectionFilter = null;
       if (filters.section) {
@@ -78,11 +91,11 @@ export const useQuestionSession = (): QuestionSessionHook => {
         } else if (filters.subjects.includes('english') && !filters.subjects.includes('math')) {
           sectionFilter = 'reading-writing';
         }
-        // If both or neither, leave sectionFilter as null for mixed
       }
 
       console.log('Mapped section filter:', sectionFilter);
       
+      // Try to call the RPC function with proper error handling
       const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -92,7 +105,47 @@ export const useQuestionSession = (): QuestionSessionHook => {
       });
 
       if (error) {
-        console.error('Error getting next question:', error);
+        console.error('Error calling get_unused_questions_for_session:', error);
+        
+        // Fallback: try to get questions directly from question_bank
+        console.log('Falling back to direct question_bank query');
+        
+        let query = supabase
+          .from('question_bank')
+          .select('*')
+          .not('question_text', 'is', null);
+
+        if (sectionFilter) {
+          query = query.eq('section', sectionFilter);
+        }
+        
+        if (filters.difficulty && filters.difficulty !== 'mixed') {
+          query = query.eq('difficulty', filters.difficulty);
+        }
+
+        const { data: fallbackData, error: fallbackError } = await query
+          .order('id')
+          .limit(1);
+
+        if (fallbackError) {
+          console.error('Fallback query also failed:', fallbackError);
+          return null;
+        }
+
+        if (fallbackData && fallbackData.length > 0) {
+          const dbQuestion = fallbackData[0];
+          console.log('Successfully loaded question via fallback:', dbQuestion.id);
+          
+          const mappedQuestion: DatabaseQuestion = {
+            ...dbQuestion,
+            id: dbQuestion.id?.toString() || '',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          return mappedQuestion;
+        }
+        
         return null;
       }
 
@@ -126,6 +179,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
     try {
       console.log('Marking question as used:', questionId);
       
+      const { data: user, error: userError } = await supabase.auth.getUser();
+      if (userError || !user.user) {
+        console.error('User not authenticated for marking question used:', userError);
+        return;
+      }
+
+      // Try RPC function first
       const { error } = await supabase.rpc('mark_question_used_in_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -133,8 +193,41 @@ export const useQuestionSession = (): QuestionSessionHook => {
       });
 
       if (error) {
-        console.error('Error marking question as used:', error);
-        throw error;
+        console.error('Error with RPC mark_question_used_in_session:', error);
+        
+        // Fallback: update directly
+        console.log('Falling back to direct update');
+        
+        const { data: session, error: getError } = await supabase
+          .from('question_sessions')
+          .select('questions_used')
+          .eq('session_id', sessionId)
+          .eq('session_type', sessionType)
+          .eq('user_id', user.user.id)
+          .maybeSingle();
+
+        if (getError) {
+          console.error('Error getting session for fallback:', getError);
+          return;
+        }
+
+        const currentUsed = session?.questions_used || [];
+        const updatedUsed = [...currentUsed, questionId];
+
+        const { error: updateError } = await supabase
+          .from('question_sessions')
+          .upsert({
+            user_id: user.user.id,
+            session_id: sessionId,
+            session_type: sessionType,
+            questions_used: updatedUsed,
+            total_questions_available: await getTotalQuestions()
+          });
+
+        if (updateError) {
+          console.error('Error updating session directly:', updateError);
+          throw updateError;
+        }
       }
 
       console.log('Question marked as used successfully');
@@ -149,10 +242,10 @@ export const useQuestionSession = (): QuestionSessionHook => {
     sessionType: string
   ): Promise<{ used: number; total: number }> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (!user) {
-        console.log('No authenticated user');
+      if (userError || !user) {
+        console.log('No authenticated user for session stats:', userError);
         return { used: 0, total: 0 };
       }
 
@@ -164,9 +257,15 @@ export const useQuestionSession = (): QuestionSessionHook => {
         .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
+      if (error) {
+        console.error('Error getting session stats:', error);
+        const total = await getTotalQuestions();
+        return { used: 0, total };
+      }
+
+      if (!data) {
         console.log('No session data found, returning defaults');
         const total = await getTotalQuestions();
         return { used: 0, total };

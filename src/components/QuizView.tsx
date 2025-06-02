@@ -77,32 +77,64 @@ const QuizView: React.FC<QuizViewProps> = ({
         setIsLoading(true);
         console.log('Loading questions for subject:', subject, 'topics:', topics);
         
-        // Initialize session for question tracking
-        await initializeSession(sessionId, mode === 'marathon' ? 'marathon' : 'quiz');
+        // Initialize session for question tracking with error handling
+        try {
+          await initializeSession(sessionId, mode === 'marathon' ? 'marathon' : 'quiz');
+        } catch (sessionError) {
+          console.error('Failed to initialize session, continuing without session tracking:', sessionError);
+        }
         
         // Map subject to database section
         const section = subject === 'math' ? 'math' : 'reading-writing';
         
         let dbQuestions: DatabaseQuestion[] = [];
         
-        if (topics.length > 0 && !topics.includes('wrong-questions')) {
-          // Load questions by specific topics/skills
-          for (const topic of topics) {
+        try {
+          if (topics.length > 0 && !topics.includes('wrong-questions')) {
+            // Load questions by specific topics/skills
+            for (const topic of topics) {
+              const filters = {
+                section,
+                skill: topic,
+                limit: Math.ceil(numQuestions / topics.length)
+              };
+              try {
+                const topicQuestions = await questionService.getRandomQuestions(filters);
+                dbQuestions.push(...topicQuestions);
+              } catch (topicError) {
+                console.error(`Failed to load questions for topic ${topic}:`, topicError);
+              }
+            }
+          } else {
+            // Load questions by subject only
             const filters = {
               section,
-              skill: topic,
-              limit: Math.ceil(numQuestions / topics.length)
+              limit: numQuestions
             };
-            const topicQuestions = await questionService.getRandomQuestions(filters);
-            dbQuestions.push(...topicQuestions);
+            dbQuestions = await questionService.getRandomQuestions(filters);
           }
-        } else {
-          // Load questions by subject only
-          const filters = {
-            section,
-            limit: numQuestions
-          };
-          dbQuestions = await questionService.getRandomQuestions(filters);
+        } catch (questionsError) {
+          console.error('Failed to load questions from service:', questionsError);
+          
+          // Fallback: try loading directly from database
+          console.log('Attempting fallback question loading...');
+          try {
+            const { data: fallbackQuestions, error: fallbackError } = await questionService.supabase
+              .from('question_bank')
+              .select('*')
+              .eq('section', section)
+              .not('question_text', 'is', null)
+              .limit(numQuestions);
+
+            if (!fallbackError && fallbackQuestions) {
+              dbQuestions = fallbackQuestions;
+              console.log('Successfully loaded questions via fallback');
+            } else {
+              console.error('Fallback question loading also failed:', fallbackError);
+            }
+          } catch (fallbackError) {
+            console.error('Fallback attempt failed:', fallbackError);
+          }
         }
         
         // Convert database questions to quiz format
@@ -114,7 +146,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           };
         }).slice(0, numQuestions); // Ensure we don't exceed requested count
         
-        console.log('Loaded questions:', convertedQuestions.length);
+        console.log('Successfully loaded questions:', convertedQuestions.length);
         
         if (convertedQuestions.length === 0) {
           console.warn('No questions loaded for the given criteria');
@@ -124,7 +156,11 @@ const QuizView: React.FC<QuizViewProps> = ({
         setAnswers(new Array(convertedQuestions.length).fill(null));
         setFlaggedQuestions(new Array(convertedQuestions.length).fill(false));
       } catch (error) {
-        console.error('Error loading questions:', error);
+        console.error('Error in loadQuestions:', error);
+        // Set empty arrays so the component doesn't crash
+        setQuestions([]);
+        setAnswers([]);
+        setFlaggedQuestions([]);
       } finally {
         setIsLoading(false);
       }
@@ -140,6 +176,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       setTotalPoints(points);
     } catch (error) {
       console.error('Error loading user points:', error);
+      // Don't block the UI if points can't be loaded
+      setTotalPoints(0);
     }
   };
 
@@ -194,13 +232,15 @@ const QuizView: React.FC<QuizViewProps> = ({
         await loadUserPoints();
       } catch (error) {
         console.error('Error recording answer:', error);
+        // Don't block the user from continuing if point recording fails
       }
 
-      // Track question usage
+      // Track question usage with error handling
       try {
         await questionService.trackQuestionUsage(currentQuestion.id, mode === 'marathon' ? 'marathon' : 'quiz', sessionId);
       } catch (error) {
         console.error('Error tracking question usage:', error);
+        // Don't block the user from continuing if tracking fails
       }
     }
   };
