@@ -16,6 +16,7 @@ interface UseMarathonActionsProps {
   endSession: () => any;
   setShowSummary: (show: boolean) => void;
   setShowEndConfirmation: (show: boolean) => void;
+  sessionPoints: number;
 }
 
 export const useMarathonActions = ({
@@ -31,7 +32,8 @@ export const useMarathonActions = ({
   recordAttempt,
   endSession,
   setShowSummary,
-  setShowEndConfirmation
+  setShowEndConfirmation,
+  sessionPoints
 }: UseMarathonActionsProps) => {
 
   const loadNextQuestion = useCallback(async () => {
@@ -105,9 +107,9 @@ export const useMarathonActions = ({
     if (isCorrect) {
       const pointsMap = { easy: 3, medium: 6, hard: 9 };
       const points = pointsMap[attempt.difficulty] || 6;
-      setSessionPoints(prev => prev + points);
+      setSessionPoints(sessionPoints + points);
     }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints]);
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints]);
 
   const handleNext = useCallback(() => {
     loadNextQuestion();
