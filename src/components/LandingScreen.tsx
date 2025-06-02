@@ -69,7 +69,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
         {/* Features Section */}
         <div className="mb-20">
           <div className="text-center mb-16">
-            <h3 className="text-4xl font-bold text-slate-900 mb-4">Save hours, learn smarter.</h3>
+            <h3 className="text-4xl font-bold text-slate-900 mb-4">Practice non-stop, learn smarter.</h3>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
               From personalized practice to comprehensive analytics, we've got your SAT preparation covered.
             </p>
