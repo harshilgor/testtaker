@@ -129,7 +129,15 @@ const QuizView: React.FC<QuizViewProps> = ({
               .limit(numQuestions);
 
             if (!fallbackError && fallbackQuestions) {
-              dbQuestions = fallbackQuestions;
+              // Map the question_bank data to DatabaseQuestion format
+              dbQuestions = fallbackQuestions.map(q => ({
+                ...q,
+                id: q.id?.toString() || '',
+                is_active: true, // Default value
+                created_at: new Date().toISOString(), // Default value
+                updated_at: new Date().toISOString(), // Default value
+                metadata: {} // Default value
+              }));
               console.log('Successfully loaded questions via fallback');
             } else {
               console.error('Fallback question loading also failed:', fallbackError);
