@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -60,7 +59,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     recordAttempt,
     endSession,
     setShowSummary,
-    setShowEndConfirmation
+    setShowEndConfirmation,
+    sessionPoints
   });
 
   useEffect(() => {
