@@ -537,7 +537,7 @@ export type Database = {
         Returns: undefined
       }
       update_leaderboard_stats: {
-        Args: { target_user_id: string }
+        Args: Record<PropertyKey, never> | { target_user_id: string }
         Returns: undefined
       }
       update_leaderboard_stats_v2: {

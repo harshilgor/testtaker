@@ -1,14 +1,20 @@
+
 import React from 'react';
 import { GraduationCap, Brain, Target, Award, Users, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
+
 const LandingScreen: React.FC<LandingScreenProps> = ({
   onGetStarted
 }) => {
-  return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+  console.log('LandingScreen: Rendering landing screen');
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="flex justify-between items-center p-6 max-w-7xl mx-auto">
         <div className="flex items-center space-x-3">
@@ -43,7 +49,6 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
               Start Learning Today
             </Button>
-            
           </div>
 
           <div className="flex items-center justify-center space-x-2 text-slate-500">
@@ -98,7 +103,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                   <Target className="h-8 w-8 text-green-600" />
                 </div>
                 <h4 className="text-2xl font-bold text-slate-900 mb-4">Unlimited Practice</h4>
-                <p className="text-slate-600 leading-relaxed">Solve from over 3000 questions, 30+ mock tests and unlimited AI generated questions </p>
+                <p className="text-slate-600 leading-relaxed">
+                  Solve from over 3000 questions, 30+ mock tests and unlimited AI generated questions
+                </p>
               </CardContent>
             </Card>
             
@@ -150,10 +157,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             Join thousands of students who have improved their scores with our AI-powered platform.
           </p>
-          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">Start now</Button>
+          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+            Start now
+          </Button>
           <p className="text-sm text-blue-200 mt-4">Lets get that dream SAT score 🚀</p>
         </div>
       </main>
-    </div>;
+    </div>
+  );
 };
+
 export default LandingScreen;

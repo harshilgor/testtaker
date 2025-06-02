@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LandingScreen from '@/components/LandingScreen';
@@ -20,8 +21,17 @@ const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [marathonSettings, setMarathonSettings] = useState<MarathonSettingsType | null>(null);
 
+  console.log('Index: Auth state', { 
+    user: !!user, 
+    session: !!session, 
+    loading, 
+    currentScreen,
+    userEmail: user?.email 
+  });
+
   // Show loading spinner while checking auth state
   if (loading) {
+    console.log('Index: Showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -31,6 +41,7 @@ const Index = () => {
 
   // If user is not authenticated, show landing or auth page
   if (!user || !session) {
+    console.log('Index: User not authenticated, showing landing/auth');
     if (currentScreen === 'auth') {
       return <AuthPage />;
     }
@@ -38,24 +49,29 @@ const Index = () => {
   }
 
   // User is authenticated - show app content
+  console.log('Index: User authenticated, showing app content');
   const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
 
   const handleSignOut = async () => {
+    console.log('Index: Signing out user');
     await signOut();
     setCurrentScreen('landing');
   };
 
   const handleNavigate = (screen: Screen) => {
+    console.log('Index: Navigating to screen:', screen);
     setCurrentScreen(screen);
   };
 
   const handleMarathonSettingsComplete = (settings: MarathonSettingsType) => {
+    console.log('Index: Marathon settings completed:', settings);
     setMarathonSettings(settings);
     setCurrentScreen('marathon');
   };
 
   // Show marathon settings page
   if (currentScreen === 'marathon-settings') {
+    console.log('Index: Showing marathon settings');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -76,6 +92,7 @@ const Index = () => {
 
   // Show marathon with settings
   if (currentScreen === 'marathon') {
+    console.log('Index: Showing marathon');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -97,6 +114,7 @@ const Index = () => {
 
   // Show different screens based on current state
   if (currentScreen === 'quiz') {
+    console.log('Index: Showing quiz');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -116,6 +134,7 @@ const Index = () => {
   }
 
   if (currentScreen === 'mocktest') {
+    console.log('Index: Showing mock test');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -135,6 +154,7 @@ const Index = () => {
   }
 
   if (currentScreen === 'leaderboard') {
+    console.log('Index: Showing leaderboard');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -154,6 +174,7 @@ const Index = () => {
   }
 
   if (currentScreen === 'performance-dashboard') {
+    console.log('Index: Showing performance dashboard');
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation
@@ -173,6 +194,7 @@ const Index = () => {
   }
 
   // Show main dashboard
+  console.log('Index: Showing main dashboard');
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
