@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { questionService, DatabaseQuestion } from '@/services/questionService';
+import { supabase } from '@/integrations/supabase/client';
 import Calculator from './Calculator';
 import { recordQuestionAttempt, getUserTotalPoints } from '@/services/pointsService';
 import QuizHeader from './Quiz/QuizHeader';
@@ -119,7 +121,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           // Fallback: try loading directly from database
           console.log('Attempting fallback question loading...');
           try {
-            const { data: fallbackQuestions, error: fallbackError } = await questionService.supabase
+            const { data: fallbackQuestions, error: fallbackError } = await supabase
               .from('question_bank')
               .select('*')
               .eq('section', section)
