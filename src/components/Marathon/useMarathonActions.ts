@@ -1,21 +1,18 @@
 
 import { useCallback } from 'react';
-import { DatabaseQuestion } from '@/services/questionService';
-import { MarathonSession, QuestionAttempt } from '../../types/marathon';
-import { useQuestionSession } from '@/hooks/useQuestionSession';
-import { recordQuestionAttempt } from '@/services/pointsService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseMarathonActionsProps {
-  session: MarathonSession | null;
-  currentQuestion: DatabaseQuestion | null;
+  session: any;
+  currentQuestion: any;
   timeSpent: number;
-  setCurrentQuestion: (question: DatabaseQuestion | null) => void;
+  setCurrentQuestion: (question: any) => void;
   setTimeSpent: (time: number) => void;
   setLoading: (loading: boolean) => void;
-  setSessionPoints: (points: (prev: number) => number) => void;
+  setSessionPoints: (points: number) => void;
   loadUserPoints: () => Promise<void>;
   loadSessionStats: () => Promise<void>;
-  recordAttempt: (attempt: QuestionAttempt) => void;
+  recordAttempt: (attempt: any) => void;
   endSession: () => any;
   setShowSummary: (show: boolean) => void;
   setShowEndConfirmation: (show: boolean) => void;
@@ -36,77 +33,81 @@ export const useMarathonActions = ({
   setShowSummary,
   setShowEndConfirmation
 }: UseMarathonActionsProps) => {
-  const { getNextQuestion, markQuestionUsed } = useQuestionSession();
 
   const loadNextQuestion = useCallback(async () => {
     if (!session) return;
-
+    
     setLoading(true);
+    
     try {
-      const filters: any = {};
+      const subjects = session.subjects.includes('both') ? ['math', 'english'] : session.subjects;
+      const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
       
-      if (session.subjects.length > 0 && !session.subjects.includes('both')) {
-        filters.subjects = session.subjects;
-      }
+      console.log('Loading question for subject:', randomSubject, 'difficulty:', session.difficulty);
       
-      if (session.difficulty !== 'mixed') {
-        filters.difficulty = session.difficulty;
+      const { data: questions, error } = await supabase.rpc('get_unused_questions_for_session', {
+        p_session_id: session.id,
+        p_session_type: 'marathon',
+        p_section: randomSubject,
+        p_difficulty: session.difficulty === 'mixed' ? null : session.difficulty,
+        p_limit: 1
+      });
+
+      if (error) {
+        console.error('Error loading question:', error);
+        return;
       }
 
-      const question = await getNextQuestion(session.id, 'marathon', filters);
-      
-      if (question) {
+      if (questions && questions.length > 0) {
+        const question = questions[0];
+        console.log('Loaded question:', question);
         setCurrentQuestion(question);
         setTimeSpent(0);
-        await loadSessionStats();
+        
+        await supabase.rpc('mark_question_used_in_session', {
+          p_session_id: session.id,
+          p_session_type: 'marathon',
+          p_question_id: question.id.toString()
+        });
       } else {
-        setShowSummary(true);
+        console.log('No more questions available');
+        setCurrentQuestion(null);
       }
     } catch (error) {
-      console.error('Error loading next question:', error);
+      console.error('Error in loadNextQuestion:', error);
     } finally {
       setLoading(false);
     }
-  }, [session, getNextQuestion, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats, setShowSummary]);
+  }, [session, setCurrentQuestion, setTimeSpent, setLoading]);
 
-  const handleAnswer = useCallback(async (answer: string, isCorrect: boolean, showAnswerUsed: boolean) => {
-    if (!currentQuestion || !session) return;
-
-    try {
-      await markQuestionUsed(session.id, 'marathon', currentQuestion.id);
-      
-      const points = await recordQuestionAttempt({
-        question_id: currentQuestion.id,
-        session_id: session.id,
-        session_type: 'marathon',
-        is_correct: isCorrect,
-        difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
-        subject: currentQuestion.section === 'math' ? 'math' : 'english',
-        topic: currentQuestion.skill,
-        time_spent: timeSpent
-      });
-      
+  const handleAnswer = useCallback((selectedAnswer: string) => {
+    if (!currentQuestion) return;
+    
+    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    
+    const attempt = {
+      questionId: currentQuestion.id.toString(),
+      subject: currentQuestion.section as 'math' | 'english',
+      topic: currentQuestion.skill || 'general',
+      difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
+      isCorrect,
+      timeSpent,
+      hintsUsed: 0,
+      showAnswerUsed: false,
+      flagged: false,
+      timestamp: new Date()
+    };
+    
+    console.log('Recording attempt:', attempt);
+    recordAttempt(attempt);
+    
+    // Award points based on difficulty and correctness
+    if (isCorrect) {
+      const pointsMap = { easy: 3, medium: 6, hard: 9 };
+      const points = pointsMap[attempt.difficulty] || 6;
       setSessionPoints(prev => prev + points);
-      await loadUserPoints();
-
-      const attempt: QuestionAttempt = {
-        questionId: currentQuestion.id,
-        subject: currentQuestion.section === 'math' ? 'math' : 'english',
-        topic: currentQuestion.skill,
-        difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
-        isCorrect,
-        timeSpent,
-        hintsUsed: 0,
-        showAnswerUsed,
-        flagged: false,
-        timestamp: new Date()
-      };
-
-      recordAttempt(attempt);
-    } catch (error) {
-      console.error('Error recording answer:', error);
     }
-  }, [currentQuestion, session, timeSpent, markQuestionUsed, recordQuestionAttempt, setSessionPoints, loadUserPoints, recordAttempt]);
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints]);
 
   const handleNext = useCallback(() => {
     loadNextQuestion();
@@ -116,11 +117,42 @@ export const useMarathonActions = ({
     setShowEndConfirmation(true);
   }, [setShowEndConfirmation]);
 
-  const confirmEndMarathon = useCallback(() => {
-    endSession();
-    setShowSummary(true);
-    setShowEndConfirmation(false);
-  }, [endSession, setShowSummary, setShowEndConfirmation]);
+  const confirmEndMarathon = useCallback(async () => {
+    try {
+      const sessionData = endSession();
+      
+      if (sessionData?.session) {
+        // Save marathon session to Supabase
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          const { error } = await supabase
+            .from('marathon_sessions')
+            .insert({
+              user_id: user.user.id,
+              total_questions: sessionData.session.totalQuestions,
+              correct_answers: sessionData.session.correctAnswers,
+              difficulty: sessionData.session.difficulty,
+              subjects: sessionData.session.subjects,
+              start_time: sessionData.session.startTime,
+              end_time: sessionData.session.endTime || new Date(),
+            });
+
+          if (error) {
+            console.error('Error saving marathon session:', error);
+          } else {
+            console.log('Marathon session saved successfully');
+          }
+        }
+      }
+      
+      await loadUserPoints();
+      await loadSessionStats();
+      setShowSummary(true);
+    } catch (error) {
+      console.error('Error ending marathon:', error);
+      setShowSummary(true);
+    }
+  }, [endSession, loadUserPoints, loadSessionStats, setShowSummary]);
 
   return {
     loadNextQuestion,

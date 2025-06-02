@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Clock, Target, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Trophy, Clock, Target, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { QuestionAttempt } from '../types/marathon';
 
 interface MarathonSummaryProps {
@@ -22,9 +22,22 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   const totalQuestions = attempts.length;
   const correctAnswers = attempts.filter(a => a.isCorrect).length;
   const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-  const averageTime = attempts.length > 0
-    ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0) / attempts.length)
-    : 0;
+  const totalTimeSpent = attempts.reduce((sum, attempt) => sum + attempt.timeSpent, 0);
+  const averageTime = attempts.length > 0 ? Math.round(totalTimeSpent / attempts.length) : 0;
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
 
   const subjectBreakdown = attempts.reduce((acc, attempt) => {
     if (!acc[attempt.subject]) {
@@ -59,37 +72,41 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Marathon Complete!</h1>
-          <p className="text-xl text-gray-600">Here's how you performed</p>
+          <p className="text-xl text-gray-600">Here's your detailed performance summary</p>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 text-center">
-            <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Questions</h3>
-            <p className="text-3xl font-bold text-blue-600">{totalQuestions}</p>
-          </Card>
+        {/* Main Performance Metrics */}
+        <Card className="p-8 mb-8 bg-white shadow-lg">
+          <div className="grid md:grid-cols-2 gap-8 mb-6">
+            <div className="text-center">
+              <div className="text-6xl font-bold text-blue-600 mb-2">{totalQuestions}</div>
+              <div className="text-lg text-gray-600">Questions Attempted</div>
+            </div>
+            <div className="text-center">
+              <div className="text-6xl font-bold text-green-600 mb-2">{correctAnswers}</div>
+              <div className="text-lg text-gray-600">Questions Correct</div>
+            </div>
+          </div>
+          
+          <div className="text-center mb-6">
+            <div className="text-4xl font-bold text-purple-600 mb-2">{accuracy}%</div>
+            <div className="text-lg text-gray-600">Overall Accuracy</div>
+          </div>
 
-          <Card className="p-6 text-center">
-            <Trophy className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Accuracy</h3>
-            <p className="text-3xl font-bold text-green-600">{accuracy}%</p>
-          </Card>
-
-          <Card className="p-6 text-center">
-            <Clock className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Avg Time</h3>
-            <p className="text-3xl font-bold text-purple-600">{averageTime}s</p>
-          </Card>
-
-          <Card className="p-6 text-center">
-            <TrendingUp className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900">Points</h3>
-            <p className="text-3xl font-bold text-orange-600">{sessionPoints}</p>
-          </Card>
-        </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-2">{formatTime(totalTimeSpent)}</div>
+              <div className="text-lg text-gray-600">Total Time Spent</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600 mb-2">{formatTime(averageTime)}</div>
+              <div className="text-lg text-gray-600">Average Time per Question</div>
+            </div>
+          </div>
+        </Card>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <Card className="p-6">
