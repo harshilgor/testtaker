@@ -71,11 +71,11 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </p>
           
           <div className="flex items-center justify-center space-x-12 text-gray-400 text-2xl font-light">
-            <span>Harvard</span>
-            <span>MIT</span>
-            <span>Stanford</span>
-            <span>Yale</span>
-            <span>Princeton</span>
+            <span className="font-bold">Harvard</span>
+            <span className="font-bold">MIT</span>
+            <span className="font-bold">Stanford</span>
+            <span className="font-bold">Yale</span>
+            <span className="font-bold">Princeton</span>
           </div>
         </div>
       </section>
