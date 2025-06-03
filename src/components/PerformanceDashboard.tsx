@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -80,59 +79,49 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center mb-8">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="flex items-center mr-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
         {/* Practice Scores Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-6">Practice Scores</h2>
+        <div className="mb-6 md:mb-8">
+          <h2 className="text-xl md:text-2xl font-semibold text-gray-700 mb-4 md:mb-6">Practice Scores</h2>
           
           {/* Mock Test Scores */}
           {mockTestResults.length > 0 && (
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-6 md:mb-8">
               {mockTestResults.map((result, index) => (
                 <Card key={index} className="bg-white shadow-lg">
-                  <CardContent className="p-8">
-                    <div className="flex justify-between items-center mb-6">
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">SAT Practice {index + 1}</h3>
-                        <p className="text-gray-600">{new Date(result.date).toLocaleDateString()}</p>
+                  <CardContent className="p-4 md:p-8">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 md:mb-6">
+                      <div className="mb-2 sm:mb-0">
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-900">SAT Practice {index + 1}</h3>
+                        <p className="text-sm md:text-base text-gray-600">{new Date(result.date).toLocaleDateString()}</p>
                       </div>
-                      <Button variant="outline" size="sm" className="flex items-center">
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
+                      <ArrowRight className="h-4 w-4 text-gray-400" />
                     </div>
                     
-                    <div className="grid md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
                       <div className="text-center">
-                        <div className="text-lg text-gray-600 mb-2">Your Total Score</div>
-                        <div className="text-5xl font-bold text-gray-900 mb-2">
+                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Total Score</div>
+                        <div className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">
                           {Math.round((result.mathScore || 0) + (result.englishScore || 0))}
                         </div>
-                        <div className="text-sm text-gray-500">400 to 1600</div>
+                        <div className="text-xs md:text-sm text-gray-500">400 to 1600</div>
                       </div>
                       
                       <div className="text-center">
-                        <div className="text-lg text-gray-600 mb-2">Your Reading and Writing Score</div>
-                        <div className="text-4xl font-bold text-gray-900 mb-2">{result.englishScore || 0}</div>
-                        <div className="text-sm text-gray-500">200 to 800</div>
+                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Reading and Writing Score</div>
+                        <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{result.englishScore || 0}</div>
+                        <div className="text-xs md:text-sm text-gray-500">200 to 800</div>
                       </div>
                       
                       <div className="text-center">
-                        <div className="text-lg text-gray-600 mb-2">Your Math Score</div>
-                        <div className="text-4xl font-bold text-gray-900 mb-2">{result.mathScore || 0}</div>
-                        <div className="text-sm text-gray-500">200 to 800</div>
+                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Math Score</div>
+                        <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{result.mathScore || 0}</div>
+                        <div className="text-xs md:text-sm text-gray-500">200 to 800</div>
                       </div>
                     </div>
                   </CardContent>
@@ -142,31 +131,31 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           )}
 
           {/* Total Mock Tests Card */}
-          <Card className="bg-white shadow-lg mb-8">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Total Mock Tests Taken</h3>
-              <div className="text-5xl font-bold text-blue-600 mb-2">{mockTestResults.length}</div>
-              <p className="text-gray-600">Complete SAT practice tests</p>
+          <Card className="bg-white shadow-lg mb-6 md:mb-8">
+            <CardContent className="p-4 md:p-8 text-center">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Total Mock Tests Taken</h3>
+              <div className="text-3xl md:text-5xl font-bold text-blue-600 mb-2">{mockTestResults.length}</div>
+              <p className="text-sm md:text-base text-gray-600">Complete SAT practice tests</p>
             </CardContent>
           </Card>
 
           {/* Total Questions Attempted Card */}
           <Card className="bg-white shadow-lg">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Total Questions Attempted</h3>
-              <div className="grid md:grid-cols-2 gap-8">
+            <CardContent className="p-4 md:p-8 text-center">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Total Questions Attempted</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                 <div>
-                  <div className="text-4xl font-bold text-purple-600 mb-2">{totalQuizQuestions}</div>
-                  <p className="text-gray-600">Quiz Mode Questions</p>
+                  <div className="text-2xl md:text-4xl font-bold text-purple-600 mb-2">{totalQuizQuestions}</div>
+                  <p className="text-sm md:text-base text-gray-600">Quiz Mode Questions</p>
                 </div>
                 <div>
-                  <div className="text-4xl font-bold text-orange-600 mb-2">{totalMarathonQuestions}</div>
-                  <p className="text-gray-600">Marathon Mode Questions</p>
+                  <div className="text-2xl md:text-4xl font-bold text-orange-600 mb-2">{totalMarathonQuestions}</div>
+                  <p className="text-sm md:text-base text-gray-600">Marathon Mode Questions</p>
                 </div>
               </div>
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="text-5xl font-bold text-gray-900 mb-2">{totalQuizQuestions + totalMarathonQuestions}</div>
-                <p className="text-gray-600">Total Questions Attempted</p>
+              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-200">
+                <div className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">{totalQuizQuestions + totalMarathonQuestions}</div>
+                <p className="text-sm md:text-base text-gray-600">Total Questions Attempted</p>
               </div>
             </CardContent>
           </Card>
@@ -174,16 +163,16 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
         {/* Help Section */}
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-8">
-            <div className="flex items-start space-x-4">
+          <CardContent className="p-4 md:p-8">
+            <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
               <div className="bg-blue-500 rounded-full p-3 flex-shrink-0">
-                <div className="text-white text-xl font-bold">?</div>
+                <div className="text-white text-lg md:text-xl font-bold">?</div>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                <h3 className="text-base md:text-lg font-semibold text-blue-900 mb-2">
                   Need help? <span className="text-blue-600">Learn more about the Digital SAT and registering</span>
                 </h3>
-                <p className="text-blue-800">
+                <p className="text-sm md:text-base text-blue-800">
                   Get comprehensive guidance on SAT preparation, test formats, and registration process.
                 </p>
               </div>

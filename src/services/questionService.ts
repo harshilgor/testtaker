@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -24,6 +23,7 @@ export interface DatabaseQuestion {
   created_at: string;
   updated_at: string;
   metadata?: any;
+  image?: boolean;
 }
 
 export interface QuestionFilters {
@@ -39,39 +39,71 @@ class QuestionService {
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
     console.log('Getting random questions with filters:', filters);
     
-    // Use the database function for better consistency
-    const { data, error } = await supabase.rpc('get_random_questions', {
-      p_section: filters.section || null,
-      p_difficulty: filters.difficulty || null,
-      p_skill: filters.skill || null,
-      p_domain: filters.domain || null,
-      p_limit: filters.limit || 10,
-      p_exclude_ids: filters.excludeIds ? filters.excludeIds.map(id => parseInt(id)).filter(id => !isNaN(id)) : []
-    });
+    try {
+      // Direct query to question_bank table with better error handling
+      let query = supabase
+        .from('question_bank')
+        .select('*')
+        .not('question_text', 'is', null);
 
-    if (error) {
-      console.error('Error fetching questions:', error);
-      throw error;
+      // Apply filters
+      if (filters.section) {
+        query = query.eq('section', filters.section);
+      }
+      
+      if (filters.difficulty && filters.difficulty !== 'mixed') {
+        query = query.eq('difficulty', filters.difficulty);
+      }
+      
+      if (filters.skill) {
+        query = query.eq('skill', filters.skill);
+      }
+      
+      if (filters.domain) {
+        query = query.eq('domain', filters.domain);
+      }
+
+      // Apply limit
+      const limit = filters.limit || 10;
+      
+      // Get random questions by ordering randomly
+      const { data, error } = await query
+        .order('id')
+        .limit(Math.min(limit * 3, 100)); // Get more than needed for randomization
+
+      if (error) {
+        console.error('Error fetching questions:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No questions found with filters:', filters);
+        return [];
+      }
+
+      // Shuffle and take the requested number
+      const shuffled = data.sort(() => Math.random() - 0.5);
+      const questions = shuffled.slice(0, limit).map(q => ({
+        ...q,
+        id: q.id?.toString() || '',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {},
+        image: q.image || false
+      }));
+
+      console.log(`Successfully loaded ${questions.length} questions from question_bank`);
+      return questions;
+    } catch (error) {
+      console.error('Error in getRandomQuestions:', error);
+      return [];
     }
-
-    // Convert and provide default values for missing properties
-    const questions = (data || []).map(q => ({
-      ...q,
-      id: q.id?.toString() || '',
-      is_active: true, // Default value
-      created_at: new Date().toISOString(), // Default value
-      updated_at: new Date().toISOString(), // Default value
-      metadata: {} // Default value
-    }));
-
-    console.log(`Loaded ${questions.length} questions from question_bank`);
-    return questions;
   }
 
   async getQuestionById(id: string): Promise<DatabaseQuestion | null> {
     console.log('Getting question by ID:', id);
     
-    // Convert string ID to number for question_bank
     const numericId = parseInt(id);
     if (isNaN(numericId)) {
       console.error('Invalid question ID:', id);
@@ -95,10 +127,11 @@ class QuestionService {
     return {
       ...data,
       id: data.id?.toString() || '',
-      is_active: true, // Default value
-      created_at: new Date().toISOString(), // Default value
-      updated_at: new Date().toISOString(), // Default value
-      metadata: {} // Default value
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {},
+      image: data.image || false
     };
   }
 
@@ -134,13 +167,10 @@ class QuestionService {
     }
   }
 
-  // Convert database question to the format expected by existing components
   convertToLegacyFormat(dbQuestion: DatabaseQuestion) {
-    // Map database section to expected subject type
     const getSubject = (section: string): 'math' | 'english' => {
       if (section === 'math') return 'math';
       if (section === 'reading-writing') return 'english';
-      // Default fallback
       return 'english';
     };
 
@@ -171,12 +201,11 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      // Include image URL from metadata (will be empty object for question_bank)
-      imageUrl: dbQuestion.metadata?.image_url
+      imageUrl: dbQuestion.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
+      hasImage: dbQuestion.image || false
     };
   }
 
-  // Convert database question to SAT format
   convertToSATFormat(dbQuestion: DatabaseQuestion) {
     return {
       id: dbQuestion.id,
@@ -206,8 +235,8 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      // Include image URL from metadata (will be empty for question_bank)
-      imageUrl: dbQuestion.metadata?.image_url
+      imageUrl: dbQuestion.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
+      hasImage: dbQuestion.image || false
     };
   }
 }

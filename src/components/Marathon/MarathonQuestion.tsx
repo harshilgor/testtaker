@@ -58,12 +58,14 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-4 md:p-6">
       <Card className="border-slate-200">
-        <CardContent className="p-8">
+        <CardContent className="p-4 md:p-8">
           <QuestionContent
             questionText={question.question_text}
             imageUrl={question.metadata?.image_url}
+            hasImage={question.image}
+            questionId={question.id}
           />
 
           <AnswerOptions
@@ -101,7 +103,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
             <div className="flex justify-end">
               <button
                 onClick={handleNext}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                className="bg-blue-600 text-white px-4 md:px-6 py-2 rounded hover:bg-blue-700 text-sm md:text-base"
               >
                 Next Question
               </button>

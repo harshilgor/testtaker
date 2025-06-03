@@ -290,6 +290,7 @@ export type Database = {
           difficulty: string | null
           domain: string | null
           id: number
+          image: boolean | null
           incorrect_rationale_a: string | null
           incorrect_rationale_b: string | null
           incorrect_rationale_c: string | null
@@ -310,6 +311,7 @@ export type Database = {
           difficulty?: string | null
           domain?: string | null
           id?: number
+          image?: boolean | null
           incorrect_rationale_a?: string | null
           incorrect_rationale_b?: string | null
           incorrect_rationale_c?: string | null
@@ -330,6 +332,7 @@ export type Database = {
           difficulty?: string | null
           domain?: string | null
           id?: number
+          image?: boolean | null
           incorrect_rationale_a?: string | null
           incorrect_rationale_b?: string | null
           incorrect_rationale_c?: string | null

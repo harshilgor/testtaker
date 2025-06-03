@@ -1,160 +1,102 @@
+
 import React from 'react';
-import { GraduationCap, Brain, Target, Award, Users, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Brain, Target, TrendingUp, Users } from 'lucide-react';
+
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
-const LandingScreen: React.FC<LandingScreenProps> = ({
-  onGetStarted
-}) => {
-  console.log('LandingScreen: Rendering landing screen');
-  return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+
+const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
       {/* Header */}
-      <header className="flex justify-between items-center p-6 max-w-7xl mx-auto">
-        <div className="flex items-center space-x-3">
-          <GraduationCap className="h-8 w-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-slate-900">TestTaker.ai</h1>
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Brain className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">SAT AI Prep Ace</h1>
+            </div>
+            <Button 
+              onClick={onGetStarted}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 text-sm md:text-base"
+            >
+              Get Started
+            </Button>
+          </div>
         </div>
-        <Button onClick={onGetStarted} variant="outline" className="border-slate-300 hover:bg-slate-50">
-          Get Started
-        </Button>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-20">
-          <div className="inline-flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-6">
-            <Brain className="h-4 w-4 mr-2" />
-            Powered by Advanced AI
-          </div>
-          
-          <h2 className="text-6xl font-bold text-slate-900 mb-6 leading-tight">
-            An AI tutor made for
-            <span className="text-blue-600"> SAT </span>
-          </h2>
-          
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">Transform your SAT preparation with personalized AI tutoring. Get more than 3000 + questions to practice from, real-time feedback, and comprehensive mock tests designed to maximize your score.</p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button onClick={onGetStarted} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
-              Start Learning Today
+      <main className="flex-1 flex items-center justify-center p-4 md:p-8">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Hero Section */}
+          <div className="mb-12 md:mb-16">
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 md:mb-6">
+              Master the SAT with
+              <span className="block text-blue-600 mt-2">AI-Powered Practice</span>
+            </h2>
+            <p className="text-lg md:text-xl text-gray-600 mb-6 md:mb-8 max-w-3xl mx-auto leading-relaxed">
+              Experience personalized SAT preparation with thousands of practice questions, 
+              adaptive learning, and real-time performance tracking.
+            </p>
+            <Button 
+              onClick={onGetStarted}
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Start Your Journey
             </Button>
           </div>
 
-          <div className="flex items-center justify-center space-x-2 text-slate-500">
-            <div className="flex -space-x-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-full border-2 border-white"></div>
-              <div className="w-8 h-8 bg-green-500 rounded-full border-2 border-white"></div>
-              <div className="w-8 h-8 bg-purple-500 rounded-full border-2 border-white"></div>
-              <div className="w-8 h-8 bg-orange-500 rounded-full border-2 border-white"></div>
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            <div className="bg-white rounded-lg p-4 md:p-6 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 flex items-center justify-center">
+                <Brain className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Smart Learning</h3>
+              <p className="text-sm md:text-base text-gray-600">AI adapts to your learning style and identifies areas for improvement</p>
             </div>
-            <span className="text-sm font-medium">Trusted by 10,000+ students worldwide</span>
-          </div>
-        </div>
-
-        {/* Trusted By Section */}
-        <div className="text-center mb-20">
-          <p className="text-slate-500 font-medium mb-8">Our students have gotten into top elite universities</p>
-          <div className="flex justify-center items-center space-x-12 opacity-60">
-            <div className="text-2xl font-bold text-slate-400">Harvard</div>
-            <div className="text-2xl font-bold text-slate-400">MIT</div>
-            <div className="text-2xl font-bold text-slate-400">Stanford</div>
-            <div className="text-2xl font-bold text-slate-400">Yale</div>
-            <div className="text-2xl font-bold text-slate-400">Princeton</div>
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="mb-20">
-          <div className="text-center mb-16">
-            <h3 className="text-4xl font-bold text-slate-900 mb-4">Practice non-stop, learn smarter.</h3>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              From personalized practice to comprehensive analytics, we've got your SAT preparation covered.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white">
-              <CardContent className="p-8 text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Brain className="h-8 w-8 text-blue-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-slate-900 mb-4">AI-Powered Tutoring</h4>
-                <p className="text-slate-600 leading-relaxed">
-                  Advanced algorithms analyze your performance and adapt questions to your skill level, 
-                  ensuring optimal learning efficiency.
-                </p>
-              </CardContent>
-            </Card>
             
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white">
-              <CardContent className="p-8 text-center">
-                <div className="bg-green-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Target className="h-8 w-8 text-green-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-slate-900 mb-4">Unlimited Practice</h4>
-                <p className="text-slate-600 leading-relaxed">
-                  Solve from over 3000 questions, 30+ mock tests and unlimited AI generated questions
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-lg p-4 md:p-6 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-green-100 rounded-full p-3 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 flex items-center justify-center">
+                <Target className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Targeted Practice</h3>
+              <p className="text-sm md:text-base text-gray-600">Focus on specific topics and question types that need work</p>
+            </div>
             
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-shadow duration-300 bg-white">
-              <CardContent className="p-8 text-center">
-                <div className="bg-purple-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Award className="h-8 w-8 text-purple-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-slate-900 mb-4">Real SAT Experience</h4>
-                <p className="text-slate-600 leading-relaxed">
-                  Full-length mock tests simulate the actual SAT environment, 
-                  preparing you for test day with realistic timing and format.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="bg-white rounded-3xl shadow-xl p-12 mb-20">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="flex items-center justify-center mb-4">
-                <Users className="h-8 w-8 text-blue-600 mr-2" />
-                <span className="text-4xl font-bold text-slate-900">10K+</span>
+            <div className="bg-white rounded-lg p-4 md:p-6 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-purple-100 rounded-full p-3 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
               </div>
-              <p className="text-slate-600 font-medium">Students Served</p>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Track Progress</h3>
+              <p className="text-sm md:text-base text-gray-600">Monitor your improvement with detailed analytics and insights</p>
             </div>
-            <div>
-              <div className="flex items-center justify-center mb-4">
-                <TrendingUp className="h-8 w-8 text-green-600 mr-2" />
-                <span className="text-4xl font-bold text-slate-900">350+</span>
+            
+            <div className="bg-white rounded-lg p-4 md:p-6 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-orange-100 rounded-full p-3 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 flex items-center justify-center">
+                <Users className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
               </div>
-              <p className="text-slate-600 font-medium">Average Score Improvement</p>
-            </div>
-            <div>
-              <div className="flex items-center justify-center mb-4">
-                <Target className="h-8 w-8 text-purple-600 mr-2" />
-                <span className="text-4xl font-bold text-slate-900">98%</span>
-              </div>
-              <p className="text-slate-600 font-medium">Student Satisfaction</p>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Community</h3>
+              <p className="text-sm md:text-base text-gray-600">Join thousands of students achieving their SAT goals</p>
             </div>
           </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-white">
-          <h3 className="font-bold mb-4 text-3xl">FREE 💰- from a student who faced problems finding resources to practice for SAT</h3>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of students who have improved their scores with our AI-powered platform.
-          </p>
-          <Button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
-            Start now
-          </Button>
-          <p className="text-sm text-blue-200 mt-4">Lets get that dream SAT score 🚀</p>
         </div>
       </main>
-    </div>;
+
+      {/* Footer */}
+      <footer className="bg-white border-t py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm md:text-base text-gray-600">
+            © 2024 SAT AI Prep Ace. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
 };
+
 export default LandingScreen;

@@ -17,8 +17,12 @@ const QuestionImage: React.FC<QuestionImageProps> = ({
       <img
         src={imageUrl}
         alt={alt}
-        className="max-w-full h-auto rounded-lg border shadow-sm"
-        style={{ maxHeight: '400px' }}
+        className="w-full h-auto rounded-lg border shadow-sm"
+        style={{ maxHeight: '300px', maxWidth: '100%' }}
+        onError={(e) => {
+          console.log('Image failed to load:', imageUrl);
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
       />
     </div>
   );
