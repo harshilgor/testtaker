@@ -1,10 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, TrendingUp, Target, Award, Eye, Settings } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { FileText, Zap, BookOpen, Brain, Settings } from 'lucide-react';
 import AdminPanel from './AdminPanel';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
@@ -15,23 +13,6 @@ interface DashboardProps {
   onQuizSelect: () => void;
 }
 
-interface MarathonStats {
-  totalQuestions: number;
-  correctAnswers: number;
-  averageAccuracy: number;
-  totalSessions: number;
-  bestStreak: number;
-}
-
-interface MarathonSession {
-  id: string;
-  total_questions: number;
-  correct_answers: number;
-  difficulty: string;
-  created_at: string;
-  subjects: string[];
-}
-
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
   onMarathonSelect,
@@ -40,64 +21,23 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const { isAdmin } = useAdminAccess();
-  const [marathonStats, setMarathonStats] = useState<MarathonStats>({
-    totalQuestions: 0,
-    correctAnswers: 0,
-    averageAccuracy: 0,
-    totalSessions: 0,
-    bestStreak: 0
-  });
-
-  // Fetch marathon sessions from Supabase
-  const { data: marathonSessions = [], isLoading } = useQuery({
-    queryKey: ['marathon-sessions', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('marathon_sessions')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching marathon sessions:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
-  });
-
-  useEffect(() => {
-    if (marathonSessions.length > 0) {
-      const totalQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
-      const correctAnswers = marathonSessions.reduce((sum, session) => sum + (session.correct_answers || 0), 0);
-      
-      setMarathonStats({
-        totalQuestions,
-        correctAnswers,
-        averageAccuracy: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
-        totalSessions: marathonSessions.length,
-        bestStreak: 0 // We'll need to track streaks in future updates
-      });
-    }
-  }, [marathonSessions]);
 
   if (showAdminPanel) {
     return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex flex-col px-4 py-8">
       <div className="max-w-6xl mx-auto w-full">
-        <div className="text-center mb-8 relative">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Welcome back, {userName}!</h1>
-          <p className="text-lg text-gray-600">
-            Choose your practice mode to get started
-          </p>
+        <div className="text-center mb-12 relative">
+          <div className="mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+              Welcome back, {userName}!
+            </h1>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+              Choose your practice mode to continue your SAT preparation journey
+            </p>
+          </div>
           
           {/* Admin Access Button - Only visible to admin */}
           {isAdmin && (
@@ -105,124 +45,39 @@ const Dashboard: React.FC<DashboardProps> = ({
               onClick={() => setShowAdminPanel(true)}
               variant="ghost"
               size="sm"
-              className="absolute top-0 right-0 text-gray-500 hover:text-gray-700"
+              className="absolute top-0 right-0 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
             >
               <Settings className="h-4 w-4" />
             </Button>
           )}
         </div>
 
-        {/* Marathon Stats Section */}
-        {!isLoading && marathonStats.totalQuestions > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-orange-500" />
-                <span>Your Marathon Progress</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Target className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</p>
-                  <p className="text-sm text-gray-600">Questions</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Award className="h-5 w-5 text-green-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{marathonStats.correctAnswers}</p>
-                  <p className="text-sm text-gray-600">Correct</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</p>
-                  <p className="text-sm text-gray-600">Accuracy</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Clock className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{marathonStats.totalSessions}</p>
-                  <p className="text-sm text-gray-600">Sessions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Marathon History Section */}
-        {!isLoading && marathonSessions.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Zap className="h-5 w-5 text-orange-500" />
-                <span>Recent Marathon Sessions</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {marathonSessions.slice(0, 5).map((session) => {
-                  const accuracy = session.total_questions > 0 ? Math.round((session.correct_answers / session.total_questions) * 100) : 0;
-                  return (
-                    <div key={session.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div>
-                        <h3 className="font-medium">Marathon Session</h3>
-                        <p className="text-sm text-gray-600">
-                          {new Date(session.created_at).toLocaleDateString()} • {session.total_questions} questions • {session.difficulty} difficulty
-                        </p>
-                        {session.subjects && session.subjects.length > 0 && (
-                          <p className="text-xs text-gray-500">
-                            Subjects: {session.subjects.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className={`text-lg font-bold ${
-                          accuracy >= 70 ? 'text-green-600' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {accuracy}%
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {session.correct_answers}/{session.total_questions}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-8">
           {/* Marathon Mode */}
-          <Card className="hover:shadow-lg transition-shadow border border-gray-100">
-            <CardContent className="p-6">
+          <Card className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-xl bg-gradient-to-br from-orange-50 to-red-50 hover:scale-105">
+            <CardContent className="p-8">
               <div className="text-center">
-                <div className="bg-orange-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Zap className="h-8 w-8 text-orange-500" />
+                <div className="bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                  <Zap className="h-10 w-10 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">Marathon Mode</h3>
-                <p className="text-gray-600 mb-4 text-sm leading-relaxed">3000+ real SAT Practice questions with unlimited practice</p>
+                <h3 className="text-2xl font-bold text-slate-800 mb-4">Marathon Mode</h3>
+                <p className="text-slate-600 mb-6 text-base leading-relaxed">3000+ real SAT practice questions with unlimited practice and instant feedback</p>
                 
-                <div className="flex items-center justify-center space-x-4 mb-4 text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <Zap className="h-3 w-3 mr-1" />
+                <div className="flex items-center justify-center space-x-6 mb-6 text-sm text-slate-500">
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <Zap className="h-3 w-3 mr-1 text-orange-500" />
                     Unlimited
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Self-Paced
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <Brain className="h-3 w-3 mr-1 text-orange-500" />
+                    Adaptive
                   </div>
                 </div>
 
-                <Button onClick={onMarathonSelect} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 font-medium">
+                <Button 
+                  onClick={onMarathonSelect} 
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
+                >
                   Start Marathon
                 </Button>
               </div>
@@ -230,27 +85,30 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Card>
 
           {/* Quiz Mode */}
-          <Card className="hover:shadow-lg transition-shadow border border-gray-100">
-            <CardContent className="p-6">
+          <Card className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-xl bg-gradient-to-br from-purple-50 to-indigo-50 hover:scale-105">
+            <CardContent className="p-8">
               <div className="text-center">
-                <div className="bg-purple-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Brain className="h-8 w-8 text-purple-500" />
+                <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                  <Brain className="h-10 w-10 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">Quiz</h3>
-                <p className="text-gray-600 mb-4 text-sm leading-relaxed">Create custom quizzes from specific topics and difficulty levels</p>
+                <h3 className="text-2xl font-bold text-slate-800 mb-4">Quiz Mode</h3>
+                <p className="text-slate-600 mb-6 text-base leading-relaxed">Create custom quizzes from specific topics and difficulty levels for focused practice</p>
                 
-                <div className="flex items-center justify-center space-x-4 mb-4 text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <BookOpen className="h-3 w-3 mr-1" />
+                <div className="flex items-center justify-center space-x-6 mb-6 text-sm text-slate-500">
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <BookOpen className="h-3 w-3 mr-1 text-purple-500" />
                     Custom
                   </div>
-                  <div className="flex items-center">
-                    <Brain className="h-3 w-3 mr-1" />
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <Brain className="h-3 w-3 mr-1 text-purple-500" />
                     Targeted
                   </div>
                 </div>
 
-                <Button onClick={onQuizSelect} className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 font-medium">
+                <Button 
+                  onClick={onQuizSelect} 
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
+                >
                   Create Quiz
                 </Button>
               </div>
@@ -258,33 +116,63 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Card>
 
           {/* Mock Test Mode */}
-          <Card className="hover:shadow-lg transition-shadow border border-gray-100">
-            <CardContent className="p-6">
+          <Card className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-xl bg-gradient-to-br from-blue-50 to-cyan-50 hover:scale-105">
+            <CardContent className="p-8">
               <div className="text-center">
-                <div className="bg-blue-50 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <FileText className="h-8 w-8 text-blue-500" />
+                <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                  <FileText className="h-10 w-10 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">Mock Test</h3>
-                <p className="text-gray-600 mb-4 text-sm leading-relaxed">Take a full SAT mock test with real timing and adaptive scoring</p>
+                <h3 className="text-2xl font-bold text-slate-800 mb-4">Mock Test</h3>
+                <p className="text-slate-600 mb-6 text-base leading-relaxed">Take a full SAT mock test with real timing and adaptive scoring system</p>
                 
-                <div className="flex items-center justify-center space-x-4 mb-4 text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <FileText className="h-3 w-3 mr-1" />
+                <div className="flex items-center justify-center space-x-6 mb-6 text-sm text-slate-500">
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <FileText className="h-3 w-3 mr-1 text-blue-500" />
                     Real Format
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
+                  <div className="flex items-center bg-white rounded-full px-3 py-1 shadow-sm">
+                    <Brain className="h-3 w-3 mr-1 text-blue-500" />
                     Timed
                   </div>
                 </div>
 
-                <Button onClick={onMockTestSelect} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 font-medium">
+                <Button 
+                  onClick={onMockTestSelect} 
+                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200"
+                >
                   Take Mock Test
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Premium Features Banner */}
+        <Card className="mt-12 border-0 shadow-xl bg-gradient-to-r from-emerald-50 to-teal-50">
+          <CardContent className="p-8 text-center">
+            <h3 className="text-2xl font-bold text-slate-900 mb-4">
+              🚀 Premium SAT Preparation Platform
+            </h3>
+            <p className="text-slate-600 text-lg mb-6 max-w-3xl mx-auto">
+              Experience comprehensive SAT preparation with our AI-powered platform. Track your progress, 
+              identify weak areas, and achieve your target score with personalized learning paths.
+            </p>
+            <div className="flex justify-center items-center space-x-8 text-sm text-slate-500">
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></div>
+                AI-Powered Analytics
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></div>
+                Unlimited Practice
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></div>
+                Real SAT Experience
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
