@@ -1,17 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
 import LoginSignup from './LoginSignup';
-
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
-
-const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
+const LandingScreen: React.FC<LandingScreenProps> = ({
+  onGetStarted
+}) => {
   const [isScrolled, setIsScrolled] = useState(false);
-
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -19,13 +17,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  return (
-    <div className="min-h-screen bg-white">
+  return <div className="min-h-screen bg-white">
       {/* Sticky Transparent Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'
-      }`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -58,11 +52,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
             tests designed to maximize your score.
           </p>
           
-          <Button 
-            onClick={onGetStarted}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-8"
-          >
+          <Button onClick={onGetStarted} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-8">
             Start Learning Today
           </Button>
           
@@ -173,7 +163,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
       <section className="py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h3 className="text-white text-3xl md:text-4xl font-bold mb-6">
-            <span className="bg-yellow-400 text-purple-800 px-3 py-1 rounded-lg mr-3">FREE 💰</span>
+            
             - from a student who faced problems finding resources to practice for SAT
           </h3>
           
@@ -181,11 +171,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
             Join thousands of students who have improved their scores with our AI-powered platform.
           </p>
           
-          <Button 
-            onClick={onGetStarted}
-            size="lg"
-            className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-4"
-          >
+          <Button onClick={onGetStarted} size="lg" className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-4">
             Start now
           </Button>
           
@@ -218,8 +204,6 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingScreen;
