@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Target, Zap } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Target, Zap, CheckCircle, XCircle } from 'lucide-react';
 
 interface ResultDetailViewProps {
   result: any;
@@ -97,9 +98,13 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({
   };
 
   const renderQuizDetails = () => {
+    const correctAnswersCount = result.questions.filter((q: any, i: number) => 
+      result.answers[i] === q.correct_answer
+    ).length;
+
     return (
       <div className="space-y-6">
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-blue-600">{result.score}%</div>
@@ -114,10 +119,16 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round((result.score / 100) * (result.questions?.length || 0))}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{correctAnswersCount}</div>
               <div className="text-sm text-gray-600">Correct Answers</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {result.pointsEarned || 0}
+              </div>
+              <div className="text-sm text-gray-600">Points Earned</div>
             </CardContent>
           </Card>
         </div>
@@ -131,10 +142,80 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({
               <div><strong>Subject:</strong> {result.subject}</div>
               <div><strong>Date:</strong> {new Date(result.date).toLocaleDateString()}</div>
               {result.topics && (
-                <div>
-                  <strong>Topics:</strong> {result.topics.join(', ')}
-                </div>
+                <div><strong>Topics:</strong> {result.topics.join(', ')}</div>
               )}
+              {result.timeSpent && (
+                <div><strong>Time Taken:</strong> {Math.floor(result.timeSpent / 60)}m {result.timeSpent % 60}s</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Question by Question Review */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Question Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {result.questions.map((question: any, index: number) => {
+                const userAnswer = result.answers[index];
+                const isCorrect = userAnswer === question.correct_answer;
+                
+                return (
+                  <div key={question.id || index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <h4 className="font-semibold">Question {index + 1}</h4>
+                      {isCorrect ? (
+                        <CheckCircle className="h-6 w-6 text-green-600" />
+                      ) : (
+                        <XCircle className="h-6 w-6 text-red-600" />
+                      )}
+                    </div>
+                    
+                    <p className="text-gray-800 mb-4">{question.question_text}</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      {['A', 'B', 'C', 'D'].map((option) => {
+                        const optionText = question[`option_${option.toLowerCase()}`];
+                        const isUserAnswer = userAnswer === option;
+                        const isCorrectAnswer = question.correct_answer === option;
+                        
+                        let optionClass = "p-3 rounded border ";
+                        if (isCorrectAnswer) {
+                          optionClass += "bg-green-100 border-green-300";
+                        } else if (isUserAnswer && !isCorrect) {
+                          optionClass += "bg-red-100 border-red-300";
+                        } else {
+                          optionClass += "bg-gray-50 border-gray-200";
+                        }
+                        
+                        return (
+                          <div key={option} className={optionClass}>
+                            <span className="font-medium">{option}.</span> {optionText}
+                            {isUserAnswer && <span className="ml-2 text-sm">(Your answer)</span>}
+                            {isCorrectAnswer && <span className="ml-2 text-sm text-green-600">(Correct)</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="bg-blue-50 rounded p-4 mb-4">
+                      <h5 className="font-medium text-blue-900 mb-2">Explanation:</h5>
+                      <p className="text-blue-800">{question.correct_rationale}</p>
+                    </div>
+                    
+                    {userAnswer && userAnswer !== question.correct_answer && (
+                      <div className="bg-red-50 rounded p-4">
+                        <h5 className="font-medium text-red-900 mb-2">Why {userAnswer} is incorrect:</h5>
+                        <p className="text-red-800">
+                          {question[`incorrect_rationale_${userAnswer.toLowerCase()}`]}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
