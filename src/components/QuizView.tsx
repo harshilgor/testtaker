@@ -145,7 +145,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         
         try {
           const points = await recordQuestionAttempt({
-            question_id: question.id,
+            question_id: String(question.id), // Convert to string to ensure type compatibility
             session_id: sessionId,
             session_type: 'quiz',
             is_correct: isCorrect,
