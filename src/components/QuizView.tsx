@@ -152,7 +152,7 @@ const QuizView: React.FC<QuizViewProps> = ({
             difficulty: difficulty,
             subject: subject,
             topic: question.skill || 'general',
-            time_spent: Math.floor(totalTimeSpent / questions.length).toString()
+            time_spent: Math.floor(totalTimeSpent / questions.length)
           });
           
           totalPointsEarned += points;
