@@ -1,15 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
-import LoginSignup from './LoginSignup';
+
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
+
 const LandingScreen: React.FC<LandingScreenProps> = ({
   onGetStarted
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -17,7 +20,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  return <div className="min-h-screen bg-white">
+
+  return (
+    <div className="min-h-screen bg-white">
       {/* Sticky Transparent Header */}
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -33,7 +38,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-medium">
                 🧠 Powered by Advanced AI
               </span>
-              <LoginSignup onLogin={onGetStarted} />
+              <Button
+                onClick={onGetStarted}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+              >
+                Login / Sign Up
+              </Button>
             </div>
           </div>
         </div>
@@ -163,7 +173,6 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       <section className="py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h3 className="text-white text-3xl md:text-4xl font-bold mb-6">
-            
             - from a student who faced problems finding resources to practice for SAT
           </h3>
           
@@ -204,6 +213,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default LandingScreen;

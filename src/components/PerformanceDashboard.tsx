@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import MarathonHistorySection from './Performance/MarathonHistorySection';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -74,6 +76,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     setMockTestResults(storedMockTests.filter((result: MockTestResult) => result.userName === userName));
   }, [userName]);
 
+  const handleViewMarathonResult = (session: MarathonSession) => {
+    console.log('Viewing marathon result:', session);
+    // Handle viewing marathon result details
+  };
+
   // Calculate total questions attempted in quiz and marathon modes
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
@@ -81,9 +88,24 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6 md:mb-8">
+        <div className="flex items-center mb-6 md:mb-8">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="flex items-center mr-4 border-slate-300"
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
+
+        {/* Marathon Progress Section */}
+        <MarathonHistorySection 
+          marathonSessions={marathonSessions}
+          onViewResult={handleViewMarathonResult}
+        />
 
         {/* Practice Scores Section */}
         <div className="mb-6 md:mb-8">

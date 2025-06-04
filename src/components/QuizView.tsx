@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,59 +91,98 @@ const QuizView: React.FC<QuizViewProps> = ({
         let dbQuestions: DatabaseQuestion[] = [];
         
         try {
+          // Enhanced question loading logic with better error handling
           if (topics.length > 0 && !topics.includes('wrong-questions')) {
-            // Load questions by specific topics/skills
+            console.log('Loading questions by specific topics/skills:', topics);
+            
+            // Try to load questions from question_bank table with skill filter
             for (const topic of topics) {
-              const filters = {
-                section,
-                skill: topic,
-                limit: Math.ceil(numQuestions / topics.length)
-              };
               try {
-                const topicQuestions = await questionService.getRandomQuestions(filters);
-                dbQuestions.push(...topicQuestions);
+                console.log(`Loading questions for topic: ${topic}`);
+                
+                const { data: topicQuestions, error: topicError } = await supabase
+                  .from('question_bank')
+                  .select('*')
+                  .eq('section', section)
+                  .eq('skill', topic)
+                  .not('question_text', 'is', null)
+                  .limit(Math.ceil(numQuestions / topics.length));
+
+                if (topicError) {
+                  console.error(`Error loading questions for topic ${topic}:`, topicError);
+                  continue;
+                }
+
+                if (topicQuestions && topicQuestions.length > 0) {
+                  console.log(`Found ${topicQuestions.length} questions for topic ${topic}`);
+                  
+                  // Convert to DatabaseQuestion format
+                  const convertedTopicQuestions = topicQuestions.map(q => ({
+                    ...q,
+                    id: q.id?.toString() || '',
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    metadata: {}
+                  }));
+                  
+                  dbQuestions.push(...convertedTopicQuestions);
+                } else {
+                  console.log(`No questions found for topic ${topic} in section ${section}`);
+                }
               } catch (topicError) {
                 console.error(`Failed to load questions for topic ${topic}:`, topicError);
               }
             }
+            
+            // If no questions found by skill, try loading by section only
+            if (dbQuestions.length === 0) {
+              console.log('No questions found by skill, loading by section only');
+              
+              const { data: fallbackQuestions, error: fallbackError } = await supabase
+                .from('question_bank')
+                .select('*')
+                .eq('section', section)
+                .not('question_text', 'is', null)
+                .limit(numQuestions);
+
+              if (!fallbackError && fallbackQuestions) {
+                const convertedFallback = fallbackQuestions.map(q => ({
+                  ...q,
+                  id: q.id?.toString() || '',
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  metadata: {}
+                }));
+                dbQuestions.push(...convertedFallback);
+              }
+            }
           } else {
-            // Load questions by subject only
-            const filters = {
-              section,
-              limit: numQuestions
-            };
-            dbQuestions = await questionService.getRandomQuestions(filters);
-          }
-        } catch (questionsError) {
-          console.error('Failed to load questions from service:', questionsError);
-          
-          // Fallback: try loading directly from database
-          console.log('Attempting fallback question loading...');
-          try {
-            const { data: fallbackQuestions, error: fallbackError } = await supabase
+            // Load questions by section only
+            console.log('Loading questions by section only:', section);
+            
+            const { data: sectionQuestions, error: sectionError } = await supabase
               .from('question_bank')
               .select('*')
               .eq('section', section)
               .not('question_text', 'is', null)
               .limit(numQuestions);
 
-            if (!fallbackError && fallbackQuestions) {
-              // Map the question_bank data to DatabaseQuestion format
-              dbQuestions = fallbackQuestions.map(q => ({
+            if (!sectionError && sectionQuestions) {
+              const convertedSection = sectionQuestions.map(q => ({
                 ...q,
                 id: q.id?.toString() || '',
-                is_active: true, // Default value
-                created_at: new Date().toISOString(), // Default value
-                updated_at: new Date().toISOString(), // Default value
-                metadata: {} // Default value
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                metadata: {}
               }));
-              console.log('Successfully loaded questions via fallback');
-            } else {
-              console.error('Fallback question loading also failed:', fallbackError);
+              dbQuestions.push(...convertedSection);
             }
-          } catch (fallbackError) {
-            console.error('Fallback attempt failed:', fallbackError);
           }
+        } catch (questionsError) {
+          console.error('Failed to load questions:', questionsError);
         }
         
         // Convert database questions to quiz format
@@ -160,6 +198,40 @@ const QuizView: React.FC<QuizViewProps> = ({
         
         if (convertedQuestions.length === 0) {
           console.warn('No questions loaded for the given criteria');
+          // Try one more fallback - load any questions from the section
+          try {
+            const { data: anyQuestions, error: anyError } = await supabase
+              .from('question_bank')
+              .select('*')
+              .eq('section', section)
+              .not('question_text', 'is', null)
+              .limit(numQuestions);
+
+            if (!anyError && anyQuestions && anyQuestions.length > 0) {
+              console.log('Loaded fallback questions:', anyQuestions.length);
+              const fallbackConverted = anyQuestions.map(q => {
+                const converted = questionService.convertToLegacyFormat({
+                  ...q,
+                  id: q.id?.toString() || '',
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  metadata: {}
+                });
+                return {
+                  ...converted,
+                  subject: converted.subject as 'math' | 'english'
+                };
+              });
+              setQuestions(fallbackConverted);
+              setAnswers(new Array(fallbackConverted.length).fill(null));
+              setFlaggedQuestions(new Array(fallbackConverted.length).fill(false));
+              setIsLoading(false);
+              return;
+            }
+          } catch (finalError) {
+            console.error('Final fallback also failed:', finalError);
+          }
         }
         
         setQuestions(convertedQuestions);
@@ -360,6 +432,9 @@ const QuizView: React.FC<QuizViewProps> = ({
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <p className="text-slate-600 mb-4">No questions available for the selected criteria.</p>
+          <p className="text-slate-500 text-sm mb-4">
+            Tried loading: {subject} questions {topics.length > 0 ? `for topics: ${topics.join(', ')}` : ''}
+          </p>
           <button 
             onClick={onBack}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
