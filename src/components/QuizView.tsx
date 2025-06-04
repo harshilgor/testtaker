@@ -138,13 +138,18 @@ const QuizView: React.FC<QuizViewProps> = ({
         const userAnswer = selectedAnswers[i];
         const isCorrect = userAnswer === question.correct_answer;
         
+        // Ensure difficulty is one of the allowed values
+        const difficulty = question.difficulty && ['easy', 'medium', 'hard'].includes(question.difficulty) 
+          ? question.difficulty as 'easy' | 'medium' | 'hard'
+          : 'medium';
+        
         try {
           const points = await recordQuestionAttempt({
             question_id: question.id,
             session_id: sessionId,
             session_type: 'quiz',
             is_correct: isCorrect,
-            difficulty: question.difficulty || 'medium',
+            difficulty: difficulty,
             subject: subject,
             topic: question.skill || 'general',
             time_spent: Math.floor(totalTimeSpent / questions.length)

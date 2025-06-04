@@ -206,9 +206,11 @@ const Index = () => {
       <div className="pt-16">
         <Dashboard
           userName={userName}
-          onMarathonSelect={() => setCurrentScreen('marathon-settings')}
-          onMockTestSelect={() => setCurrentScreen('mocktest')}
-          onQuizSelect={() => setCurrentScreen('quiz')}
+          onQuizClick={() => setCurrentScreen('quiz')}
+          onMockTestClick={() => setCurrentScreen('mocktest')}
+          onMarathonClick={() => setCurrentScreen('marathon-settings')}
+          onPerformanceClick={() => setCurrentScreen('performance-dashboard')}
+          onLeaderboardClick={() => setCurrentScreen('leaderboard')}
         />
       </div>
     </div>
