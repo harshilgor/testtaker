@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,6 +30,8 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   
   const { mathTopics, englishTopics, loading, error } = useQuestionTopics();
 
+  // Ensure we have a valid subject for QuizView (math or english only)
+  const quizSubject = subject === 'both' ? 'math' : subject as 'math' | 'english';
   const topics = subject === 'math' ? mathTopics : englishTopics;
   const allTopics = [...topics, ...wrongQuestionsTopics];
 
@@ -63,12 +64,11 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   if (startQuiz) {
     return (
       <QuizView
-        subject={subject}
-        topics={selectedTopics}
-        numQuestions={questionCount}
+        selectedTopics={selectedTopics}
+        numberOfQuestions={questionCount}
+        subject={quizSubject}
         userName={userName}
         onBack={() => setStartQuiz(false)}
-        onComplete={handleComplete}
       />
     );
   }
