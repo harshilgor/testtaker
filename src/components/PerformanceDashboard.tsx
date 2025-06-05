@@ -2,13 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
-import QuizHistorySection from './Performance/QuizHistorySection';
-import ResultDetailView from './Performance/ResultDetailView';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -23,9 +20,6 @@ interface QuizResult {
   topics: string[];
   date: string;
   userName: string;
-  sessionId?: string;
-  timeSpent?: number;
-  pointsEarned?: number;
 }
 
 interface MockTestResult {
@@ -50,10 +44,6 @@ interface MarathonSession {
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
-  const [selectedResult, setSelectedResult] = useState<any>(null);
-  const [selectedResultType, setSelectedResultType] = useState<'quiz' | 'mock' | 'marathon' | null>(null);
-  const [marathonExpanded, setMarathonExpanded] = useState(false);
-  const [quizExpanded, setQuizExpanded] = useState(false);
 
   // Fetch marathon sessions from Supabase
   const { data: marathonSessions = [] } = useQuery({
@@ -87,29 +77,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   }, [userName]);
 
   const handleViewMarathonResult = (session: MarathonSession) => {
-    setSelectedResult(session);
-    setSelectedResultType('marathon');
+    console.log('Viewing marathon result:', session);
+    // Handle viewing marathon result details
   };
-
-  const handleViewQuizResult = (result: QuizResult) => {
-    setSelectedResult(result);
-    setSelectedResultType('quiz');
-  };
-
-  const handleBackToResults = () => {
-    setSelectedResult(null);
-    setSelectedResultType(null);
-  };
-
-  if (selectedResult && selectedResultType) {
-    return (
-      <ResultDetailView
-        result={selectedResult}
-        resultType={selectedResultType}
-        onBack={handleBackToResults}
-      />
-    );
-  }
 
   // Calculate total questions attempted in quiz and marathon modes
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
@@ -118,65 +88,24 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6 md:mb-8">
+        <div className="flex items-center mb-6 md:mb-8">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="flex items-center mr-4 border-slate-300"
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
         {/* Marathon Progress Section */}
-        <Card className="mb-6 md:mb-8">
-          <Collapsible open={marathonExpanded} onOpenChange={setMarathonExpanded}>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl md:text-2xl font-semibold text-gray-700">
-                    Your Marathon Progress ({marathonSessions.length} sessions)
-                  </CardTitle>
-                  {marathonExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-500" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <MarathonHistorySection 
-                  marathonSessions={marathonSessions}
-                  onViewResult={handleViewMarathonResult}
-                />
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-
-        {/* Quiz Progress Section */}
-        <Card className="mb-6 md:mb-8">
-          <Collapsible open={quizExpanded} onOpenChange={setQuizExpanded}>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl md:text-2xl font-semibold text-gray-700">
-                    Your Quiz Progress ({quizResults.length} quizzes)
-                  </CardTitle>
-                  {quizExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-500" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <QuizHistorySection 
-                  quizResults={quizResults}
-                  onViewResult={handleViewQuizResult}
-                />
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
+        <MarathonHistorySection 
+          marathonSessions={marathonSessions}
+          onViewResult={handleViewMarathonResult}
+        />
 
         {/* Practice Scores Section */}
         <div className="mb-6 md:mb-8">
