@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +53,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>([]);
   const [timeSpent, setTimeSpent] = useState(0);
   const [finalTimeSpent, setFinalTimeSpent] = useState<number | null>(null);
@@ -290,8 +292,14 @@ const QuizView: React.FC<QuizViewProps> = ({
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
 
+    // Track that this question has been answered for points calculation
+    const newAnsweredQuestions = new Set(answeredQuestions);
+    const wasAlreadyAnswered = newAnsweredQuestions.has(currentQuestionIndex);
+    newAnsweredQuestions.add(currentQuestionIndex);
+    setAnsweredQuestions(newAnsweredQuestions);
+
     const currentQuestion = questions[currentQuestionIndex];
-    if (currentQuestion) {
+    if (currentQuestion && !wasAlreadyAnswered) {
       const isCorrect = answerIndex === currentQuestion.correctAnswer;
       
       try {
