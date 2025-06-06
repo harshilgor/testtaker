@@ -45,6 +45,7 @@ interface QuizContentProps {
   hintsUsed: number;
   isLastQuestion: boolean;
   calculatorOpen: boolean;
+  feedbackPreference?: 'immediate' | 'end';
   onAnswerSelect: (answerIndex: number) => void;
   onFlag: () => void;
   onToggleCalculator: () => void;
@@ -68,6 +69,7 @@ const QuizContent: React.FC<QuizContentProps> = ({
   hintsUsed,
   isLastQuestion,
   calculatorOpen,
+  feedbackPreference = 'immediate',
   onAnswerSelect,
   onFlag,
   onToggleCalculator,
@@ -84,6 +86,19 @@ const QuizContent: React.FC<QuizContentProps> = ({
   const handleAnswerSelect = (answerIndex: number) => {
     if (mode === 'marathon' && showAnswer) return;
     onAnswerSelect(answerIndex);
+  };
+
+  const shouldShowExplanation = () => {
+    if (mode === 'marathon') {
+      return showExplanation;
+    }
+    
+    // In quiz mode, show explanation based on feedback preference
+    if (feedbackPreference === 'immediate' && selectedAnswer !== null) {
+      return true;
+    }
+    
+    return false;
   };
 
   return (
@@ -216,45 +231,92 @@ const QuizContent: React.FC<QuizContentProps> = ({
             </div>
           )}
 
-          {/* Answer Explanation - Only show in marathon mode or when not hiding */}
-          {(mode === 'marathon' && showExplanation) || (!hideExplanation && selectedAnswer !== null) ? (
+          {/* Explanation Section for Immediate Feedback in Quiz Mode */}
+          {shouldShowExplanation() && !hideExplanation && (
+            <div className="max-h-96 overflow-y-auto">
+              <div className={`p-4 rounded-lg mb-6 ${
+                mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                  ? 'bg-green-50 border border-green-200'
+                  : mode === 'marathon'
+                    ? 'bg-red-50 border border-red-200'
+                    : selectedAnswer === currentQuestion.correctAnswer
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
+              }`}>
+                <div className="flex items-center mb-3">
+                  {selectedAnswer === currentQuestion.correctAnswer ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                  )}
+                  <span className={`font-semibold ${
+                    selectedAnswer === currentQuestion.correctAnswer
+                      ? 'text-green-800'
+                      : 'text-red-800'
+                  }`}>
+                    {selectedAnswer === currentQuestion.correctAnswer ? 'Correct!' : 'Incorrect'}
+                  </span>
+                </div>
+                
+                {/* Correct Answer Explanation */}
+                <div className="mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">
+                    Correct Answer: {String.fromCharCode(65 + currentQuestion.correctAnswer)}
+                  </h4>
+                  <p className={`text-sm ${
+                    selectedAnswer === currentQuestion.correctAnswer
+                      ? 'text-green-700'
+                      : 'text-gray-700'
+                  }`}>
+                    {currentQuestion.rationales?.correct || currentQuestion.explanation}
+                  </p>
+                </div>
+
+                {/* Incorrect Answer Explanation */}
+                {selectedAnswer !== null && selectedAnswer !== currentQuestion.correctAnswer && currentQuestion.rationales?.incorrect && (
+                  <div className="bg-red-100 border border-red-200 rounded p-3">
+                    <h4 className="font-semibold text-red-800 mb-2">
+                      Why {String.fromCharCode(65 + selectedAnswer)} is Wrong:
+                    </h4>
+                    <p className="text-red-700 text-sm">
+                      {currentQuestion.rationales.incorrect[String.fromCharCode(65 + selectedAnswer) as keyof typeof currentQuestion.rationales.incorrect]}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Marathon Mode Answer Explanation */}
+          {mode === 'marathon' && showExplanation && (
             <div className={`p-4 rounded-lg mb-6 ${
-              mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+              selectedAnswer === currentQuestion.correctAnswer
                 ? 'bg-green-50 border border-green-200'
-                : mode === 'marathon'
-                  ? 'bg-red-50 border border-red-200'
-                  : 'bg-blue-50 border border-blue-200'
+                : 'bg-red-50 border border-red-200'
             }`}>
               <div className="flex items-center mb-2">
-                {mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer ? (
+                {selectedAnswer === currentQuestion.correctAnswer ? (
                   <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                ) : mode === 'marathon' ? (
+                ) : (
                   <XCircle className="h-5 w-5 text-red-600 mr-2" />
-                ) : null}
+                )}
                 <span className={`font-semibold ${
-                  mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                  selectedAnswer === currentQuestion.correctAnswer
                     ? 'text-green-800'
-                    : mode === 'marathon'
-                      ? 'text-red-800'
-                      : 'text-blue-800'
+                    : 'text-red-800'
                 }`}>
-                  {mode === 'marathon' 
-                    ? (selectedAnswer === currentQuestion.correctAnswer ? 'Correct!' : 'Incorrect')
-                    : 'Explanation'
-                  }
+                  {selectedAnswer === currentQuestion.correctAnswer ? 'Correct!' : 'Incorrect'}
                 </span>
               </div>
               <p className={`text-sm ${
-                mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                selectedAnswer === currentQuestion.correctAnswer
                   ? 'text-green-700'
-                  : mode === 'marathon'
-                    ? 'text-red-700'
-                    : 'text-blue-700'
+                  : 'text-red-700'
               }`}>
                 {currentQuestion.rationales?.correct || currentQuestion.explanation}
               </p>
             </div>
-          ) : null}
+          )}
 
           {/* Navigation */}
           <div className="flex justify-between items-center">

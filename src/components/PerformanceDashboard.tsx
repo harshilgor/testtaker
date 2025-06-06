@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Target, Award, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
+import PerformanceStats from './Performance/PerformanceStats';
+import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -48,7 +49,7 @@ interface MarathonStats {
   bestStreak: number;
 }
 
-const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack }) => {
+const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
@@ -107,10 +108,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
   const handleViewMarathonResult = (session: MarathonSession) => {
     console.log('Viewing marathon result:', session);
-    // Handle viewing marathon result details
   };
 
-  // Calculate total questions attempted in quiz and marathon modes
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
 
@@ -123,46 +122,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
         {/* Marathon Stats Section */}
         {!isLoading && marathonStats.totalQuestions > 0 && (
-          <Card className="mb-6 md:mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-base md:text-lg">
-                <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-orange-500" />
-                <span>Your Marathon Progress</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Target className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                  </div>
-                  <p className="text-lg md:text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</p>
-                  <p className="text-xs md:text-sm text-gray-600">Questions</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Award className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
-                  </div>
-                  <p className="text-lg md:text-2xl font-bold text-gray-900">{marathonStats.correctAnswers}</p>
-                  <p className="text-xs md:text-sm text-gray-600">Correct</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
-                  </div>
-                  <p className="text-lg md:text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</p>
-                  <p className="text-xs md:text-sm text-gray-600">Accuracy</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
-                  </div>
-                  <p className="text-lg md:text-2xl font-bold text-gray-900">{marathonStats.totalSessions}</p>
-                  <p className="text-xs md:text-sm text-gray-600">Sessions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PerformanceStats marathonStats={marathonStats} />
         )}
 
         {/* Marathon Progress Section */}
@@ -225,25 +185,10 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </Card>
 
           {/* Total Questions Attempted Card */}
-          <Card className="bg-white shadow-lg">
-            <CardContent className="p-4 md:p-8 text-center">
-              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Total Questions Attempted</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                <div>
-                  <div className="text-2xl md:text-4xl font-bold text-purple-600 mb-2">{totalQuizQuestions}</div>
-                  <p className="text-sm md:text-base text-gray-600">Quiz Mode Questions</p>
-                </div>
-                <div>
-                  <div className="text-2xl md:text-4xl font-bold text-orange-600 mb-2">{totalMarathonQuestions}</div>
-                  <p className="text-sm md:text-base text-gray-600">Marathon Mode Questions</p>
-                </div>
-              </div>
-              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gray-200">
-                <div className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">{totalQuizQuestions + totalMarathonQuestions}</div>
-                <p className="text-sm md:text-base text-gray-600">Total Questions Attempted</p>
-              </div>
-            </CardContent>
-          </Card>
+          <QuestionAttemptStats 
+            totalQuizQuestions={totalQuizQuestions}
+            totalMarathonQuestions={totalMarathonQuestions}
+          />
         </div>
 
         {/* Help Section */}

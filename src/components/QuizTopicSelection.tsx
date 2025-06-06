@@ -7,6 +7,7 @@ import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
 import { Subject } from '../pages/Index';
 import QuizView from './QuizView';
 import { useQuestionTopics } from '../hooks/useQuestionTopics';
+import QuizFeedbackPreference from './Quiz/QuizFeedbackPreference';
 
 interface QuizTopicSelectionProps {
   subject: Subject;
@@ -27,6 +28,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
 }) => {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [questionCount, setQuestionCount] = useState<number>(10);
+  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
   const [startQuiz, setStartQuiz] = useState(false);
   
   const { mathTopics, englishTopics, loading, error } = useQuestionTopics();
@@ -67,6 +69,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
         topics={selectedTopics}
         numQuestions={questionCount}
         userName={userName}
+        feedbackPreference={feedbackPreference}
         onBack={() => setStartQuiz(false)}
         onComplete={handleComplete}
       />
@@ -110,6 +113,11 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
 
           {!loading && (
             <>
+              <QuizFeedbackPreference
+                feedbackPreference={feedbackPreference}
+                onPreferenceChange={setFeedbackPreference}
+              />
+
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Topics</h2>
                 <div className="grid gap-4">

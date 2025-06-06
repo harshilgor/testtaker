@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,8 @@ import QuizProgress from './Quiz/QuizProgress';
 import QuestionNavigator from './Quiz/QuestionNavigator';
 import QuizSummary from './Quiz/QuizSummary';
 import QuizContent from './Quiz/QuizContent';
+import QuizDetailedResults from './Quiz/QuizDetailedResults';
+import ExitQuizDialog from './Quiz/ExitQuizDialog';
 import { useQuestionSession } from '@/hooks/useQuestionSession';
 import FeedbackModal from './FeedbackModal';
 
@@ -16,6 +17,7 @@ interface QuizViewProps {
   subject: string;
   topics: string[];
   numQuestions: number;
+  feedbackPreference: 'immediate' | 'end';
   onBack: () => void;
   onComplete: (results: any) => void;
   userName: string;
@@ -46,6 +48,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   subject,
   topics,
   numQuestions,
+  feedbackPreference,
   onBack,
   onComplete,
   userName,
@@ -61,19 +64,19 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [startTime] = useState(Date.now());
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showDetailedResults, setShowDetailedResults] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const [quizResults, setQuizResults] = useState<any>(null);
-  const [sessionId] = useState(() => `${mode}-${Date.now()}-${Math.random()}`);
+  const [sessionId] = useState(() => `quiz-${Date.now()}-${Math.random()}`);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
-  // New feedback preference states
-  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
+  // Feedback modal states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<any>(null);
-  const [showDetailedResults, setShowDetailedResults] = useState(false);
   
-  // Marathon mode specific states
+  // Marathon mode specific states (keeping for compatibility)
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -81,82 +84,35 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const { initializeSession } = useQuestionSession();
 
+  // Load questions and initialize session
   useEffect(() => {
     const loadQuestions = async () => {
       try {
         setIsLoading(true);
         console.log('Loading questions for subject:', subject, 'topics:', topics);
         
-        // Initialize session for question tracking with error handling
         try {
-          await initializeSession(sessionId, mode === 'marathon' ? 'marathon' : 'quiz');
+          await initializeSession(sessionId, 'quiz');
         } catch (sessionError) {
-          console.error('Failed to initialize session, continuing without session tracking:', sessionError);
+          console.error('Failed to initialize session:', sessionError);
         }
         
-        // Map subject to database section
         const section = subject === 'math' ? 'math' : 'reading-writing';
-        
         let dbQuestions: DatabaseQuestion[] = [];
         
         try {
-          // Enhanced question loading logic with better error handling
           if (topics.length > 0 && !topics.includes('wrong-questions')) {
-            console.log('Loading questions by specific topics/skills:', topics);
-            
-            // Try to load questions from question_bank table with skill filter
             for (const topic of topics) {
-              try {
-                console.log(`Loading questions for topic: ${topic}`);
-                
-                const { data: topicQuestions, error: topicError } = await supabase
-                  .from('question_bank')
-                  .select('*')
-                  .eq('section', section)
-                  .eq('skill', topic)
-                  .not('question_text', 'is', null)
-                  .limit(Math.ceil(numQuestions / topics.length));
-
-                if (topicError) {
-                  console.error(`Error loading questions for topic ${topic}:`, topicError);
-                  continue;
-                }
-
-                if (topicQuestions && topicQuestions.length > 0) {
-                  console.log(`Found ${topicQuestions.length} questions for topic ${topic}`);
-                  
-                  // Convert to DatabaseQuestion format
-                  const convertedTopicQuestions = topicQuestions.map(q => ({
-                    ...q,
-                    id: q.id?.toString() || '',
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    metadata: {}
-                  }));
-                  
-                  dbQuestions.push(...convertedTopicQuestions);
-                } else {
-                  console.log(`No questions found for topic ${topic} in section ${section}`);
-                }
-              } catch (topicError) {
-                console.error(`Failed to load questions for topic ${topic}:`, topicError);
-              }
-            }
-            
-            // If no questions found by skill, try loading by section only
-            if (dbQuestions.length === 0) {
-              console.log('No questions found by skill, loading by section only');
-              
-              const { data: fallbackQuestions, error: fallbackError } = await supabase
+              const { data: topicQuestions, error: topicError } = await supabase
                 .from('question_bank')
                 .select('*')
                 .eq('section', section)
+                .eq('skill', topic)
                 .not('question_text', 'is', null)
-                .limit(numQuestions);
+                .limit(Math.ceil(numQuestions / topics.length));
 
-              if (!fallbackError && fallbackQuestions) {
-                const convertedFallback = fallbackQuestions.map(q => ({
+              if (!topicError && topicQuestions) {
+                const converted = topicQuestions.map(q => ({
                   ...q,
                   id: q.id?.toString() || '',
                   is_active: true,
@@ -164,22 +120,21 @@ const QuizView: React.FC<QuizViewProps> = ({
                   updated_at: new Date().toISOString(),
                   metadata: {}
                 }));
-                dbQuestions.push(...convertedFallback);
+                dbQuestions.push(...converted);
               }
             }
-          } else {
-            // Load questions by section only
-            console.log('Loading questions by section only:', section);
-            
-            const { data: sectionQuestions, error: sectionError } = await supabase
+          }
+          
+          if (dbQuestions.length === 0) {
+            const { data: fallbackQuestions, error } = await supabase
               .from('question_bank')
               .select('*')
               .eq('section', section)
               .not('question_text', 'is', null)
               .limit(numQuestions);
 
-            if (!sectionError && sectionQuestions) {
-              const convertedSection = sectionQuestions.map(q => ({
+            if (!error && fallbackQuestions) {
+              dbQuestions = fallbackQuestions.map(q => ({
                 ...q,
                 id: q.id?.toString() || '',
                 is_active: true,
@@ -187,68 +142,25 @@ const QuizView: React.FC<QuizViewProps> = ({
                 updated_at: new Date().toISOString(),
                 metadata: {}
               }));
-              dbQuestions.push(...convertedSection);
             }
           }
-        } catch (questionsError) {
-          console.error('Failed to load questions:', questionsError);
+        } catch (error) {
+          console.error('Failed to load questions:', error);
         }
         
-        // Convert database questions to quiz format
         const convertedQuestions = dbQuestions.map(q => {
           const converted = questionService.convertToLegacyFormat(q);
           return {
             ...converted,
             subject: converted.subject as 'math' | 'english'
           };
-        }).slice(0, numQuestions); // Ensure we don't exceed requested count
-        
-        console.log('Successfully loaded questions:', convertedQuestions.length);
-        
-        if (convertedQuestions.length === 0) {
-          console.warn('No questions loaded for the given criteria');
-          // Try one more fallback - load any questions from the section
-          try {
-            const { data: anyQuestions, error: anyError } = await supabase
-              .from('question_bank')
-              .select('*')
-              .eq('section', section)
-              .not('question_text', 'is', null)
-              .limit(numQuestions);
-
-            if (!anyError && anyQuestions && anyQuestions.length > 0) {
-              console.log('Loaded fallback questions:', anyQuestions.length);
-              const fallbackConverted = anyQuestions.map(q => {
-                const converted = questionService.convertToLegacyFormat({
-                  ...q,
-                  id: q.id?.toString() || '',
-                  is_active: true,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  metadata: {}
-                });
-                return {
-                  ...converted,
-                  subject: converted.subject as 'math' | 'english'
-                };
-              });
-              setQuestions(fallbackConverted);
-              setAnswers(new Array(fallbackConverted.length).fill(null));
-              setFlaggedQuestions(new Array(fallbackConverted.length).fill(false));
-              setIsLoading(false);
-              return;
-            }
-          } catch (finalError) {
-            console.error('Final fallback also failed:', finalError);
-          }
-        }
+        }).slice(0, numQuestions);
         
         setQuestions(convertedQuestions);
         setAnswers(new Array(convertedQuestions.length).fill(null));
         setFlaggedQuestions(new Array(convertedQuestions.length).fill(false));
       } catch (error) {
-        console.error('Error in loadQuestions:', error);
-        // Set empty arrays so the component doesn't crash
+        console.error('Error loading questions:', error);
         setQuestions([]);
         setAnswers([]);
         setFlaggedQuestions([]);
@@ -259,7 +171,7 @@ const QuizView: React.FC<QuizViewProps> = ({
 
     loadQuestions();
     loadUserPoints();
-  }, [subject, numQuestions, topics, sessionId, mode, initializeSession]);
+  }, [subject, numQuestions, topics, sessionId, initializeSession]);
 
   const loadUserPoints = async () => {
     try {
@@ -267,11 +179,11 @@ const QuizView: React.FC<QuizViewProps> = ({
       setTotalPoints(points);
     } catch (error) {
       console.error('Error loading user points:', error);
-      // Don't block the UI if points can't be loaded
       setTotalPoints(0);
     }
   };
 
+  // Timer effect
   useEffect(() => {
     if (showSummary || finalTimeSpent !== null) return;
     
@@ -282,24 +194,20 @@ const QuizView: React.FC<QuizViewProps> = ({
     return () => clearInterval(timer);
   }, [startTime, showSummary, finalTimeSpent]);
 
-  // Reset marathon states when question changes
-  useEffect(() => {
-    if (mode === 'marathon') {
-      setShowAnswer(false);
-      setShowExplanation(false);
-      setHintsUsed(0);
-      setHintText('');
+  const getPointsForDifficulty = (difficulty: string): number => {
+    switch (difficulty) {
+      case 'easy': return 5;
+      case 'medium': return 10;
+      case 'hard': return 15;
+      default: return 10;
     }
-  }, [currentQuestionIndex, mode]);
+  };
 
   const handleAnswerSelect = async (answerIndex: number) => {
-    if (mode === 'marathon' && showAnswer) return;
-    
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
 
-    // Track that this question has been answered for points calculation
     const newAnsweredQuestions = new Set(answeredQuestions);
     const wasAlreadyAnswered = newAnsweredQuestions.has(currentQuestionIndex);
     newAnsweredQuestions.add(currentQuestionIndex);
@@ -315,7 +223,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         const points = await recordQuestionAttempt({
           question_id: currentQuestion.id.toString(),
           session_id: sessionId,
-          session_type: mode === 'marathon' ? 'marathon' : 'quiz',
+          session_type: 'quiz',
           is_correct: isCorrect,
           difficulty: currentQuestion.difficulty || 'medium',
           subject: currentQuestion.subject,
@@ -325,23 +233,25 @@ const QuizView: React.FC<QuizViewProps> = ({
 
         console.log('Quiz answer recorded, points earned:', points);
         
-        setSessionPoints(prev => prev + points);
+        if (isCorrect) {
+          const earnedPoints = getPointsForDifficulty(currentQuestion.difficulty);
+          setSessionPoints(prev => prev + earnedPoints);
+          console.log('Points earned for correct answer:', earnedPoints);
+        }
+        
         await loadUserPoints();
       } catch (error) {
         console.error('Error recording answer:', error);
-        // Don't block the user from continuing if point recording fails
       }
 
-      // Track question usage with error handling
       try {
-        await questionService.trackQuestionUsage(currentQuestion.id, mode === 'marathon' ? 'marathon' : 'quiz', sessionId);
+        await questionService.trackQuestionUsage(currentQuestion.id, 'quiz', sessionId);
       } catch (error) {
         console.error('Error tracking question usage:', error);
-        // Don't block the user from continuing if tracking fails
       }
 
       // Show immediate feedback if preference is set to immediate
-      if (mode === 'quiz' && feedbackPreference === 'immediate') {
+      if (feedbackPreference === 'immediate') {
         const selectedOptionLetter = String.fromCharCode(65 + answerIndex);
         const correctOptionLetter = String.fromCharCode(65 + currentQuestion.correctAnswer);
         
@@ -368,38 +278,27 @@ const QuizView: React.FC<QuizViewProps> = ({
     setCurrentQuestionIndex(index);
   };
 
-  const getHint = () => {
-    const hints = [
-      "Think about what type of problem this is and what approach you should use.",
-      "Break down the problem step by step. What information are you given?",
-      "Consider the key concepts or formulas that might apply to this question."
-    ];
-    
-    if (hintsUsed < hints.length) {
-      setHintText(hints[hintsUsed]);
-      setHintsUsed(prev => prev + 1);
-    }
-  };
-
-  const handleShowAnswer = () => {
-    setShowAnswer(true);
-    setShowExplanation(true);
-  };
-
   const handleNext = () => {
-    if (mode === 'marathon') {
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-      }
-    } else {
-      goToQuestion(Math.min(questions.length - 1, currentQuestionIndex + 1));
-    }
+    goToQuestion(Math.min(questions.length - 1, currentQuestionIndex + 1));
   };
 
   const handleFeedbackNext = () => {
     setShowFeedbackModal(false);
     setCurrentFeedback(null);
     handleNext();
+  };
+
+  const handleExitQuiz = () => {
+    setShowExitDialog(true);
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitDialog(false);
+    onBack();
+  };
+
+  const handleContinueQuiz = () => {
+    setShowExitDialog(false);
   };
 
   const handleSubmit = async () => {
@@ -423,7 +322,7 @@ const QuizView: React.FC<QuizViewProps> = ({
       timeSpent: Math.floor(finalTime / 1000),
       correctAnswers,
       totalQuestions: questions.length,
-      mode,
+      mode: 'quiz',
       pointsEarned: sessionPoints
     };
 
@@ -443,107 +342,20 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (showDetailedResults && quizResults) {
     return (
-      <div className="min-h-screen bg-white py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center mb-6">
-            <button
-              onClick={() => setShowDetailedResults(false)}
-              className="text-blue-600 hover:text-blue-700 font-medium mr-4"
-            >
-              ← Back to Summary
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">Detailed Quiz Results</h1>
-          </div>
-
-          <div className="space-y-6">
-            {questions.map((question, index) => {
-              const userAnswer = answers[index];
-              const isCorrect = userAnswer === question.correctAnswer;
-              const userOptionLetter = userAnswer !== null ? String.fromCharCode(65 + userAnswer) : 'No Answer';
-              const correctOptionLetter = String.fromCharCode(65 + question.correctAnswer);
-
-              return (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Question {index + 1}</h3>
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {isCorrect ? 'Correct' : 'Incorrect'}
-                    </div>
-                  </div>
-
-                  <p className="text-gray-700 mb-4">{question.question}</p>
-
-                  <div className="grid grid-cols-1 gap-2 mb-4">
-                    {question.options?.map((option, optionIndex) => {
-                      const optionLetter = String.fromCharCode(65 + optionIndex);
-                      const isUserAnswer = userAnswer === optionIndex;
-                      const isCorrectAnswer = question.correctAnswer === optionIndex;
-
-                      return (
-                        <div
-                          key={optionIndex}
-                          className={`p-3 rounded border ${
-                            isCorrectAnswer
-                              ? 'bg-green-50 border-green-300'
-                              : isUserAnswer
-                                ? 'bg-red-50 border-red-300'
-                                : 'bg-gray-50 border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center">
-                            <span className="font-medium mr-2">{optionLetter}.</span>
-                            <span>{option}</span>
-                            {isCorrectAnswer && (
-                              <span className="ml-auto text-green-600 font-medium">✓ Correct</span>
-                            )}
-                            {isUserAnswer && !isCorrectAnswer && (
-                              <span className="ml-auto text-red-600 font-medium">✗ Your Answer</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded p-4">
-                    <h4 className="font-semibold text-blue-800 mb-2">Explanation</h4>
-                    <p className="text-blue-700 text-sm">
-                      {question.rationales?.correct || question.explanation}
-                    </p>
-                  </div>
-
-                  {!isCorrect && userAnswer !== null && question.rationales?.incorrect && (
-                    <div className="bg-red-50 border border-red-200 rounded p-4 mt-2">
-                      <h4 className="font-semibold text-red-800 mb-2">Why {userOptionLetter} is Wrong</h4>
-                      <p className="text-red-700 text-sm">
-                        {question.rationales.incorrect[userOptionLetter as keyof typeof question.rationales.incorrect]}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 text-center">
-            <button
-              onClick={() => onComplete(quizResults)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
+      <QuizDetailedResults
+        questions={questions}
+        answers={answers}
+        onBack={() => setShowDetailedResults(false)}
+        onComplete={onComplete}
+        quizResults={quizResults}
+      />
     );
   }
 
   if (showSummary && quizResults) {
     return (
       <QuizSummary
-        mode={mode}
+        mode="quiz"
         userName={userName}
         quizResults={quizResults}
         sessionPoints={sessionPoints}
@@ -569,9 +381,6 @@ const QuizView: React.FC<QuizViewProps> = ({
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <p className="text-slate-600 mb-4">No questions available for the selected criteria.</p>
-          <p className="text-slate-500 text-sm mb-4">
-            Tried loading: {subject} questions {topics.length > 0 ? `for topics: ${topics.join(', ')}` : ''}
-          </p>
           <button 
             onClick={onBack}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -591,65 +400,31 @@ const QuizView: React.FC<QuizViewProps> = ({
     <div className="min-h-screen bg-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <QuizHeader
-          onBack={onBack}
-          mode={mode}
+          onBack={handleExitQuiz}
+          mode="quiz"
           totalPoints={totalPoints}
           sessionPoints={sessionPoints}
           displayTime={displayTime}
+          backButtonText="Exit Quiz"
         />
 
-        {/* Feedback Preference Selection - Only show at start of quiz */}
-        {mode === 'quiz' && currentQuestionIndex === 0 && getAnsweredCount() === 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-blue-800 mb-3">Choose Your Feedback Preference</h3>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="feedback"
-                  value="immediate"
-                  checked={feedbackPreference === 'immediate'}
-                  onChange={(e) => setFeedbackPreference(e.target.value as 'immediate' | 'end')}
-                  className="mr-2"
-                />
-                <span className="text-blue-700">Show correct answer and explanation after each question</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="feedback"
-                  value="end"
-                  checked={feedbackPreference === 'end'}
-                  onChange={(e) => setFeedbackPreference(e.target.value as 'immediate' | 'end')}
-                  className="mr-2"
-                />
-                <span className="text-blue-700">Show all answers and explanations after completing the quiz</span>
-              </label>
-            </div>
-          </div>
-        )}
+        <QuizProgress
+          currentQuestionIndex={currentQuestionIndex}
+          totalQuestions={questions.length}
+          answeredCount={answeredCount}
+        />
 
-        {mode === 'quiz' && (
-          <QuizProgress
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <QuestionNavigator
+            questions={questions}
             currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-            answeredCount={answeredCount}
+            answers={answers}
+            flaggedQuestions={flaggedQuestions}
+            onGoToQuestion={goToQuestion}
           />
-        )}
-
-        <div className={mode === 'quiz' ? 'grid grid-cols-1 lg:grid-cols-4 gap-6' : ''}>
-          {mode === 'quiz' && (
-            <QuestionNavigator
-              questions={questions}
-              currentQuestionIndex={currentQuestionIndex}
-              answers={answers}
-              flaggedQuestions={flaggedQuestions}
-              onGoToQuestion={goToQuestion}
-            />
-          )}
 
           <QuizContent
-            mode={mode}
+            mode="quiz"
             currentQuestion={currentQuestion}
             currentQuestionIndex={currentQuestionIndex}
             answers={answers}
@@ -660,15 +435,16 @@ const QuizView: React.FC<QuizViewProps> = ({
             hintsUsed={hintsUsed}
             isLastQuestion={isLastQuestion}
             calculatorOpen={calculatorOpen}
+            feedbackPreference={feedbackPreference}
             onAnswerSelect={handleAnswerSelect}
             onFlag={handleFlag}
             onToggleCalculator={() => setCalculatorOpen(!calculatorOpen)}
-            onGetHint={getHint}
-            onShowAnswer={handleShowAnswer}
+            onGetHint={() => {}}
+            onShowAnswer={() => {}}
             onPrevious={() => goToQuestion(Math.max(0, currentQuestionIndex - 1))}
             onNext={handleNext}
             onSubmit={handleSubmit}
-            hideExplanation={mode === 'quiz' && feedbackPreference === 'immediate'}
+            hideExplanation={feedbackPreference === 'immediate'}
           />
         </div>
       </div>
@@ -676,6 +452,12 @@ const QuizView: React.FC<QuizViewProps> = ({
       <Calculator
         isOpen={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
+      />
+
+      <ExitQuizDialog
+        isOpen={showExitDialog}
+        onExit={handleConfirmExit}
+        onContinue={handleContinueQuiz}
       />
 
       {showFeedbackModal && currentFeedback && (
