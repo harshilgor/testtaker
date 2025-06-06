@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
+import QuizProgressStats from './Performance/QuizProgressStats';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -49,6 +50,13 @@ interface MarathonStats {
   bestStreak: number;
 }
 
+interface QuizStats {
+  totalQuizzes: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  averageAccuracy: number;
+}
+
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
@@ -58,6 +66,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
     averageAccuracy: 0,
     totalSessions: 0,
     bestStreak: 0
+  });
+  const [quizStats, setQuizStats] = useState<QuizStats>({
+    totalQuizzes: 0,
+    totalQuestions: 0,
+    correctAnswers: 0,
+    averageAccuracy: 0
   });
 
   // Fetch marathon sessions from Supabase
@@ -75,6 +89,29 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
 
       if (error) {
         console.error('Error fetching marathon sessions:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Fetch quiz results from Supabase
+  const { data: dbQuizResults = [] } = useQuery({
+    queryKey: ['quiz-results-performance', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const { data, error } = await supabase
+        .from('quiz_results')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching quiz results:', error);
         return [];
       }
 
@@ -106,6 +143,30 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
     }
   }, [marathonSessions]);
 
+  useEffect(() => {
+    // Calculate quiz stats from both localStorage and database
+    const localQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
+    const localCorrectAnswers = quizResults.reduce((sum, result) => {
+      return sum + result.answers.filter((answer, index) => 
+        answer === result.questions[index]?.correctAnswer
+      ).length;
+    }, 0);
+
+    const dbQuizQuestions = dbQuizResults.reduce((sum, result) => sum + (result.total_questions || 0), 0);
+    const dbCorrectAnswers = dbQuizResults.reduce((sum, result) => sum + (result.correct_answers || 0), 0);
+
+    const totalQuizzes = quizResults.length + dbQuizResults.length;
+    const totalQuestions = localQuizQuestions + dbQuizQuestions;
+    const correctAnswers = localCorrectAnswers + dbCorrectAnswers;
+
+    setQuizStats({
+      totalQuizzes,
+      totalQuestions,
+      correctAnswers,
+      averageAccuracy: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+    });
+  }, [quizResults, dbQuizResults]);
+
   const handleViewMarathonResult = (session: MarathonSession) => {
     console.log('Viewing marathon result:', session);
   };
@@ -119,6 +180,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
+
+        {/* Quiz Progress Section */}
+        {quizStats.totalQuizzes > 0 && (
+          <QuizProgressStats quizStats={quizStats} />
+        )}
 
         {/* Marathon Stats Section */}
         {!isLoading && marathonStats.totalQuestions > 0 && (

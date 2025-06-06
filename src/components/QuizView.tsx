@@ -305,6 +305,24 @@ const QuizView: React.FC<QuizViewProps> = ({
     setQuizResults(results);
     setShowSummary(true);
 
+    // Save to database for performance tracking
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('quiz_results').insert({
+          user_id: user.id,
+          subject,
+          topics,
+          score_percentage: score,
+          correct_answers: correctAnswers,
+          total_questions: questions.length,
+          time_taken: Math.floor(finalTime / 1000)
+        });
+      }
+    } catch (error) {
+      console.error('Error saving quiz results:', error);
+    }
+
     const existingResults = JSON.parse(localStorage.getItem('quizResults') || '[]');
     existingResults.push(results);
     localStorage.setItem('quizResults', JSON.stringify(existingResults));
