@@ -11,7 +11,6 @@ import QuizContent from './Quiz/QuizContent';
 import QuizDetailedResults from './Quiz/QuizDetailedResults';
 import ExitQuizDialog from './Quiz/ExitQuizDialog';
 import { useQuestionSession } from '@/hooks/useQuestionSession';
-import FeedbackModal from './FeedbackModal';
 
 interface QuizViewProps {
   subject: string;
@@ -71,10 +70,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Feedback modal states
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState<any>(null);
   
   // Marathon mode specific states (keeping for compatibility)
   const [showAnswer, setShowAnswer] = useState(false);
@@ -196,10 +191,10 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const getPointsForDifficulty = (difficulty: string): number => {
     switch (difficulty) {
-      case 'easy': return 5;
-      case 'medium': return 10;
-      case 'hard': return 15;
-      default: return 10;
+      case 'easy': return 3;
+      case 'medium': return 6;
+      case 'hard': return 9;
+      default: return 6;
     }
   };
 
@@ -217,6 +212,13 @@ const QuizView: React.FC<QuizViewProps> = ({
     if (currentQuestion && !wasAlreadyAnswered) {
       const isCorrect = answerIndex === currentQuestion.correctAnswer;
       
+      // Calculate and add points immediately if correct
+      if (isCorrect) {
+        const earnedPoints = getPointsForDifficulty(currentQuestion.difficulty);
+        setSessionPoints(prev => prev + earnedPoints);
+        console.log('Points earned for correct answer:', earnedPoints);
+      }
+      
       try {
         console.log('Recording quiz answer for question:', currentQuestion.id, 'correct:', isCorrect);
         
@@ -233,12 +235,6 @@ const QuizView: React.FC<QuizViewProps> = ({
 
         console.log('Quiz answer recorded, points earned:', points);
         
-        if (isCorrect) {
-          const earnedPoints = getPointsForDifficulty(currentQuestion.difficulty);
-          setSessionPoints(prev => prev + earnedPoints);
-          console.log('Points earned for correct answer:', earnedPoints);
-        }
-        
         await loadUserPoints();
       } catch (error) {
         console.error('Error recording answer:', error);
@@ -248,22 +244,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         await questionService.trackQuestionUsage(currentQuestion.id, 'quiz', sessionId);
       } catch (error) {
         console.error('Error tracking question usage:', error);
-      }
-
-      // Show immediate feedback if preference is set to immediate
-      if (feedbackPreference === 'immediate') {
-        const selectedOptionLetter = String.fromCharCode(65 + answerIndex);
-        const correctOptionLetter = String.fromCharCode(65 + currentQuestion.correctAnswer);
-        
-        setCurrentFeedback({
-          isCorrect,
-          selectedAnswer: selectedOptionLetter,
-          correctAnswer: correctOptionLetter,
-          correctRationale: currentQuestion.rationales?.correct || currentQuestion.explanation,
-          incorrectRationale: currentQuestion.rationales?.incorrect?.[selectedOptionLetter as keyof typeof currentQuestion.rationales.incorrect],
-          allIncorrectRationales: currentQuestion.rationales?.incorrect || {}
-        });
-        setShowFeedbackModal(true);
       }
     }
   };
@@ -280,12 +260,6 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const handleNext = () => {
     goToQuestion(Math.min(questions.length - 1, currentQuestionIndex + 1));
-  };
-
-  const handleFeedbackNext = () => {
-    setShowFeedbackModal(false);
-    setCurrentFeedback(null);
-    handleNext();
   };
 
   const handleExitQuiz = () => {
@@ -444,7 +418,7 @@ const QuizView: React.FC<QuizViewProps> = ({
             onPrevious={() => goToQuestion(Math.max(0, currentQuestionIndex - 1))}
             onNext={handleNext}
             onSubmit={handleSubmit}
-            hideExplanation={feedbackPreference === 'immediate'}
+            hideExplanation={false}
           />
         </div>
       </div>
@@ -459,19 +433,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         onExit={handleConfirmExit}
         onContinue={handleContinueQuiz}
       />
-
-      {showFeedbackModal && currentFeedback && (
-        <FeedbackModal
-          isOpen={showFeedbackModal}
-          isCorrect={currentFeedback.isCorrect}
-          selectedAnswer={currentFeedback.selectedAnswer}
-          correctAnswer={currentFeedback.correctAnswer}
-          correctRationale={currentFeedback.correctRationale}
-          incorrectRationale={currentFeedback.incorrectRationale}
-          allIncorrectRationales={currentFeedback.allIncorrectRationales}
-          onNext={handleFeedbackNext}
-        />
-      )}
     </div>
   );
 };

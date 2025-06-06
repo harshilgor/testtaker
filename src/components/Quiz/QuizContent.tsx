@@ -231,7 +231,7 @@ const QuizContent: React.FC<QuizContentProps> = ({
             </div>
           )}
 
-          {/* Explanation Section for Immediate Feedback in Quiz Mode */}
+          {/* Inline Explanation Section for Immediate Feedback in Quiz Mode */}
           {shouldShowExplanation() && !hideExplanation && (
             <div className="max-h-96 overflow-y-auto">
               <div className={`p-4 rounded-lg mb-6 ${
