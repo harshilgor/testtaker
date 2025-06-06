@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -99,13 +98,20 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     console.log('Marathon: Showing summary');
     return (
       <MarathonSummary
-        attempts={attempts}
-        onBack={onBack}
-        onRestart={() => {
+        sessionStats={{
+          totalQuestions: session?.totalQuestions || 0,
+          correctAnswers: session?.correctAnswers || 0,
+          incorrectAnswers: session?.incorrectAnswers || 0,
+          showAnswerUsed: session?.showAnswerUsed || 0,
+          timeSpent: timeSpent,
+          pointsEarned: sessionPoints
+        }}
+        onBackToDashboard={onBack}
+        onBackToSettings={() => {
           setShowSummary(false);
           loadNextQuestion();
         }}
-        sessionPoints={sessionPoints}
+        userName="User"
       />
     );
   }
