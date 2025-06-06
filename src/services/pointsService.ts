@@ -72,7 +72,9 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
     // Trigger leaderboard refresh by updating user stats
     if (points > 0) {
       console.log('recordQuestionAttempt: Triggering leaderboard refresh');
-      await supabase.rpc('refresh_leaderboard_stats');
+      await supabase.rpc('update_leaderboard_stats_v2', {
+        target_user_id: user.id
+      });
     }
     
     return points;

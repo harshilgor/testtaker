@@ -57,6 +57,22 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     onNext();
   };
 
+  // Get the incorrect rationale based on the selected answer
+  const getIncorrectRationale = (selectedAnswer: string) => {
+    switch (selectedAnswer) {
+      case 'A':
+        return question.incorrect_rationale_a;
+      case 'B':
+        return question.incorrect_rationale_b;
+      case 'C':
+        return question.incorrect_rationale_c;
+      case 'D':
+        return question.incorrect_rationale_d;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
       <Card className="border-slate-200">
@@ -85,7 +101,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
               selectedAnswer={selectedAnswer}
               correctAnswer={question.correct_answer}
               correctRationale={question.correct_rationale}
-              incorrectRationale={question.incorrect_rationale}
+              incorrectRationale={getIncorrectRationale(selectedAnswer)}
               showAnswerUsed={showAnswer}
             />
           )}
