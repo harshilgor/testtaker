@@ -29,40 +29,55 @@ export const calculatePoints = (difficulty: string, isCorrect: boolean): number 
 
 export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<number> => {
   try {
+    console.log('recordQuestionAttempt: Starting with attempt:', attempt);
+    
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      console.error('User not authenticated');
+      console.error('recordQuestionAttempt: User not authenticated');
       throw new Error('User not authenticated');
     }
 
     const points = calculatePoints(attempt.difficulty, attempt.is_correct);
-    console.log('Recording attempt with points:', points, 'for question:', attempt.question_id);
+    console.log('recordQuestionAttempt: Calculated points:', points);
 
-    const { error } = await supabase
+    const insertData = {
+      user_id: user.id,
+      question_id: attempt.question_id,
+      session_id: attempt.session_id,
+      session_type: attempt.session_type,
+      is_correct: attempt.is_correct,
+      points_earned: points,
+      difficulty: attempt.difficulty,
+      subject: attempt.subject,
+      topic: attempt.topic,
+      time_spent: attempt.time_spent || 0
+    };
+
+    console.log('recordQuestionAttempt: Inserting data:', insertData);
+
+    const { data, error } = await supabase
       .from('question_attempts_v2')
-      .insert({
-        user_id: user.id,
-        question_id: attempt.question_id,
-        session_id: attempt.session_id,
-        session_type: attempt.session_type,
-        is_correct: attempt.is_correct,
-        points_earned: points,
-        difficulty: attempt.difficulty,
-        subject: attempt.subject,
-        topic: attempt.topic,
-        time_spent: attempt.time_spent || 0
-      });
+      .insert(insertData)
+      .select();
 
     if (error) {
-      console.error('Error recording question attempt:', error);
+      console.error('recordQuestionAttempt: Database error:', error);
       throw error;
     }
 
-    console.log('Question attempt recorded successfully with', points, 'points');
+    console.log('recordQuestionAttempt: Successfully recorded:', data);
+    console.log('recordQuestionAttempt: Points earned:', points);
+    
+    // Trigger leaderboard refresh by updating user stats
+    if (points > 0) {
+      console.log('recordQuestionAttempt: Triggering leaderboard refresh');
+      await supabase.rpc('refresh_leaderboard_stats');
+    }
+    
     return points;
   } catch (error) {
-    console.error('Error in recordQuestionAttempt:', error);
+    console.error('recordQuestionAttempt: Error:', error);
     throw error;
   }
 };
@@ -72,26 +87,26 @@ export const getUserTotalPoints = async (userId?: string): Promise<number> => {
     const targetUserId = userId || (await supabase.auth.getUser()).data.user?.id;
     
     if (!targetUserId) {
-      console.log('No user ID provided');
+      console.log('getUserTotalPoints: No user ID provided');
       return 0;
     }
 
-    console.log('Calculating total points for user:', targetUserId);
+    console.log('getUserTotalPoints: Calculating total points for user:', targetUserId);
 
     const { data, error } = await supabase.rpc('calculate_user_total_points', {
       target_user_id: targetUserId
     });
 
     if (error) {
-      console.error('Error getting user points:', error);
+      console.error('getUserTotalPoints: Error getting user points:', error);
       return 0;
     }
 
     const totalPoints = data || 0;
-    console.log('User total points:', totalPoints);
+    console.log('getUserTotalPoints: User total points:', totalPoints);
     return totalPoints;
   } catch (error) {
-    console.error('Error in getUserTotalPoints:', error);
+    console.error('getUserTotalPoints: Error:', error);
     return 0;
   }
 };

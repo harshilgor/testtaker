@@ -85,6 +85,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
               selectedAnswer={selectedAnswer}
               correctAnswer={question.correct_answer}
               correctRationale={question.correct_rationale}
+              incorrectRationale={question.incorrect_rationale}
               showAnswerUsed={showAnswer}
             />
           )}

@@ -215,12 +215,13 @@ const QuizView: React.FC<QuizViewProps> = ({
       // Calculate and add points immediately if correct
       if (isCorrect) {
         const earnedPoints = getPointsForDifficulty(currentQuestion.difficulty);
-        setSessionPoints(prev => prev + earnedPoints);
-        console.log('Points earned for correct answer:', earnedPoints);
+        const newSessionPoints = sessionPoints + earnedPoints;
+        setSessionPoints(newSessionPoints);
+        console.log('Quiz: Points earned for correct answer:', earnedPoints, 'New total:', newSessionPoints);
       }
       
       try {
-        console.log('Recording quiz answer for question:', currentQuestion.id, 'correct:', isCorrect);
+        console.log('Quiz: Recording answer for question:', currentQuestion.id, 'correct:', isCorrect);
         
         const points = await recordQuestionAttempt({
           question_id: currentQuestion.id.toString(),
@@ -233,17 +234,18 @@ const QuizView: React.FC<QuizViewProps> = ({
           time_spent: Math.floor((Date.now() - startTime) / 1000)
         });
 
-        console.log('Quiz answer recorded, points earned:', points);
+        console.log('Quiz: Answer recorded successfully, points from DB:', points);
         
+        // Refresh user points to ensure leaderboard updates
         await loadUserPoints();
       } catch (error) {
-        console.error('Error recording answer:', error);
+        console.error('Quiz: Error recording answer:', error);
       }
 
       try {
         await questionService.trackQuestionUsage(currentQuestion.id, 'quiz', sessionId);
       } catch (error) {
-        console.error('Error tracking question usage:', error);
+        console.error('Quiz: Error tracking question usage:', error);
       }
     }
   };

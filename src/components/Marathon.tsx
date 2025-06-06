@@ -11,6 +11,7 @@ import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
 import MarathonCompletionState from './Marathon/MarathonCompletionState';
 import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
 import MarathonSummary from './MarathonSummary';
+import MarathonTimer from './Marathon/MarathonTimer';
 
 interface MarathonProps {
   settings: MarathonSettings | null;
@@ -74,6 +75,11 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     }
   }, [session, currentQuestion, loading]);
 
+  const handleTimerEnd = () => {
+    console.log('Marathon: Timer ended, ending marathon');
+    confirmEndMarathon();
+  };
+
   console.log('Marathon: Rendering state', {
     hasSettings: !!settings,
     hasSession: !!session,
@@ -128,6 +134,13 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   console.log('Marathon: Rendering main question interface');
   return (
     <div className="min-h-screen bg-white">
+      {settings.timedMode && settings.timeGoalMinutes && (
+        <MarathonTimer 
+          timeGoalMinutes={settings.timeGoalMinutes} 
+          onTimeUp={handleTimerEnd}
+        />
+      )}
+      
       <div className="max-w-6xl mx-auto p-6">
         <MarathonHeader
           sessionStats={sessionStats}

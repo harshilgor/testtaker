@@ -8,7 +8,6 @@ import CurrentSelectionCard from './Marathon/CurrentSelectionCard';
 import SubjectSelection from './Marathon/SubjectSelection';
 import DifficultySelection from './Marathon/DifficultySelection';
 import SettingsToggles from './Marathon/SettingsToggles';
-import FontSizeSelection from './Marathon/FontSizeSelection';
 import { useMarathonQuestionStats } from './Marathon/useMarathonQuestionStats';
 
 interface MarathonSettingsProps {
@@ -102,11 +101,6 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
           />
 
           <SettingsToggles 
-            settings={settings}
-            onSettingsChange={setSettings}
-          />
-
-          <FontSizeSelection 
             settings={settings}
             onSettingsChange={setSettings}
           />

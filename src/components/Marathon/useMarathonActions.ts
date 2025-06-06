@@ -1,6 +1,7 @@
 
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
 
 interface UseMarathonActionsProps {
   session: any;
@@ -75,6 +76,9 @@ export const useMarathonActions = ({
           p_session_type: 'marathon',
           p_question_id: question.id.toString()
         });
+        
+        // Refresh session stats after marking question as used
+        await loadSessionStats();
       } else {
         console.log('useMarathonActions: No more questions available');
         setCurrentQuestion(null);
@@ -84,9 +88,9 @@ export const useMarathonActions = ({
     } finally {
       setLoading(false);
     }
-  }, [session, setCurrentQuestion, setTimeSpent, setLoading]);
+  }, [session, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats]);
 
-  const handleAnswer = useCallback((selectedAnswer: string) => {
+  const handleAnswer = useCallback(async (selectedAnswer: string) => {
     if (!currentQuestion) {
       console.log('useMarathonActions: No current question for answer');
       return;
@@ -110,15 +114,35 @@ export const useMarathonActions = ({
     
     recordAttempt(attempt);
     
-    // Award points based on difficulty and correctness
-    if (isCorrect) {
-      const pointsMap = { easy: 3, medium: 6, hard: 9 };
-      const points = pointsMap[attempt.difficulty] || 6;
-      const newTotal = sessionPoints + points;
-      console.log('useMarathonActions: Awarding points', { points, newTotal });
-      setSessionPoints(newTotal);
+    // Calculate and record points
+    const points = calculatePoints(attempt.difficulty, isCorrect);
+    console.log('useMarathonActions: Calculated points for answer:', points);
+    
+    if (points > 0) {
+      const newSessionPoints = sessionPoints + points;
+      console.log('useMarathonActions: Updating session points from', sessionPoints, 'to', newSessionPoints);
+      setSessionPoints(newSessionPoints);
     }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints]);
+    
+    // Record the attempt in the database
+    try {
+      await recordQuestionAttempt({
+        question_id: currentQuestion.id.toString(),
+        session_id: session.id,
+        session_type: 'marathon',
+        is_correct: isCorrect,
+        difficulty: attempt.difficulty,
+        subject: attempt.subject,
+        topic: attempt.topic,
+        time_spent: timeSpent
+      });
+      
+      // Refresh user points after recording
+      await loadUserPoints();
+    } catch (error) {
+      console.error('useMarathonActions: Error recording question attempt:', error);
+    }
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints]);
 
   const handleNext = useCallback(() => {
     console.log('useMarathonActions: Moving to next question');
