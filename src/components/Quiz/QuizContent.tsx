@@ -1,9 +1,37 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Flag, Calculator as CalculatorIcon, Lightbulb, Eye, GraduationCap, Check, X } from 'lucide-react';
-import { Question } from '@/data/questions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Flag, 
+  Calculator as CalculatorIcon, 
+  Lightbulb, 
+  Eye, 
+  ArrowLeft, 
+  ArrowRight,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
+
+interface Question {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  subject: 'math' | 'english';
+  topic: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  rationales?: {
+    correct: string;
+    incorrect: {
+      A?: string;
+      B?: string;
+      C?: string;
+      D?: string;
+    };
+  };
+}
 
 interface QuizContentProps {
   mode: 'quiz' | 'marathon';
@@ -25,6 +53,7 @@ interface QuizContentProps {
   onPrevious: () => void;
   onNext: () => void;
   onSubmit: () => void;
+  hideExplanation?: boolean;
 }
 
 const QuizContent: React.FC<QuizContentProps> = ({
@@ -46,200 +75,229 @@ const QuizContent: React.FC<QuizContentProps> = ({
   onShowAnswer,
   onPrevious,
   onNext,
-  onSubmit
+  onSubmit,
+  hideExplanation = false
 }) => {
+  const selectedAnswer = answers[currentQuestionIndex];
+  const isFlagged = flaggedQuestions[currentQuestionIndex];
+
+  const handleAnswerSelect = (answerIndex: number) => {
+    if (mode === 'marathon' && showAnswer) return;
+    onAnswerSelect(answerIndex);
+  };
+
   return (
-    <Card className={`${mode === 'quiz' ? 'lg:col-span-3' : ''} border-slate-200`}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              currentQuestion.subject === 'math' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-purple-100 text-purple-800'
-            }`}>
-              {currentQuestion.subject === 'math' ? 'Mathematics' : 'English'}
-            </span>
+    <div className={mode === 'quiz' ? 'lg:col-span-3' : 'w-full'}>
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-xl">
+              {mode === 'marathon' ? 'Marathon Question' : `Question ${currentQuestionIndex + 1}`}
+            </CardTitle>
+            <div className="flex items-center space-x-2">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                currentQuestion.subject === 'math' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+              }`}>
+                {currentQuestion.subject === 'math' ? 'Math' : 'English'}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                currentQuestion.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                currentQuestion.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {currentQuestion.difficulty}
+              </span>
+              <Button
+                onClick={onFlag}
+                variant="outline"
+                size="sm"
+                className={isFlagged ? 'text-yellow-600 border-yellow-300' : ''}
+              >
+                <Flag className={`h-4 w-4 ${isFlagged ? 'fill-yellow-400' : ''}`} />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            {currentQuestion.subject === 'math' && (
+        </CardHeader>
+        
+        <CardContent>
+          <h2 className="text-lg font-semibold mb-6 leading-relaxed">
+            {currentQuestion.question}
+          </h2>
+
+          <div className="space-y-3 mb-6">
+            {currentQuestion.options?.map((option, index) => {
+              const isSelected = selectedAnswer === index;
+              const isCorrect = index === currentQuestion.correctAnswer;
+              const shouldShowCorrect = mode === 'marathon' && showAnswer;
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSelect(index)}
+                  disabled={mode === 'marathon' && showAnswer}
+                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                    isSelected
+                      ? shouldShowCorrect
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                        : 'border-blue-500 bg-blue-50'
+                      : shouldShowCorrect && isCorrect
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  } ${showAnswer && mode === 'marathon' ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="font-medium mr-3">
+                        {String.fromCharCode(65 + index)}.
+                      </span>
+                      <span>{option}</span>
+                    </div>
+                    {shouldShowCorrect && (
+                      <div className="flex items-center">
+                        {isCorrect && (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        )}
+                        {isSelected && !isCorrect && (
+                          <XCircle className="h-5 w-5 text-red-600" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Marathon Mode Controls */}
+          {mode === 'marathon' && (
+            <div className="flex flex-wrap gap-2 mb-6">
               <Button
                 onClick={onToggleCalculator}
                 variant="outline"
                 size="sm"
-                className={calculatorOpen ? 'bg-blue-50 border-blue-300' : ''}
+                className={calculatorOpen ? 'bg-blue-50' : ''}
               >
-                <CalculatorIcon className="h-4 w-4" />
+                <CalculatorIcon className="h-4 w-4 mr-2" />
+                Calculator
               </Button>
-            )}
-            <Button
-              onClick={onFlag}
-              variant="outline"
-              size="sm"
-              className={flaggedQuestions[currentQuestionIndex] ? 'text-yellow-600 border-yellow-300' : ''}
-            >
-              <Flag className={`h-4 w-4 ${flaggedQuestions[currentQuestionIndex] ? 'fill-yellow-400' : ''}`} />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <h2 className="text-xl font-semibold mb-6 leading-relaxed">
-          {currentQuestion.question}
-        </h2>
-
-        {/* Answer Options with Rationales */}
-        <div className="space-y-3 mb-8">
-          {currentQuestion.options.map((option, index) => {
-            const isSelected = answers[currentQuestionIndex] === index;
-            const isCorrect = index === currentQuestion.correctAnswer;
-            const isIncorrect = showAnswer && isSelected && !isCorrect;
-            const showRationale = mode === 'marathon' && showExplanation;
-            
-            return (
-              <div key={index} className="space-y-2">
-                <button
-                  onClick={() => onAnswerSelect(index)}
-                  disabled={mode === 'marathon' && showAnswer}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                    mode === 'marathon' && showAnswer
-                      ? isCorrect
-                        ? 'border-green-500 bg-green-50'
-                        : isIncorrect
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200 bg-gray-50'
-                      : isSelected
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <span className="font-medium mr-3 text-gray-500">
-                      {String.fromCharCode(65 + index)}.
-                    </span>
-                    <span>{option}</span>
-                  </div>
-                </button>
-
-                {/* Show individual option rationales in marathon mode */}
-                {showRationale && currentQuestion.rationales && (
-                  <div className="ml-8">
-                    {isCorrect && currentQuestion.rationales.correct && (
-                      <Card className="p-3 bg-green-50 border-green-200">
-                        <div className="flex items-start space-x-2">
-                          <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                          <p className="text-sm text-green-800">
-                            <strong>Correct:</strong> {currentQuestion.rationales.correct}
-                          </p>
-                        </div>
-                      </Card>
-                    )}
-                    
-                    {!isCorrect && currentQuestion.rationales.incorrect && (
-                      (() => {
-                        const optionLetter = String.fromCharCode(65 + index) as 'A' | 'B' | 'C' | 'D';
-                        const incorrectRationale = currentQuestion.rationales.incorrect[optionLetter];
-                        return incorrectRationale ? (
-                          <Card className="p-3 bg-red-50 border-red-200">
-                            <div className="flex items-start space-x-2">
-                              <X className="h-4 w-4 text-red-600 mt-0.5" />
-                              <p className="text-sm text-red-800">
-                                <strong>Why this is incorrect:</strong> {incorrectRationale}
-                              </p>
-                            </div>
-                          </Card>
-                        ) : null;
-                      })()
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Marathon Mode Hints */}
-        {mode === 'marathon' && hintText && (
-          <Card className="mb-6 p-4 bg-yellow-50 border-yellow-200">
-            <div className="flex items-start space-x-2">
-              <Lightbulb className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <p className="text-yellow-800">{hintText}</p>
-            </div>
-          </Card>
-        )}
-
-        {/* Marathon Mode Explanation */}
-        {mode === 'marathon' && showExplanation && (
-          <Card className="mb-6 p-4 bg-blue-50 border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-2">Explanation:</h3>
-            <p className="text-blue-800">{currentQuestion.explanation}</p>
-          </Card>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-6 border-t">
-          {mode === 'marathon' ? (
-            <>
-              <div className="flex space-x-2">
-                {!showAnswer && hintsUsed < 3 && (
-                  <Button onClick={onGetHint} variant="outline" size="sm">
-                    <Lightbulb className="h-4 w-4 mr-1" />
-                    Hint ({hintsUsed}/3)
-                  </Button>
-                )}
-                
-                {!showAnswer && (
-                  <Button onClick={onShowAnswer} variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-1" />
-                    Show Answer
-                  </Button>
-                )}
-                
-                {showExplanation && (
-                  <Button variant="outline" size="sm">
-                    <GraduationCap className="h-4 w-4 mr-1" />
-                    Teach Me This Concept
-                  </Button>
-                )}
-              </div>
-
+              
               <Button
-                onClick={isLastQuestion ? onSubmit : onNext}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {isLastQuestion ? 'Complete Marathon' : 'Next Question'}
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                onClick={onPrevious}
-                disabled={currentQuestionIndex === 0}
+                onClick={onGetHint}
                 variant="outline"
+                size="sm"
+                disabled={hintsUsed >= 3}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Previous
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Hint ({3 - hintsUsed} left)
               </Button>
+              
+              <Button
+                onClick={onShowAnswer}
+                variant="outline"
+                size="sm"
+                disabled={showAnswer || selectedAnswer === null}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Show Answer
+              </Button>
+            </div>
+          )}
 
-              {isLastQuestion ? (
-                <Button onClick={onSubmit} className="bg-green-600 hover:bg-green-700">
-                  Submit Quiz
+          {/* Hint Display */}
+          {mode === 'marathon' && hintText && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center mb-2">
+                <Lightbulb className="h-5 w-5 text-yellow-600 mr-2" />
+                <span className="font-semibold text-yellow-800">Hint</span>
+              </div>
+              <p className="text-yellow-700 text-sm">{hintText}</p>
+            </div>
+          )}
+
+          {/* Answer Explanation - Only show in marathon mode or when not hiding */}
+          {(mode === 'marathon' && showExplanation) || (!hideExplanation && selectedAnswer !== null) ? (
+            <div className={`p-4 rounded-lg mb-6 ${
+              mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                ? 'bg-green-50 border border-green-200'
+                : mode === 'marathon'
+                  ? 'bg-red-50 border border-red-200'
+                  : 'bg-blue-50 border border-blue-200'
+            }`}>
+              <div className="flex items-center mb-2">
+                {mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                ) : mode === 'marathon' ? (
+                  <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                ) : null}
+                <span className={`font-semibold ${
+                  mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                    ? 'text-green-800'
+                    : mode === 'marathon'
+                      ? 'text-red-800'
+                      : 'text-blue-800'
+                }`}>
+                  {mode === 'marathon' 
+                    ? (selectedAnswer === currentQuestion.correctAnswer ? 'Correct!' : 'Incorrect')
+                    : 'Explanation'
+                  }
+                </span>
+              </div>
+              <p className={`text-sm ${
+                mode === 'marathon' && selectedAnswer === currentQuestion.correctAnswer
+                  ? 'text-green-700'
+                  : mode === 'marathon'
+                    ? 'text-red-700'
+                    : 'text-blue-700'
+              }`}>
+                {currentQuestion.rationales?.correct || currentQuestion.explanation}
+              </p>
+            </div>
+          ) : null}
+
+          {/* Navigation */}
+          <div className="flex justify-between items-center">
+            <div>
+              {mode === 'quiz' && currentQuestionIndex > 0 && (
+                <Button onClick={onPrevious} variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Previous
                 </Button>
-              ) : (
-                <Button
-                  onClick={onNext}
-                  className="bg-blue-600 hover:bg-blue-700"
+              )}
+            </div>
+            
+            <div className="flex space-x-2">
+              {mode === 'quiz' && (
+                <>
+                  {!isLastQuestion ? (
+                    <Button onClick={onNext} className="bg-blue-600 hover:bg-blue-700">
+                      Next Question
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button onClick={onSubmit} className="bg-green-600 hover:bg-green-700">
+                      Submit Quiz
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {mode === 'marathon' && (
+                <Button 
+                  onClick={onNext} 
+                  className="bg-orange-600 hover:bg-orange-700"
+                  disabled={selectedAnswer === null}
                 >
-                  Next
+                  Next Question
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               )}
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

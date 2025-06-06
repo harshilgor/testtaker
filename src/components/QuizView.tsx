@@ -10,6 +10,7 @@ import QuestionNavigator from './Quiz/QuestionNavigator';
 import QuizSummary from './Quiz/QuizSummary';
 import QuizContent from './Quiz/QuizContent';
 import { useQuestionSession } from '@/hooks/useQuestionSession';
+import FeedbackModal from './FeedbackModal';
 
 interface QuizViewProps {
   subject: string;
@@ -65,6 +66,12 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // New feedback preference states
+  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState<any>(null);
+  const [showDetailedResults, setShowDetailedResults] = useState(false);
   
   // Marathon mode specific states
   const [showAnswer, setShowAnswer] = useState(false);
@@ -306,7 +313,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         console.log('Recording quiz answer for question:', currentQuestion.id, 'correct:', isCorrect);
         
         const points = await recordQuestionAttempt({
-          question_id: currentQuestion.id,
+          question_id: currentQuestion.id.toString(),
           session_id: sessionId,
           session_type: mode === 'marathon' ? 'marathon' : 'quiz',
           is_correct: isCorrect,
@@ -331,6 +338,22 @@ const QuizView: React.FC<QuizViewProps> = ({
       } catch (error) {
         console.error('Error tracking question usage:', error);
         // Don't block the user from continuing if tracking fails
+      }
+
+      // Show immediate feedback if preference is set to immediate
+      if (mode === 'quiz' && feedbackPreference === 'immediate') {
+        const selectedOptionLetter = String.fromCharCode(65 + answerIndex);
+        const correctOptionLetter = String.fromCharCode(65 + currentQuestion.correctAnswer);
+        
+        setCurrentFeedback({
+          isCorrect,
+          selectedAnswer: selectedOptionLetter,
+          correctAnswer: correctOptionLetter,
+          correctRationale: currentQuestion.rationales?.correct || currentQuestion.explanation,
+          incorrectRationale: currentQuestion.rationales?.incorrect?.[selectedOptionLetter as keyof typeof currentQuestion.rationales.incorrect],
+          allIncorrectRationales: currentQuestion.rationales?.incorrect || {}
+        });
+        setShowFeedbackModal(true);
       }
     }
   };
@@ -373,6 +396,12 @@ const QuizView: React.FC<QuizViewProps> = ({
     }
   };
 
+  const handleFeedbackNext = () => {
+    setShowFeedbackModal(false);
+    setCurrentFeedback(null);
+    handleNext();
+  };
+
   const handleSubmit = async () => {
     const finalTime = Date.now() - startTime;
     setFinalTimeSpent(finalTime);
@@ -412,6 +441,105 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const displayTime = finalTimeSpent !== null ? finalTimeSpent : timeSpent;
 
+  if (showDetailedResults && quizResults) {
+    return (
+      <div className="min-h-screen bg-white py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => setShowDetailedResults(false)}
+              className="text-blue-600 hover:text-blue-700 font-medium mr-4"
+            >
+              ← Back to Summary
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Detailed Quiz Results</h1>
+          </div>
+
+          <div className="space-y-6">
+            {questions.map((question, index) => {
+              const userAnswer = answers[index];
+              const isCorrect = userAnswer === question.correctAnswer;
+              const userOptionLetter = userAnswer !== null ? String.fromCharCode(65 + userAnswer) : 'No Answer';
+              const correctOptionLetter = String.fromCharCode(65 + question.correctAnswer);
+
+              return (
+                <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Question {index + 1}</h3>
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {isCorrect ? 'Correct' : 'Incorrect'}
+                    </div>
+                  </div>
+
+                  <p className="text-gray-700 mb-4">{question.question}</p>
+
+                  <div className="grid grid-cols-1 gap-2 mb-4">
+                    {question.options?.map((option, optionIndex) => {
+                      const optionLetter = String.fromCharCode(65 + optionIndex);
+                      const isUserAnswer = userAnswer === optionIndex;
+                      const isCorrectAnswer = question.correctAnswer === optionIndex;
+
+                      return (
+                        <div
+                          key={optionIndex}
+                          className={`p-3 rounded border ${
+                            isCorrectAnswer
+                              ? 'bg-green-50 border-green-300'
+                              : isUserAnswer
+                                ? 'bg-red-50 border-red-300'
+                                : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <span className="font-medium mr-2">{optionLetter}.</span>
+                            <span>{option}</span>
+                            {isCorrectAnswer && (
+                              <span className="ml-auto text-green-600 font-medium">✓ Correct</span>
+                            )}
+                            {isUserAnswer && !isCorrectAnswer && (
+                              <span className="ml-auto text-red-600 font-medium">✗ Your Answer</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                    <h4 className="font-semibold text-blue-800 mb-2">Explanation</h4>
+                    <p className="text-blue-700 text-sm">
+                      {question.rationales?.correct || question.explanation}
+                    </p>
+                  </div>
+
+                  {!isCorrect && userAnswer !== null && question.rationales?.incorrect && (
+                    <div className="bg-red-50 border border-red-200 rounded p-4 mt-2">
+                      <h4 className="font-semibold text-red-800 mb-2">Why {userOptionLetter} is Wrong</h4>
+                      <p className="text-red-700 text-sm">
+                        {question.rationales.incorrect[userOptionLetter as keyof typeof question.rationales.incorrect]}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => onComplete(quizResults)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (showSummary && quizResults) {
     return (
       <QuizSummary
@@ -420,6 +548,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         quizResults={quizResults}
         sessionPoints={sessionPoints}
         onComplete={onComplete}
+        onViewDetailed={feedbackPreference === 'end' ? () => setShowDetailedResults(true) : undefined}
       />
     );
   }
@@ -469,6 +598,37 @@ const QuizView: React.FC<QuizViewProps> = ({
           displayTime={displayTime}
         />
 
+        {/* Feedback Preference Selection - Only show at start of quiz */}
+        {mode === 'quiz' && currentQuestionIndex === 0 && getAnsweredCount() === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-800 mb-3">Choose Your Feedback Preference</h3>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="feedback"
+                  value="immediate"
+                  checked={feedbackPreference === 'immediate'}
+                  onChange={(e) => setFeedbackPreference(e.target.value as 'immediate' | 'end')}
+                  className="mr-2"
+                />
+                <span className="text-blue-700">Show correct answer and explanation after each question</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="feedback"
+                  value="end"
+                  checked={feedbackPreference === 'end'}
+                  onChange={(e) => setFeedbackPreference(e.target.value as 'immediate' | 'end')}
+                  className="mr-2"
+                />
+                <span className="text-blue-700">Show all answers and explanations after completing the quiz</span>
+              </label>
+            </div>
+          </div>
+        )}
+
         {mode === 'quiz' && (
           <QuizProgress
             currentQuestionIndex={currentQuestionIndex}
@@ -508,6 +668,7 @@ const QuizView: React.FC<QuizViewProps> = ({
             onPrevious={() => goToQuestion(Math.max(0, currentQuestionIndex - 1))}
             onNext={handleNext}
             onSubmit={handleSubmit}
+            hideExplanation={mode === 'quiz' && feedbackPreference === 'immediate'}
           />
         </div>
       </div>
@@ -516,6 +677,19 @@ const QuizView: React.FC<QuizViewProps> = ({
         isOpen={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
       />
+
+      {showFeedbackModal && currentFeedback && (
+        <FeedbackModal
+          isOpen={showFeedbackModal}
+          isCorrect={currentFeedback.isCorrect}
+          selectedAnswer={currentFeedback.selectedAnswer}
+          correctAnswer={currentFeedback.correctAnswer}
+          correctRationale={currentFeedback.correctRationale}
+          incorrectRationale={currentFeedback.incorrectRationale}
+          allIncorrectRationales={currentFeedback.allIncorrectRationales}
+          onNext={handleFeedbackNext}
+        />
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trophy, Target, Check, X } from 'lucide-react';
+import { Trophy, Target, Check, X, FileText } from 'lucide-react';
 
 interface QuizSummaryProps {
   mode: 'quiz' | 'marathon';
@@ -9,6 +9,7 @@ interface QuizSummaryProps {
   quizResults: any;
   sessionPoints: number;
   onComplete: (results: any) => void;
+  onViewDetailed?: () => void;
 }
 
 const QuizSummary: React.FC<QuizSummaryProps> = ({
@@ -16,7 +17,8 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
   userName,
   quizResults,
   sessionPoints,
-  onComplete
+  onComplete,
+  onViewDetailed
 }) => {
   const accuracy = Math.round((quizResults.correctAnswers / quizResults.totalQuestions) * 100);
 
@@ -78,6 +80,16 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
           </div>
 
           <div className="flex justify-center space-x-4">
+            {onViewDetailed && (
+              <Button
+                onClick={onViewDetailed}
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Detailed Results
+              </Button>
+            )}
             <Button
               onClick={() => onComplete(quizResults)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8"

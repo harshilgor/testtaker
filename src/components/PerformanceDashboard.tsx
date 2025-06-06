@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, TrendingUp, Target, Award, Clock } from 'lucide-react';
+import { TrendingUp, Target, Award, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
@@ -118,16 +117,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center mb-6 md:mb-8">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="flex items-center mr-4 border-slate-300"
-            size="sm"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+        <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
@@ -196,7 +186,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                         <h3 className="text-lg md:text-xl font-semibold text-gray-900">SAT Practice {index + 1}</h3>
                         <p className="text-sm md:text-base text-gray-600">{new Date(result.date).toLocaleDateString()}</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-gray-400" />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
