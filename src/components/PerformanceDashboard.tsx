@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
-import QuizProgressStats from './Performance/QuizProgressStats';
+import QuizHistorySection from './Performance/QuizHistorySection';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -60,6 +60,8 @@ interface QuizStats {
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
+  const [showMarathonHistory, setShowMarathonHistory] = useState(false);
+  const [showQuizHistory, setShowQuizHistory] = useState(false);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
     totalQuestions: 0,
     correctAnswers: 0,
@@ -171,6 +173,10 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
     console.log('Viewing marathon result:', session);
   };
 
+  const handleViewQuizResult = (result: QuizResult) => {
+    console.log('Viewing quiz result:', result);
+  };
+
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
 
@@ -181,21 +187,99 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
-        {/* Quiz Progress Section */}
-        {quizStats.totalQuizzes > 0 && (
-          <QuizProgressStats quizStats={quizStats} />
+        {/* Overall Performance Summary */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Overall Performance Summary</h2>
+            
+            {/* Quiz Section */}
+            {quizStats.totalQuizzes > 0 && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quizzes</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                    <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
+                    <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
+                  </Card>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
+                    <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                    <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
+                  </Card>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowQuizHistory(!showQuizHistory)}
+                    className="text-gray-600"
+                  >
+                    View Quiz History
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Marathon Section */}
+            {!isLoading && marathonStats.totalQuestions > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Marathon Sessions</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                    <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
+                    <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
+                  </Card>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
+                    <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions - marathonStats.correctAnswers}</div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                    <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
+                  </Card>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowMarathonHistory(!showMarathonHistory)}
+                    className="text-gray-600"
+                  >
+                    View Marathon History
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Conditional History Sections */}
+        {showMarathonHistory && (
+          <MarathonHistorySection 
+            marathonSessions={marathonSessions}
+            onViewResult={handleViewMarathonResult}
+          />
         )}
 
-        {/* Marathon Stats Section */}
-        {!isLoading && marathonStats.totalQuestions > 0 && (
-          <PerformanceStats marathonStats={marathonStats} />
+        {showQuizHistory && (
+          <QuizHistorySection 
+            quizResults={quizResults}
+            onViewResult={handleViewQuizResult}
+          />
         )}
-
-        {/* Marathon Progress Section */}
-        <MarathonHistorySection 
-          marathonSessions={marathonSessions}
-          onViewResult={handleViewMarathonResult}
-        />
 
         {/* Practice Scores Section */}
         <div className="mb-6 md:mb-8">

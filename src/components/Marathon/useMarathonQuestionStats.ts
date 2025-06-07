@@ -29,11 +29,15 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch question statistics from the correct question_bank table (not main_question_bank)
+        console.log('Fetching question stats from question_bank...');
+        
+        // Fetch question statistics from the question_bank table
         const { data: allQuestions, error } = await supabase
           .from('question_bank')
           .select('section, difficulty')
-          .not('question_text', 'is', null);
+          .not('question_text', 'is', null)
+          .not('difficulty', 'is', null)
+          .not('section', 'is', null);
 
         if (error) {
           console.error('Error fetching questions from question_bank:', error);
@@ -42,7 +46,8 @@ export const useMarathonQuestionStats = () => {
         }
 
         if (allQuestions) {
-          console.log('Fetched questions from question_bank:', allQuestions.length);
+          console.log('Raw questions fetched:', allQuestions.length);
+          console.log('Sample questions:', allQuestions.slice(0, 5));
           
           const stats = {
             total: allQuestions.length,
@@ -51,6 +56,8 @@ export const useMarathonQuestionStats = () => {
           };
 
           allQuestions.forEach(q => {
+            console.log('Processing question:', { section: q.section, difficulty: q.difficulty });
+            
             if (q.section === 'math') {
               stats.math.total++;
               if (q.difficulty === 'easy') stats.math.easy++;
@@ -64,7 +71,7 @@ export const useMarathonQuestionStats = () => {
             }
           });
 
-          console.log('Question stats calculated:', stats);
+          console.log('Final calculated stats:', stats);
           setQuestionStats(stats);
         }
 

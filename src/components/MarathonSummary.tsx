@@ -83,9 +83,10 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
             <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
               <div className="flex items-center justify-center mb-2">
                 <Award className="h-6 w-6 text-purple-600 mr-2" />
-                <span className="text-sm text-purple-700 font-medium">Points Earned</span>
+                <span className="text-sm text-purple-700 font-medium">Total Points Earned</span>
               </div>
               <div className="text-2xl font-bold text-purple-800">{sessionStats.pointsEarned}</div>
+              <div className="text-xs text-purple-600 mt-1">Easy: 3pts • Medium: 6pts • Hard: 9pts</div>
             </div>
           </div>
 
