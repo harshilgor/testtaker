@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -65,13 +64,11 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   if (startQuiz) {
     return (
       <QuizView
+        questions={[]} // This will need to be updated to fetch actual questions
         subject={subject}
         topics={selectedTopics}
-        numQuestions={questionCount}
         userName={userName}
-        feedbackPreference={feedbackPreference}
         onBack={() => setStartQuiz(false)}
-        onComplete={handleComplete}
       />
     );
   }
