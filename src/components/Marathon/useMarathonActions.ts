@@ -7,8 +7,10 @@ interface UseMarathonActionsProps {
   session: any;
   currentQuestion: any;
   timeSpent: number;
+  totalTimeSpent: number;
   setCurrentQuestion: (question: any) => void;
   setTimeSpent: (time: number) => void;
+  setTotalTimeSpent: (time: number) => void;
   setLoading: (loading: boolean) => void;
   setSessionPoints: (points: number) => void;
   loadUserPoints: () => Promise<void>;
@@ -18,14 +20,18 @@ interface UseMarathonActionsProps {
   setShowSummary: (show: boolean) => void;
   setShowEndConfirmation: (show: boolean) => void;
   sessionPoints: number;
+  stopTimer: () => void;
+  startTimer: () => void;
 }
 
 export const useMarathonActions = ({
   session,
   currentQuestion,
   timeSpent,
+  totalTimeSpent,
   setCurrentQuestion,
   setTimeSpent,
+  setTotalTimeSpent,
   setLoading,
   setSessionPoints,
   loadUserPoints,
@@ -34,7 +40,9 @@ export const useMarathonActions = ({
   endSession,
   setShowSummary,
   setShowEndConfirmation,
-  sessionPoints
+  sessionPoints,
+  stopTimer,
+  startTimer
 }: UseMarathonActionsProps) => {
 
   const loadNextQuestion = useCallback(async () => {
@@ -69,7 +77,7 @@ export const useMarathonActions = ({
         const question = questions[0];
         console.log('useMarathonActions: Loaded question:', question.id, question.question_text?.substring(0, 50));
         setCurrentQuestion(question);
-        setTimeSpent(0);
+        startTimer(); // Start timer for new question
         
         await supabase.rpc('mark_question_used_in_session', {
           p_session_id: session.id,
@@ -88,13 +96,15 @@ export const useMarathonActions = ({
     } finally {
       setLoading(false);
     }
-  }, [session, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats]);
+  }, [session, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats, startTimer]);
 
   const handleAnswer = useCallback(async (selectedAnswer: string) => {
     if (!currentQuestion) {
       console.log('useMarathonActions: No current question for answer');
       return;
     }
+    
+    stopTimer(); // Stop timer when answer is submitted
     
     const isCorrect = selectedAnswer === currentQuestion.correct_answer;
     console.log('useMarathonActions: Recording answer', { selectedAnswer, isCorrect, timeSpent });
@@ -142,7 +152,7 @@ export const useMarathonActions = ({
     } catch (error) {
       console.error('useMarathonActions: Error recording question attempt:', error);
     }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints]);
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer]);
 
   const handleNext = useCallback(() => {
     console.log('useMarathonActions: Moving to next question');
@@ -151,8 +161,9 @@ export const useMarathonActions = ({
 
   const handleEndMarathon = useCallback(() => {
     console.log('useMarathonActions: Ending marathon requested');
+    stopTimer(); // Stop timer when ending marathon
     setShowEndConfirmation(true);
-  }, [setShowEndConfirmation]);
+  }, [setShowEndConfirmation, stopTimer]);
 
   const confirmEndMarathon = useCallback(async () => {
     console.log('useMarathonActions: Confirming marathon end');

@@ -8,17 +8,19 @@ import { getUserTotalPoints } from '@/services/pointsService';
 export const useMarathonState = (session: MarathonSession | null) => {
   const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
+  const [totalTimeSpent, setTotalTimeSpent] = useState(0); // Track total time across all questions
   const [loading, setLoading] = useState(false);
   const [sessionStats, setSessionStats] = useState({ used: 0, total: 0 });
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionPoints, setSessionPoints] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(true);
 
   const { getSessionStats, getTotalQuestions, initializeSession } = useQuestionSession();
 
   useEffect(() => {
-    if (!session || !currentQuestion) return;
+    if (!session || !currentQuestion || !isTimerRunning) return;
 
     console.log('useMarathonState: Starting timer for question', currentQuestion.id);
     const timer = setInterval(() => {
@@ -29,7 +31,17 @@ export const useMarathonState = (session: MarathonSession | null) => {
       console.log('useMarathonState: Clearing timer');
       clearInterval(timer);
     };
-  }, [session, currentQuestion]);
+  }, [session, currentQuestion, isTimerRunning]);
+
+  const stopTimer = () => {
+    setIsTimerRunning(false);
+    setTotalTimeSpent(prev => prev + timeSpent);
+  };
+
+  const startTimer = () => {
+    setIsTimerRunning(true);
+    setTimeSpent(0);
+  };
 
   const loadUserPoints = async () => {
     console.log('useMarathonState: Loading user points');
@@ -84,6 +96,8 @@ export const useMarathonState = (session: MarathonSession | null) => {
     setCurrentQuestion,
     timeSpent,
     setTimeSpent,
+    totalTimeSpent,
+    setTotalTimeSpent,
     loading,
     setLoading,
     sessionStats,
@@ -96,6 +110,9 @@ export const useMarathonState = (session: MarathonSession | null) => {
     setSessionPoints,
     loadUserPoints,
     loadSessionStats,
-    initializeSessionData
+    initializeSessionData,
+    stopTimer,
+    startTimer,
+    isTimerRunning
   };
 };

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -26,6 +27,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     setCurrentQuestion,
     timeSpent,
     setTimeSpent,
+    totalTimeSpent,
+    setTotalTimeSpent,
     loading,
     setLoading,
     sessionStats,
@@ -38,7 +41,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     setSessionPoints,
     loadUserPoints,
     loadSessionStats,
-    initializeSessionData
+    initializeSessionData,
+    stopTimer,
+    startTimer
   } = useMarathonState(session);
 
   const {
@@ -51,8 +56,10 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     session,
     currentQuestion,
     timeSpent,
+    totalTimeSpent,
     setCurrentQuestion,
     setTimeSpent,
+    setTotalTimeSpent,
     setLoading,
     setSessionPoints,
     loadUserPoints,
@@ -61,7 +68,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     endSession,
     setShowSummary,
     setShowEndConfirmation,
-    sessionPoints
+    sessionPoints,
+    stopTimer,
+    startTimer
   });
 
   useEffect(() => {
@@ -103,7 +112,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
           correctAnswers: session?.correctAnswers || 0,
           incorrectAnswers: session?.incorrectAnswers || 0,
           showAnswerUsed: session?.showAnswerUsed || 0,
-          timeSpent: timeSpent,
+          timeSpent: totalTimeSpent + timeSpent, // Include current question time
           pointsEarned: sessionPoints
         }}
         onBackToDashboard={onBack}

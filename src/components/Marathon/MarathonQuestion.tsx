@@ -74,60 +74,90 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <Card className="border-slate-200">
-        <CardContent className="p-4 md:p-8">
-          <QuestionContent
-            questionText={question.question_text}
-            imageUrl={question.metadata?.image_url}
-            hasImage={question.image}
-            questionId={question.id}
-          />
-
-          <AnswerOptions
-            optionA={question.option_a}
-            optionB={question.option_b}
-            optionC={question.option_c}
-            optionD={question.option_d}
-            selectedAnswer={selectedAnswer}
-            onAnswerChange={handleAnswerSelect}
-            answered={answered}
-            correctAnswer={showFeedback ? question.correct_answer : ''}
-          />
-
-          {showFeedback && (
-            <AnswerFeedback
-              isCorrect={selectedAnswer === question.correct_answer}
-              selectedAnswer={selectedAnswer}
-              correctAnswer={question.correct_answer}
-              correctRationale={question.correct_rationale}
-              incorrectRationale={getIncorrectRationale(selectedAnswer)}
-              showAnswerUsed={showAnswer}
-            />
-          )}
-
-          {!showFeedback && (
-            <QuestionActions
-              answered={answered}
-              showAnswer={showAnswer}
-              selectedAnswer={selectedAnswer}
-              onShowAnswer={handleShowAnswer}
-              onSubmit={handleSubmit}
-            />
-          )}
-
-          {showFeedback && (
-            <div className="flex justify-end">
-              <button
-                onClick={handleNext}
-                className="bg-blue-600 text-white px-4 md:px-6 py-2 rounded hover:bg-blue-700 text-sm md:text-base"
-              >
-                Next Question
+    <div className="flex gap-6 h-[calc(100vh-180px)]">
+      {/* Left side - Question content */}
+      <div className="w-1/2 flex flex-col">
+        <Card className="flex-1 border-slate-200">
+          <CardContent className="p-6 h-full overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm font-medium">
+                3
+              </span>
+              <button className="text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21a2 2 0 012 2v11a2 2 0 01-2 2H3z" />
+                </svg>
+                Mark for Review
               </button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            <QuestionContent
+              questionText={question.question_text}
+              imageUrl={question.metadata?.image_url}
+              hasImage={question.image}
+              questionId={question.id}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right side - Answer options and actions */}
+      <div className="w-1/2 flex flex-col">
+        <Card className="flex-1 border-slate-200">
+          <CardContent className="p-6 h-full flex flex-col">
+            <h3 className="text-lg font-medium mb-4 text-slate-900">
+              Which choice completes the text with the most logical and precise word or phrase?
+            </h3>
+            
+            <div className="flex-1 flex flex-col justify-between">
+              <AnswerOptions
+                optionA={question.option_a}
+                optionB={question.option_b}
+                optionC={question.option_c}
+                optionD={question.option_d}
+                selectedAnswer={selectedAnswer}
+                onAnswerChange={handleAnswerSelect}
+                answered={answered}
+                correctAnswer={showFeedback ? question.correct_answer : ''}
+              />
+
+              <div className="mt-6">
+                {showFeedback && (
+                  <AnswerFeedback
+                    isCorrect={selectedAnswer === question.correct_answer}
+                    selectedAnswer={selectedAnswer}
+                    correctAnswer={question.correct_answer}
+                    correctRationale={question.correct_rationale}
+                    incorrectRationale={getIncorrectRationale(selectedAnswer)}
+                    showAnswerUsed={showAnswer}
+                  />
+                )}
+
+                {!showFeedback && (
+                  <QuestionActions
+                    answered={answered}
+                    showAnswer={showAnswer}
+                    selectedAnswer={selectedAnswer}
+                    onShowAnswer={handleShowAnswer}
+                    onSubmit={handleSubmit}
+                  />
+                )}
+
+                {showFeedback && (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={handleNext}
+                      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                    >
+                      Next Question
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -29,13 +29,21 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch question statistics from question_bank
-        const { data: allQuestions } = await supabase
+        // Fetch question statistics from the correct question_bank table (not main_question_bank)
+        const { data: allQuestions, error } = await supabase
           .from('question_bank')
           .select('section, difficulty')
           .not('question_text', 'is', null);
 
+        if (error) {
+          console.error('Error fetching questions from question_bank:', error);
+          setLoading(false);
+          return;
+        }
+
         if (allQuestions) {
+          console.log('Fetched questions from question_bank:', allQuestions.length);
+          
           const stats = {
             total: allQuestions.length,
             math: { total: 0, easy: 0, medium: 0, hard: 0 },
@@ -56,6 +64,7 @@ export const useMarathonQuestionStats = () => {
             }
           });
 
+          console.log('Question stats calculated:', stats);
           setQuestionStats(stats);
         }
 
@@ -63,8 +72,8 @@ export const useMarathonQuestionStats = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: attempts } = await supabase
-            .from('question_attempts')
-            .select('is_correct')
+            .from('question_attempts_v2')
+            .select('question_id')
             .eq('user_id', user.id);
 
           if (attempts) {
