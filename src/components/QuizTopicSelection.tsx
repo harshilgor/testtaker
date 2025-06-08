@@ -99,7 +99,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
       
       // Convert to quiz format
       const formattedQuestions = selectedQuestions.map(q => ({
-        id: parseInt(q.id),
+        id: q.id.toString(), // Convert number to string here
         question: q.question_text,
         options: [q.option_a, q.option_b, q.option_c, q.option_d],
         correctAnswer: q.correct_answer === 'A' ? 0 : 
