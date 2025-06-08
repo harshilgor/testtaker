@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -198,19 +199,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quizzes</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                    <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
-                  </Card>
-                  <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
                     <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
                   </Card>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-4">
                   <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
                     <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
                   </Card>
+                </div>
+                <div className="grid grid-cols-1 gap-4 mb-4">
                   <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Accuracy</div>
                     <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
@@ -222,7 +219,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
                     onClick={() => setShowQuizHistory(!showQuizHistory)}
                     className="text-gray-600"
                   >
-                    View Quiz History
+                    {showQuizHistory ? 'Close Quiz History' : 'View Quiz History'}
                   </Button>
                 </div>
               </div>
@@ -234,19 +231,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Marathon Sessions</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                    <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
-                  </Card>
-                  <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
                     <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
                   </Card>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-4">
                   <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
                     <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions - marathonStats.correctAnswers}</div>
                   </Card>
+                </div>
+                <div className="grid grid-cols-1 gap-4 mb-4">
                   <Card className="p-4">
                     <div className="text-sm text-gray-600 mb-1">Accuracy</div>
                     <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
@@ -258,7 +251,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
                     onClick={() => setShowMarathonHistory(!showMarathonHistory)}
                     className="text-gray-600"
                   >
-                    View Marathon History
+                    {showMarathonHistory ? 'Close Marathon History' : 'View Marathon History'}
                   </Button>
                 </div>
               </div>
@@ -340,25 +333,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
             totalMarathonQuestions={totalMarathonQuestions}
           />
         </div>
-
-        {/* Help Section */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4 md:p-8">
-            <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
-              <div className="bg-blue-500 rounded-full p-3 flex-shrink-0">
-                <div className="text-white text-lg md:text-xl font-bold">?</div>
-              </div>
-              <div>
-                <h3 className="text-base md:text-lg font-semibold text-blue-900 mb-2">
-                  Need help? <span className="text-blue-600">Learn more about the Digital SAT and registering</span>
-                </h3>
-                <p className="text-sm md:text-base text-blue-800">
-                  Get comprehensive guidance on SAT preparation, test formats, and registration process.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +8,7 @@ import { Subject } from '../pages/Index';
 import QuizView from './QuizView';
 import { useQuestionTopics } from '../hooks/useQuestionTopics';
 import QuizFeedbackPreference from './Quiz/QuizFeedbackPreference';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuizTopicSelectionProps {
   subject: Subject;
@@ -29,8 +31,10 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
   const [startQuiz, setStartQuiz] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   
-  const { mathTopics, englishTopics, loading, error } = useQuestionTopics();
+  const { mathTopics, englishTopics, loading: topicsLoading, error } = useQuestionTopics();
 
   const topics = subject === 'math' ? mathTopics : englishTopics;
   const allTopics = [...topics, ...wrongQuestionsTopics];
@@ -43,9 +47,40 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     );
   };
 
-  const handleStartQuiz = () => {
+  const loadQuizQuestions = async () => {
+    setLoading(true);
+    try {
+      const sectionFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+      
+      const { data: questions, error } = await supabase
+        .rpc('get_random_questions', {
+          p_section: sectionFilter,
+          p_limit: questionCount
+        });
+
+      if (error) {
+        console.error('Error loading questions:', error);
+        return [];
+      }
+
+      return questions || [];
+    } catch (error) {
+      console.error('Error loading quiz questions:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartQuiz = async () => {
     if (selectedTopics.length > 0 && questionCount > 0) {
-      setStartQuiz(true);
+      const questions = await loadQuizQuestions();
+      if (questions.length > 0) {
+        setQuizQuestions(questions);
+        setStartQuiz(true);
+      } else {
+        alert('No questions available for the selected criteria.');
+      }
     }
   };
 
@@ -56,15 +91,10 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     }
   };
 
-  const handleComplete = (results: any) => {
-    console.log('Quiz completed with results:', results);
-    onBackToDashboard();
-  };
-
-  if (startQuiz) {
+  if (startQuiz && quizQuestions.length > 0) {
     return (
       <QuizView
-        questions={[]} // This will need to be updated to fetch actual questions
+        questions={quizQuestions}
         subject={subject}
         topics={selectedTopics}
         userName={userName}
@@ -91,10 +121,12 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
-          {loading && (
+          {(topicsLoading || loading) && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading available topics...</p>
+              <p className="text-gray-600">
+                {loading ? 'Loading questions...' : 'Loading available topics...'}
+              </p>
             </div>
           )}
 
@@ -108,7 +140,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
             </div>
           )}
 
-          {!loading && (
+          {!topicsLoading && !loading && (
             <>
               <QuizFeedbackPreference
                 feedbackPreference={feedbackPreference}
@@ -136,7 +168,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                   ))}
                 </div>
                 
-                {topics.length === 0 && !loading && (
+                {topics.length === 0 && !topicsLoading && (
                   <p className="text-gray-500 text-center py-4">No topics available for {subject}</p>
                 )}
               </div>
