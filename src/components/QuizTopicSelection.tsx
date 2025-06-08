@@ -18,7 +18,7 @@ interface QuizTopicSelectionProps {
 }
 
 const wrongQuestionsTopics = [
-  { id: 'wrong-questions', name: 'Questions I Got Wrong', description: 'Practice questions you previously answered incorrectly' },
+  { id: 'wrong-questions', name: 'Questions I Got Wrong', description: 'Practice questions you previously answered incorrectly', count: 0 },
 ];
 
 const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
@@ -48,24 +48,75 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   };
 
   const loadQuizQuestions = async () => {
+    console.log('Loading quiz questions...');
     setLoading(true);
     try {
-      const sectionFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+      const sectionFilter = subject === 'math' ? 'math' : 'reading-writing';
+      console.log('Section filter:', sectionFilter);
+      console.log('Selected topics:', selectedTopics);
+      console.log('Question count requested:', questionCount);
       
-      const { data: questions, error } = await supabase
-        .rpc('get_random_questions', {
-          p_section: sectionFilter,
-          p_limit: questionCount
-        });
+      // If specific topics are selected, filter by skills
+      let query = supabase
+        .from('question_bank')
+        .select('*')
+        .eq('section', sectionFilter)
+        .not('question_text', 'is', null);
+
+      // If topics are selected and not "wrong-questions", filter by skills
+      if (selectedTopics.length > 0 && !selectedTopics.includes('wrong-questions')) {
+        const selectedSkills = selectedTopics.map(topicId => {
+          const topic = topics.find(t => t.id === topicId);
+          return topic?.skill;
+        }).filter(Boolean);
+        
+        if (selectedSkills.length > 0) {
+          query = query.in('skill', selectedSkills);
+        }
+      }
+
+      const { data: questions, error } = await query
+        .order('id')
+        .limit(questionCount * 2); // Get more questions to randomize
 
       if (error) {
         console.error('Error loading questions:', error);
+        alert('Error loading questions: ' + error.message);
         return [];
       }
 
-      return questions || [];
+      if (!questions || questions.length === 0) {
+        console.log('No questions found for criteria');
+        alert('No questions available for the selected criteria.');
+        return [];
+      }
+
+      // Shuffle and take requested number
+      const shuffled = questions.sort(() => Math.random() - 0.5);
+      const selectedQuestions = shuffled.slice(0, questionCount);
+
+      console.log(`Loaded ${selectedQuestions.length} questions`);
+      
+      // Convert to quiz format
+      const formattedQuestions = selectedQuestions.map(q => ({
+        id: parseInt(q.id),
+        question: q.question_text,
+        options: [q.option_a, q.option_b, q.option_c, q.option_d],
+        correctAnswer: q.correct_answer === 'A' ? 0 : 
+                      q.correct_answer === 'B' ? 1 :
+                      q.correct_answer === 'C' ? 2 : 3,
+        explanation: q.correct_rationale,
+        subject: subject,
+        topic: q.skill || 'general',
+        difficulty: q.difficulty || 'medium',
+        imageUrl: q.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${q.id}.png` : undefined,
+        hasImage: q.image || false
+      }));
+
+      return formattedQuestions;
     } catch (error) {
       console.error('Error loading quiz questions:', error);
+      alert('Error loading questions: ' + (error as Error).message);
       return [];
     } finally {
       setLoading(false);
@@ -78,9 +129,9 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
       if (questions.length > 0) {
         setQuizQuestions(questions);
         setStartQuiz(true);
-      } else {
-        alert('No questions available for the selected criteria.');
       }
+    } else {
+      alert('Please select at least one topic and specify the number of questions.');
     }
   };
 
@@ -95,10 +146,10 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     return (
       <QuizView
         questions={quizQuestions}
+        onBack={() => setStartQuiz(false)}
         subject={subject}
         topics={selectedTopics}
         userName={userName}
-        onBack={() => setStartQuiz(false)}
       />
     );
   }
@@ -160,7 +211,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                       />
                       <div className="flex-1">
                         <label htmlFor={topic.id} className="text-sm font-medium text-gray-900 cursor-pointer">
-                          {topic.name}
+                          {topic.name} ({topic.count} questions)
                         </label>
                         <p className="text-xs text-gray-600 mt-1">{topic.description}</p>
                       </div>
@@ -192,7 +243,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
 
               <Button
                 onClick={handleStartQuiz}
-                disabled={selectedTopics.length === 0 || questionCount <= 0}
+                disabled={selectedTopics.length === 0 || questionCount <= 0 || loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
               >
                 <Play className="h-5 w-5 mr-2" />

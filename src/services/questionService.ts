@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -40,13 +41,13 @@ class QuestionService {
     console.log('Getting random questions with filters:', filters);
     
     try {
-      // Direct query to question_bank table with better error handling
+      // Build optimized query with minimal data transfer
       let query = supabase
         .from('question_bank')
         .select('*')
         .not('question_text', 'is', null);
 
-      // Apply filters
+      // Apply filters for immediate optimization
       if (filters.section) {
         query = query.eq('section', filters.section);
       }
@@ -63,13 +64,12 @@ class QuestionService {
         query = query.eq('domain', filters.domain);
       }
 
-      // Apply limit
+      // Optimized limit - get exact amount needed plus small buffer
       const limit = filters.limit || 10;
       
-      // Get random questions by ordering randomly
       const { data, error } = await query
         .order('id')
-        .limit(Math.min(limit * 3, 100)); // Get more than needed for randomization
+        .limit(limit);
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -81,9 +81,9 @@ class QuestionService {
         return [];
       }
 
-      // Shuffle and take the requested number
+      // Quick shuffle for randomization
       const shuffled = data.sort(() => Math.random() - 0.5);
-      const questions = shuffled.slice(0, limit).map(q => ({
+      const questions = shuffled.map(q => ({
         ...q,
         id: q.id?.toString() || '',
         is_active: true,

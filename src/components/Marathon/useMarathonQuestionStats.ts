@@ -29,9 +29,9 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        console.log('Fetching question stats from question_bank...');
+        console.log('Fetching accurate question stats from question_bank...');
         
-        // Fetch question statistics from the question_bank table
+        // Fetch all questions with non-null content
         const { data: allQuestions, error } = await supabase
           .from('question_bank')
           .select('section, difficulty')
@@ -46,8 +46,7 @@ export const useMarathonQuestionStats = () => {
         }
 
         if (allQuestions) {
-          console.log('Raw questions fetched:', allQuestions.length);
-          console.log('Sample questions:', allQuestions.slice(0, 5));
+          console.log(`Found ${allQuestions.length} total questions in database`);
           
           const stats = {
             total: allQuestions.length,
@@ -56,22 +55,28 @@ export const useMarathonQuestionStats = () => {
           };
 
           allQuestions.forEach(q => {
-            console.log('Processing question:', { section: q.section, difficulty: q.difficulty });
+            const section = q.section?.toLowerCase();
+            const difficulty = q.difficulty?.toLowerCase();
             
-            if (q.section === 'math') {
+            if (section === 'math') {
               stats.math.total++;
-              if (q.difficulty === 'easy') stats.math.easy++;
-              else if (q.difficulty === 'medium') stats.math.medium++;
-              else if (q.difficulty === 'hard') stats.math.hard++;
-            } else if (q.section === 'reading-writing') {
+              if (difficulty === 'easy') stats.math.easy++;
+              else if (difficulty === 'medium') stats.math.medium++;
+              else if (difficulty === 'hard') stats.math.hard++;
+            } else if (section === 'reading-writing') {
               stats.english.total++;
-              if (q.difficulty === 'easy') stats.english.easy++;
-              else if (q.difficulty === 'medium') stats.english.medium++;
-              else if (q.difficulty === 'hard') stats.english.hard++;
+              if (difficulty === 'easy') stats.english.easy++;
+              else if (difficulty === 'medium') stats.english.medium++;
+              else if (difficulty === 'hard') stats.english.hard++;
             }
           });
 
-          console.log('Final calculated stats:', stats);
+          console.log('Calculated accurate stats:', {
+            total: stats.total,
+            math: stats.math,
+            english: stats.english
+          });
+          
           setQuestionStats(stats);
         }
 

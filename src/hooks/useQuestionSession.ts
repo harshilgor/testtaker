@@ -25,27 +25,27 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return;
       }
 
-      // Check if session already exists
-      const { data: existingSession, error: sessionError } = await supabase
+      // Quick check if session exists
+      const { data: existingSession } = await supabase
         .from('question_sessions')
-        .select('*')
+        .select('session_id')
         .eq('session_id', sessionId)
         .eq('session_type', sessionType)
         .eq('user_id', user.user.id)
         .maybeSingle();
 
-      if (sessionError) {
-        console.error('Error checking existing session:', sessionError);
-        return;
-      }
-
       if (existingSession) {
-        console.log('Session already exists:', existingSession);
+        console.log('Session already exists');
         return;
       }
 
-      // Create new session with empty questions_used array
-      const totalQuestions = await getTotalQuestions();
+      // Fast count for total questions
+      const { count } = await supabase
+        .from('question_bank')
+        .select('*', { count: 'exact', head: true })
+        .not('question_text', 'is', null);
+
+      // Create session immediately
       const { error } = await supabase
         .from('question_sessions')
         .insert({
@@ -53,7 +53,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
           session_id: sessionId,
           session_type: sessionType,
           questions_used: [],
-          total_questions_available: totalQuestions
+          total_questions_available: count || 0
         });
 
       if (error) {
@@ -74,14 +74,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
     try {
       console.log('Fetching question with filters:', filters);
       
-      // Check if user is authenticated
       const { data: user, error: userError } = await supabase.auth.getUser();
       if (userError || !user.user) {
         console.error('User not authenticated:', userError);
         return null;
       }
 
-      // Map subject filters to database section values
+      // Map subject filters
       let sectionFilter = null;
       if (filters.section) {
         sectionFilter = filters.section;
@@ -95,7 +94,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
 
       console.log('Mapped section filter:', sectionFilter);
       
-      // Try to call the RPC function with proper error handling
+      // Use optimized RPC function
       const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -107,13 +106,12 @@ export const useQuestionSession = (): QuestionSessionHook => {
       if (error) {
         console.error('Error calling get_unused_questions_for_session:', error);
         
-        // Fallback: try to get questions directly from question_bank
-        console.log('Falling back to direct question_bank query');
-        
+        // Fast fallback query
         let query = supabase
           .from('question_bank')
           .select('*')
-          .not('question_text', 'is', null);
+          .not('question_text', 'is', null)
+          .limit(1);
 
         if (sectionFilter) {
           query = query.eq('section', sectionFilter);
@@ -123,9 +121,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
           query = query.eq('difficulty', filters.difficulty);
         }
 
-        const { data: fallbackData, error: fallbackError } = await query
-          .order('id')
-          .limit(1);
+        const { data: fallbackData, error: fallbackError } = await query;
 
         if (fallbackError) {
           console.error('Fallback query also failed:', fallbackError);
@@ -136,14 +132,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
           const dbQuestion = fallbackData[0];
           console.log('Successfully loaded question via fallback:', dbQuestion.id);
           
-          const mappedQuestion: DatabaseQuestion = {
+          return {
             ...dbQuestion,
             id: dbQuestion.id?.toString() || '',
             is_active: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
-          return mappedQuestion;
         }
         
         return null;
@@ -153,14 +148,13 @@ export const useQuestionSession = (): QuestionSessionHook => {
         const dbQuestion = data[0];
         console.log('Successfully loaded question:', dbQuestion.id, 'Section:', dbQuestion.section);
         
-        const mappedQuestion: DatabaseQuestion = {
+        return {
           ...dbQuestion,
           id: dbQuestion.id?.toString() || '',
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-        return mappedQuestion;
       }
 
       console.log('No questions available with current filters');
@@ -185,7 +179,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return;
       }
 
-      // Try RPC function first
+      // Try RPC function for speed
       const { error } = await supabase.rpc('mark_question_used_in_session', {
         p_session_id: sessionId,
         p_session_type: sessionType,
@@ -195,21 +189,14 @@ export const useQuestionSession = (): QuestionSessionHook => {
       if (error) {
         console.error('Error with RPC mark_question_used_in_session:', error);
         
-        // Fallback: update directly
-        console.log('Falling back to direct update');
-        
-        const { data: session, error: getError } = await supabase
+        // Quick fallback update
+        const { data: session } = await supabase
           .from('question_sessions')
           .select('questions_used')
           .eq('session_id', sessionId)
           .eq('session_type', sessionType)
           .eq('user_id', user.user.id)
           .maybeSingle();
-
-        if (getError) {
-          console.error('Error getting session for fallback:', getError);
-          return;
-        }
 
         const currentUsed = session?.questions_used || [];
         const updatedUsed = [...currentUsed, questionId];
