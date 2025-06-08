@@ -6,10 +6,11 @@ import QuestionContent from './QuestionContent';
 import AnswerOptions from './AnswerOptions';
 import QuestionActions from './QuestionActions';
 import AnswerFeedback from './AnswerFeedback';
+import { Flag } from 'lucide-react';
 
 interface MarathonQuestionProps {
   question: DatabaseQuestion;
-  onAnswer: (answer: string) => void;
+  onAnswer: (answer: string, showAnswerUsed?: boolean) => void;
   onNext: () => void;
 }
 
@@ -22,6 +23,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [answered, setAnswered] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isFlagged, setIsFlagged] = useState(false);
 
   console.log('MarathonQuestion: Rendering', { questionId: question.id, answered, showFeedback });
 
@@ -36,7 +38,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     setShowAnswer(true);
     setShowFeedback(true);
     setSelectedAnswer(question.correct_answer);
-    onAnswer(question.correct_answer);
+    onAnswer(question.correct_answer, true); // Pass showAnswerUsed as true
   };
 
   const handleSubmit = () => {
@@ -45,7 +47,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     console.log('MarathonQuestion: Submit clicked', { selectedAnswer, showAnswer });
     setAnswered(true);
     setShowFeedback(true);
-    onAnswer(selectedAnswer);
+    onAnswer(selectedAnswer, showAnswer);
   };
 
   const handleNext = () => {
@@ -54,6 +56,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     setAnswered(false);
     setShowAnswer(false);
     setShowFeedback(false);
+    setIsFlagged(false);
     onNext();
   };
 
@@ -80,14 +83,19 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
         <Card className="flex-1 border-slate-200">
           <CardContent className="p-6 h-full overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm font-medium">
-                3
-              </span>
-              <button className="text-slate-400 hover:text-slate-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21a2 2 0 012 2v11a2 2 0 01-2 2H3z" />
-                </svg>
-                Mark for Review
+              <div className="flex items-center gap-4">
+                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium capitalize">
+                  {question.difficulty}
+                </span>
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {question.skill || 'General'}
+                </span>
+              </div>
+              <button 
+                onClick={() => setIsFlagged(!isFlagged)}
+                className={`p-2 rounded hover:bg-gray-100 ${isFlagged ? 'text-orange-600' : 'text-slate-400'}`}
+              >
+                <Flag className="w-4 h-4" />
               </button>
             </div>
             
@@ -122,17 +130,6 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
               />
 
               <div className="mt-6">
-                {showFeedback && (
-                  <AnswerFeedback
-                    isCorrect={selectedAnswer === question.correct_answer}
-                    selectedAnswer={selectedAnswer}
-                    correctAnswer={question.correct_answer}
-                    correctRationale={question.correct_rationale}
-                    incorrectRationale={getIncorrectRationale(selectedAnswer)}
-                    showAnswerUsed={showAnswer}
-                  />
-                )}
-
                 {!showFeedback && (
                   <QuestionActions
                     answered={answered}
@@ -144,14 +141,25 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
                 )}
 
                 {showFeedback && (
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={handleNext}
-                      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-                    >
-                      Next Question
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex justify-end mb-4">
+                      <button
+                        onClick={handleNext}
+                        className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                      >
+                        Next Question
+                      </button>
+                    </div>
+                    
+                    <AnswerFeedback
+                      isCorrect={selectedAnswer === question.correct_answer && !showAnswer}
+                      selectedAnswer={selectedAnswer}
+                      correctAnswer={question.correct_answer}
+                      correctRationale={question.correct_rationale}
+                      incorrectRationale={getIncorrectRationale(selectedAnswer)}
+                      showAnswerUsed={showAnswer}
+                    />
+                  </>
                 )}
               </div>
             </div>

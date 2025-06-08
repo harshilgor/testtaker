@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -166,10 +165,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
         <MarathonQuestion
           question={currentQuestion}
-          onAnswer={(selectedAnswer: string) => {
-            console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer });
-            const isCorrect = selectedAnswer === currentQuestion.correct_answer;
-            handleAnswer(selectedAnswer);
+          onAnswer={(selectedAnswer: string, showAnswerUsed?: boolean) => {
+            console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer, showAnswerUsed });
+            handleAnswer(selectedAnswer, showAnswerUsed || false);
           }}
           onNext={handleNext}
         />

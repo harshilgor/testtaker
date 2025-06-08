@@ -98,7 +98,7 @@ export const useMarathonActions = ({
     }
   }, [session, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats, startTimer]);
 
-  const handleAnswer = useCallback(async (selectedAnswer: string) => {
+  const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
     if (!currentQuestion) {
       console.log('useMarathonActions: No current question for answer');
       return;
@@ -106,8 +106,9 @@ export const useMarathonActions = ({
     
     stopTimer(); // Stop timer when answer is submitted
     
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
-    console.log('useMarathonActions: Recording answer', { selectedAnswer, isCorrect, timeSpent });
+    // If show answer was used, mark as incorrect regardless of the actual answer
+    const isCorrect = showAnswerUsed ? false : selectedAnswer === currentQuestion.correct_answer;
+    console.log('useMarathonActions: Recording answer', { selectedAnswer, isCorrect, timeSpent, showAnswerUsed });
     
     const attempt = {
       questionId: currentQuestion.id.toString(),
@@ -117,15 +118,15 @@ export const useMarathonActions = ({
       isCorrect,
       timeSpent,
       hintsUsed: 0,
-      showAnswerUsed: false,
+      showAnswerUsed,
       flagged: false,
       timestamp: new Date()
     };
     
     recordAttempt(attempt);
     
-    // Calculate and record points
-    const points = calculatePoints(attempt.difficulty, isCorrect);
+    // Calculate and record points (0 points if show answer was used)
+    const points = showAnswerUsed ? 0 : calculatePoints(attempt.difficulty, isCorrect);
     console.log('useMarathonActions: Calculated points for answer:', points);
     
     if (points > 0) {
