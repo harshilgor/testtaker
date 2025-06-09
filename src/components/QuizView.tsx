@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Clock, Target, Award, Flag } from 'lucide-react';
+import { ArrowLeft, Clock, Target, Award, Flag, ChevronUp } from 'lucide-react';
 import QuestionImage from './QuestionImage';
-import QuizQuestionNavigator from './Quiz/QuizQuestionNavigator';
 import QuizAnswerOptions from './Quiz/QuizAnswerOptions';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
+import QuizFeedbackPreference from './Quiz/QuizFeedbackPreference';
 import { calculatePoints } from '@/services/pointsService';
 
 interface Question {
@@ -35,6 +36,9 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [time, setTime] = useState(0);
   const [showResults, setShowResults] = useState(false);
+  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('end');
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -48,10 +52,17 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
+    
+    // Show immediate feedback if preference is set to immediate
+    if (feedbackPreference === 'immediate') {
+      setShowFeedback(true);
+    }
   };
 
   const handleGoToQuestion = (index: number) => {
     setCurrentQuestionIndex(index);
+    setShowFeedback(false);
+    setIsNavigationOpen(false);
   };
 
   const handleToggleFlag = () => {
@@ -63,12 +74,14 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
+      setShowFeedback(false);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
+      setShowFeedback(false);
     }
   };
 
@@ -112,10 +125,19 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const selectedAnswer = answers[currentQuestionIndex];
   const isFlagged = flaggedQuestions[currentQuestionIndex];
   const answeredCount = answers.filter(a => a !== null).length;
+  const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 pb-20">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Feedback Preference at the top */}
+      <div className="max-w-7xl mx-auto px-4 pt-6">
+        <QuizFeedbackPreference
+          feedbackPreference={feedbackPreference}
+          onPreferenceChange={setFeedbackPreference}
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 pb-32">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center">
@@ -144,11 +166,11 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-280px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Side - Question Content */}
-          <div className="lg:col-span-2">
-            <Card className="h-full border-gray-200">
-              <CardContent className="p-6 h-full flex flex-col">
+          <div>
+            <Card className="border-gray-200">
+              <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <h2 className="text-lg font-semibold text-gray-900">
                     Question {currentQuestionIndex + 1}
@@ -163,8 +185,8 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
                   </Button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto">
-                  <p className="text-gray-800 leading-relaxed mb-6">
+                <div className="mb-6">
+                  <p className="text-gray-800 leading-relaxed mb-4">
                     {currentQuestion.question}
                   </p>
                   
@@ -174,22 +196,28 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
                     </div>
                   )}
                 </div>
+
+                {/* Show feedback if immediate feedback is enabled and user answered */}
+                {feedbackPreference === 'immediate' && showFeedback && selectedAnswer !== null && (
+                  <div className={`p-4 rounded-lg border ${
+                    isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center mb-2">
+                      <span className={`font-semibold ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                        {isCorrect ? 'Correct!' : 'Incorrect'}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                      {currentQuestion.explanation}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Side - Navigation and Answer Options */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Question Navigator */}
-            <QuizQuestionNavigator
-              questions={questions}
-              currentQuestionIndex={currentQuestionIndex}
-              answers={answers}
-              flaggedQuestions={flaggedQuestions}
-              onGoToQuestion={handleGoToQuestion}
-            />
-
-            {/* Answer Options */}
+          {/* Right Side - Answer Options */}
+          <div>
             <QuizAnswerOptions
               question={currentQuestion}
               selectedAnswer={selectedAnswer}
@@ -199,17 +227,35 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <QuizBottomNavigation
-        questions={questions}
-        currentQuestionIndex={currentQuestionIndex}
-        answers={answers}
-        flaggedQuestions={flaggedQuestions}
-        onGoToQuestion={handleGoToQuestion}
-        onNext={handleNext}
-        onSubmit={handleSubmitQuiz}
-        answeredCount={answeredCount}
-      />
+      {/* Simple Bottom Navigation Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => setIsNavigationOpen(!isNavigationOpen)}
+            className="flex items-center space-x-2"
+          >
+            <span className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded mr-2">
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </span>
+            <ChevronUp className={`h-4 w-4 transition-transform ${isNavigationOpen ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
+
+        {/* Navigation Popup */}
+        {isNavigationOpen && (
+          <QuizBottomNavigation
+            questions={questions}
+            currentQuestionIndex={currentQuestionIndex}
+            answers={answers}
+            flaggedQuestions={flaggedQuestions}
+            onGoToQuestion={handleGoToQuestion}
+            onNext={handleNext}
+            onSubmit={handleSubmitQuiz}
+            answeredCount={answeredCount}
+          />
+        )}
+      </div>
     </div>
   );
 };
