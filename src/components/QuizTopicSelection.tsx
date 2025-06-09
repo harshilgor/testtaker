@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
@@ -59,6 +58,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
         subject={subject}
         topics={selectedTopics}
         userName={userName}
+        feedbackPreference={feedbackPreference}
       />
     );
   }
