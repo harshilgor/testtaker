@@ -1,14 +1,53 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { MarathonSession, QuestionAttempt, WeakTopic, MarathonSettings } from '../types/marathon';
+import { questionService } from '@/services/questionService';
 
 export const useMarathonSession = (settings?: MarathonSettings | null) => {
   const [session, setSession] = useState<MarathonSession | null>(null);
   const [attempts, setAttempts] = useState<QuestionAttempt[]>([]);
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
   const [flaggedQuestions, setFlaggedQuestions] = useState<string[]>([]);
+  const [questionPool, setQuestionPool] = useState<any[]>([]);
+  const [poolIndex, setPoolIndex] = useState(0);
 
-  const startSession = useCallback((marathonSettings: MarathonSettings) => {
+  // Preload questions when session starts
+  const preloadQuestions = useCallback(async (marathonSettings: MarathonSettings) => {
+    console.log('Preloading questions for marathon session...');
+    
+    try {
+      const allQuestions = [];
+      
+      for (const subject of marathonSettings.subjects) {
+        const section = subject === 'math' ? 'math' : 'reading-writing';
+        const filters = {
+          section,
+          difficulty: marathonSettings.difficulty === 'mixed' ? undefined : marathonSettings.difficulty,
+          limit: 100 // Preload a large pool
+        };
+        
+        const questions = await questionService.getRandomQuestions(filters);
+        const formattedQuestions = questions.map(q => ({
+          ...questionService.convertToLegacyFormat(q),
+          subject: subject as 'math' | 'english'
+        }));
+        
+        allQuestions.push(...formattedQuestions);
+      }
+      
+      // Shuffle the questions
+      const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+      setQuestionPool(shuffled);
+      setPoolIndex(0);
+      
+      console.log(`Preloaded ${shuffled.length} questions for marathon`);
+      
+    } catch (error) {
+      console.error('Error preloading questions:', error);
+      setQuestionPool([]);
+    }
+  }, []);
+
+  const startSession = useCallback(async (marathonSettings: MarathonSettings) => {
     console.log('Starting marathon session with settings:', marathonSettings);
     
     const newSession: MarathonSession = {
@@ -30,8 +69,11 @@ export const useMarathonSession = (settings?: MarathonSettings | null) => {
     setSession(newSession);
     setAttempts([]);
     
+    // Preload questions immediately
+    await preloadQuestions(marathonSettings);
+    
     localStorage.setItem('currentMarathonSession', JSON.stringify(newSession));
-  }, []);
+  }, [preloadQuestions]);
 
   // Auto-start session when settings are provided
   useEffect(() => {
@@ -39,6 +81,26 @@ export const useMarathonSession = (settings?: MarathonSettings | null) => {
       startSession(settings);
     }
   }, [settings, session, startSession]);
+
+  const getNextQuestion = useCallback(() => {
+    if (questionPool.length === 0) {
+      console.log('No questions in pool');
+      return null;
+    }
+    
+    if (poolIndex >= questionPool.length) {
+      // If we've used all questions, shuffle and restart
+      const shuffled = [...questionPool].sort(() => Math.random() - 0.5);
+      setQuestionPool(shuffled);
+      setPoolIndex(0);
+      return shuffled[0];
+    }
+    
+    const question = questionPool[poolIndex];
+    setPoolIndex(prev => prev + 1);
+    
+    return question;
+  }, [questionPool, poolIndex]);
 
   const recordAttempt = useCallback((attempt: QuestionAttempt) => {
     console.log('Recording attempt:', attempt);
@@ -156,6 +218,8 @@ export const useMarathonSession = (settings?: MarathonSettings | null) => {
     attempts,
     weakTopics,
     flaggedQuestions,
+    questionPool,
+    getNextQuestion,
     startSession,
     recordAttempt,
     endSession,

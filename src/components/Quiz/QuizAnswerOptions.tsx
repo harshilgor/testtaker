@@ -49,7 +49,7 @@ const QuizAnswerOptions: React.FC<QuizAnswerOptionsProps> = ({
                 <span className="font-medium mr-3 w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
                   {String.fromCharCode(65 + index)}
                 </span>
-                <span className="text-left">{option}</span>
+                <span className="text-left whitespace-pre-wrap break-words flex-1">{option}</span>
               </div>
             </Button>
           ))}

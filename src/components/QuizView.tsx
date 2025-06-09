@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { ArrowLeft, Clock, Target, Award, Flag } from 'lucide-react';
 import QuestionImage from './QuestionImage';
 import QuizQuestionNavigator from './Quiz/QuizQuestionNavigator';
 import QuizAnswerOptions from './Quiz/QuizAnswerOptions';
-import QuizNavigationButtons from './Quiz/QuizNavigationButtons';
+import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import { calculatePoints } from '@/services/pointsService';
 
 interface Question {
@@ -115,7 +114,7 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const answeredCount = answers.filter(a => a !== null).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
+    <div className="min-h-screen bg-gray-50 py-6 pb-20">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center bg-white rounded-lg shadow-sm p-4">
@@ -145,7 +144,7 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-280px)]">
           {/* Left Side - Question Content */}
           <div className="lg:col-span-2">
             <Card className="h-full border-gray-200">
@@ -196,19 +195,21 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
               selectedAnswer={selectedAnswer}
               onAnswerSelect={handleAnswerSelect}
             />
-
-            {/* Navigation Buttons */}
-            <QuizNavigationButtons
-              currentQuestionIndex={currentQuestionIndex}
-              totalQuestions={questions.length}
-              onNext={handleNext}
-              onPrevious={handlePrevious}
-              onSubmit={handleSubmitQuiz}
-              answeredCount={answeredCount}
-            />
           </div>
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <QuizBottomNavigation
+        questions={questions}
+        currentQuestionIndex={currentQuestionIndex}
+        answers={answers}
+        flaggedQuestions={flaggedQuestions}
+        onGoToQuestion={handleGoToQuestion}
+        onNext={handleNext}
+        onSubmit={handleSubmitQuiz}
+        answeredCount={answeredCount}
+      />
     </div>
   );
 };
