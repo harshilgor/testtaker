@@ -6,7 +6,6 @@ import { ArrowLeft, Clock, Target, Award, Flag, ChevronUp } from 'lucide-react';
 import QuestionImage from './QuestionImage';
 import QuizAnswerOptions from './Quiz/QuizAnswerOptions';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
-import QuizFeedbackPreference from './Quiz/QuizFeedbackPreference';
 import { calculatePoints } from '@/services/pointsService';
 
 interface Question {
@@ -28,15 +27,22 @@ interface QuizViewProps {
   subject: string;
   topics: string[];
   userName: string;
+  feedbackPreference: 'immediate' | 'end';
 }
 
-const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics, userName }) => {
+const QuizView: React.FC<QuizViewProps> = ({ 
+  questions, 
+  onBack, 
+  subject, 
+  topics, 
+  userName, 
+  feedbackPreference 
+}) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(questions.length).fill(null));
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [time, setTime] = useState(0);
   const [showResults, setShowResults] = useState(false);
-  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('end');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
 
@@ -74,13 +80,6 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
-      setShowFeedback(false);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
       setShowFeedback(false);
     }
   };
@@ -126,17 +125,10 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
   const isFlagged = flaggedQuestions[currentQuestionIndex];
   const answeredCount = answers.filter(a => a !== null).length;
   const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+  const canGoNext = currentQuestionIndex < questions.length - 1;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Feedback Preference at the top */}
-      <div className="max-w-7xl mx-auto px-4 pt-6">
-        <QuizFeedbackPreference
-          feedbackPreference={feedbackPreference}
-          onPreferenceChange={setFeedbackPreference}
-        />
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 pb-32">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center bg-white rounded-lg shadow-sm p-4">
@@ -210,6 +202,32 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
                     <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                       {currentQuestion.explanation}
                     </p>
+                    {!isCorrect && (
+                      <p className="text-sm text-red-700 mt-2">
+                        The correct answer is: {String.fromCharCode(65 + currentQuestion.correctAnswer)}. {currentQuestion.options[currentQuestion.correctAnswer]}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Next button for end feedback preference */}
+                {feedbackPreference === 'end' && selectedAnswer !== null && (
+                  <div className="mt-6">
+                    {canGoNext ? (
+                      <Button
+                        onClick={handleNext}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Next Question
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleSubmitQuiz}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Submit Quiz
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -222,6 +240,8 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onBack, subject, topics,
               question={currentQuestion}
               selectedAnswer={selectedAnswer}
               onAnswerSelect={handleAnswerSelect}
+              showCorrectAnswer={feedbackPreference === 'immediate' && showFeedback}
+              isCorrect={isCorrect}
             />
           </div>
         </div>
