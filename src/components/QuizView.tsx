@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Clock, Target, Award, Flag, ChevronUp } from 'lucide-react';
-import QuestionImage from './QuestionImage';
+import { ArrowLeft, ChevronUp } from 'lucide-react';
 import QuizAnswerOptions from './Quiz/QuizAnswerOptions';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
+import QuizTimer from './Quiz/QuizTimer';
+import QuizStats from './Quiz/QuizStats';
+import QuizQuestionContent from './Quiz/QuizQuestionContent';
 import { calculatePoints } from '@/services/pointsService';
 
 interface Question {
@@ -42,17 +43,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(questions.length).fill(null));
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [time, setTime] = useState(0);
-  const [showResults, setShowResults] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(prev => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
@@ -114,12 +106,6 @@ const QuizView: React.FC<QuizViewProps> = ({
     onBack();
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
-
   const currentQuestion = questions[currentQuestionIndex];
   const selectedAnswer = answers[currentQuestionIndex];
   const isFlagged = flaggedQuestions[currentQuestionIndex];
@@ -129,6 +115,8 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <QuizTimer onTimeUpdate={setTime} />
+      
       <div className="max-w-7xl mx-auto px-4 pb-32">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center bg-white rounded-lg shadow-sm p-4">
@@ -141,97 +129,30 @@ const QuizView: React.FC<QuizViewProps> = ({
               {subject === 'math' ? 'Math' : 'English'} Quiz
             </h1>
           </div>
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1 text-gray-500" />
-              <span className="text-sm">{formatTime(time)}</span>
-            </div>
-            <div className="flex items-center">
-              <Target className="h-4 w-4 mr-1 text-gray-500" />
-              <span className="text-sm">Question {currentQuestionIndex + 1} of {questions.length}</span>
-            </div>
-            <div className="flex items-center">
-              <Award className="h-4 w-4 mr-1 text-green-500" />
-              <span className="text-sm">Answered: {answeredCount}/{questions.length}</span>
-            </div>
-          </div>
+          <QuizStats
+            time={time}
+            currentQuestionIndex={currentQuestionIndex}
+            totalQuestions={questions.length}
+            answeredCount={answeredCount}
+          />
         </div>
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Side - Question Content */}
           <div>
-            <Card className="border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Question {currentQuestionIndex + 1}
-                  </h2>
-                  <Button
-                    onClick={handleToggleFlag}
-                    variant="outline"
-                    size="sm"
-                    className={isFlagged ? 'text-yellow-600 border-yellow-300' : ''}
-                  >
-                    <Flag className={`h-4 w-4 ${isFlagged ? 'fill-yellow-400' : ''}`} />
-                  </Button>
-                </div>
-                
-                <div className="mb-6">
-                  <p className="text-gray-800 leading-relaxed mb-4">
-                    {currentQuestion.question}
-                  </p>
-                  
-                  {currentQuestion.hasImage && currentQuestion.imageUrl && (
-                    <div className="mb-4">
-                      <QuestionImage imageUrl={currentQuestion.imageUrl} alt="Question Image" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Show feedback if immediate feedback is enabled and user answered */}
-                {feedbackPreference === 'immediate' && showFeedback && selectedAnswer !== null && (
-                  <div className={`p-4 rounded-lg border ${
-                    isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-center mb-2">
-                      <span className={`font-semibold ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                        {isCorrect ? 'Correct!' : 'Incorrect'}
-                      </span>
-                    </div>
-                    <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                      {currentQuestion.explanation}
-                    </p>
-                    {!isCorrect && (
-                      <p className="text-sm text-red-700 mt-2">
-                        The correct answer is: {String.fromCharCode(65 + currentQuestion.correctAnswer)}. {currentQuestion.options[currentQuestion.correctAnswer]}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Next button for end feedback preference */}
-                {feedbackPreference === 'end' && selectedAnswer !== null && (
-                  <div className="mt-6">
-                    {canGoNext ? (
-                      <Button
-                        onClick={handleNext}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Next Question
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleSubmitQuiz}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        Submit Quiz
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <QuizQuestionContent
+              question={currentQuestion}
+              questionNumber={currentQuestionIndex + 1}
+              selectedAnswer={selectedAnswer}
+              isFlagged={isFlagged}
+              showFeedback={showFeedback}
+              feedbackPreference={feedbackPreference}
+              onToggleFlag={handleToggleFlag}
+              onNext={handleNext}
+              onSubmit={handleSubmitQuiz}
+              canGoNext={canGoNext}
+            />
           </div>
 
           {/* Right Side - Answer Options */}
