@@ -170,7 +170,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         />
       )}
       
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-4">
         <MarathonHeader
           sessionStats={sessionStats}
           totalPoints={totalPoints}
