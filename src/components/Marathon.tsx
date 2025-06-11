@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -71,6 +72,20 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     stopTimer,
     startTimer
   });
+
+  // Hide navigation on mount and restore on unmount
+  useEffect(() => {
+    const nav = document.querySelector('nav');
+    if (nav) {
+      nav.style.display = 'none';
+    }
+
+    return () => {
+      if (nav) {
+        nav.style.display = '';
+      }
+    };
+  }, []);
 
   useEffect(() => {
     console.log('Marathon: useEffect triggered', { session: !!session, currentQuestion: !!currentQuestion, loading });
@@ -147,7 +162,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
   console.log('Marathon: Rendering main question interface');
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {settings.timedMode && settings.timeGoalMinutes && (
         <MarathonTimer 
           timeGoalMinutes={settings.timeGoalMinutes} 

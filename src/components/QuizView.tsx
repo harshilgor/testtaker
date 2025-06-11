@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronUp } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 import QuizAnswerOptions from './Quiz/QuizAnswerOptions';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import QuizTimer from './Quiz/QuizTimer';
@@ -46,6 +46,20 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
 
+  // Hide navigation on mount and restore on unmount
+  useEffect(() => {
+    const nav = document.querySelector('nav');
+    if (nav) {
+      nav.style.display = 'none';
+    }
+
+    return () => {
+      if (nav) {
+        nav.style.display = '';
+      }
+    };
+  }, []);
+
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
@@ -73,6 +87,12 @@ const QuizView: React.FC<QuizViewProps> = ({
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setShowFeedback(false);
+    }
+  };
+
+  const handleEndQuiz = () => {
+    if (confirm('Are you sure you want to end the quiz? Your progress will be saved.')) {
+      handleSubmitQuiz();
     }
   };
 
@@ -112,21 +132,18 @@ const QuizView: React.FC<QuizViewProps> = ({
   const answeredCount = answers.filter(a => a !== null).length;
   const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
   const canGoNext = currentQuestionIndex < questions.length - 1;
+  const hasAnswered = selectedAnswer !== null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <QuizTimer onTimeUpdate={setTime} />
       
-      <div className="max-w-7xl mx-auto px-4 pb-32">
-        {/* Header */}
-        <div className="mb-6 flex justify-between items-center bg-white rounded-lg shadow-sm p-4">
+      <div className="max-w-6xl mx-auto px-6 py-8 pb-32">
+        {/* Header - Bluebook style */}
+        <div className="mb-8 flex justify-between items-center bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center">
-            <Button variant="ghost" onClick={onBack} className="mr-4">
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back
-            </Button>
-            <h1 className="text-xl font-semibold text-gray-900">
-              {subject === 'math' ? 'Math' : 'English'} Quiz
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {subject === 'math' ? 'Math' : 'Reading and Writing'} Assessment
             </h1>
           </div>
           <QuizStats
@@ -137,8 +154,8 @@ const QuizView: React.FC<QuizViewProps> = ({
           />
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Main Content - Two column layout like Bluebook */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Question Content */}
           <div>
             <QuizQuestionContent
@@ -151,6 +168,7 @@ const QuizView: React.FC<QuizViewProps> = ({
               onToggleFlag={handleToggleFlag}
               onNext={handleNext}
               onSubmit={handleSubmitQuiz}
+              onEndQuiz={handleEndQuiz}
               canGoNext={canGoNext}
             />
           </div>
@@ -163,20 +181,22 @@ const QuizView: React.FC<QuizViewProps> = ({
               onAnswerSelect={handleAnswerSelect}
               showCorrectAnswer={feedbackPreference === 'immediate' && showFeedback}
               isCorrect={isCorrect}
+              feedbackPreference={feedbackPreference}
+              hasAnswered={hasAnswered}
             />
           </div>
         </div>
       </div>
 
-      {/* Simple Bottom Navigation Button */}
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-center">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-center">
           <Button
             variant="outline"
             onClick={() => setIsNavigationOpen(!isNavigationOpen)}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-3 border-gray-300 hover:bg-gray-50"
           >
-            <span className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded mr-2">
+            <span className="text-sm font-medium bg-gray-800 text-white px-4 py-2 rounded">
               Question {currentQuestionIndex + 1} of {questions.length}
             </span>
             <ChevronUp className={`h-4 w-4 transition-transform ${isNavigationOpen ? 'rotate-180' : ''}`} />
@@ -191,9 +211,8 @@ const QuizView: React.FC<QuizViewProps> = ({
             answers={answers}
             flaggedQuestions={flaggedQuestions}
             onGoToQuestion={handleGoToQuestion}
-            onNext={handleNext}
-            onSubmit={handleSubmitQuiz}
             answeredCount={answeredCount}
+            selectedTopics={topics}
           />
         )}
       </div>

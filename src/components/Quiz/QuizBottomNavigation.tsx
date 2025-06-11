@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Flag, X } from 'lucide-react';
+import { Flag } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -23,9 +22,8 @@ interface QuizBottomNavigationProps {
   answers: (number | null)[];
   flaggedQuestions: boolean[];
   onGoToQuestion: (index: number) => void;
-  onNext: () => void;
-  onSubmit: () => void;
   answeredCount: number;
+  selectedTopics: string[];
 }
 
 const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
@@ -34,18 +32,19 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
   answers,
   flaggedQuestions,
   onGoToQuestion,
-  onNext,
-  onSubmit,
-  answeredCount
+  answeredCount,
+  selectedTopics
 }) => {
-  const canGoNext = currentQuestionIndex < questions.length - 1;
-  const allAnswered = answeredCount === questions.length;
+  const generateSectionTitle = () => {
+    const topicsText = selectedTopics.join(', ');
+    return `${topicsText} – ${questions.length} Questions`;
+  };
 
   return (
     <div className="absolute bottom-full left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Section 1, Module 1: {questions[0]?.subject === 'math' ? 'Math' : 'Reading and Writing'} Questions</h3>
+          <h3 className="text-lg font-semibold">{generateSectionTitle()}</h3>
         </div>
         
         <div className="flex items-center space-x-6 mb-4 text-sm">
@@ -86,34 +85,6 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
               )}
             </button>
           ))}
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <Button variant="outline" className="text-blue-600 border-blue-600">
-            Go to Review Page
-          </Button>
-          
-          <div className="flex space-x-3">
-            {canGoNext ? (
-              <Button
-                onClick={onNext}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                onClick={onSubmit}
-                className={`px-6 text-white ${
-                  allAnswered
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-orange-600 hover:bg-orange-700'
-                }`}
-              >
-                {allAnswered ? 'Submit Quiz' : `Submit (${answeredCount}/${questions.length})`}
-              </Button>
-            )}
-          </div>
         </div>
       </div>
     </div>
