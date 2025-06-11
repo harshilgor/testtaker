@@ -138,28 +138,26 @@ const QuizView: React.FC<QuizViewProps> = ({
     <div className="min-h-screen bg-gray-50">
       <QuizTimer onTimeUpdate={setTime} />
       
-      <div className="max-w-6xl mx-auto px-6 py-4">
-        {/* Compact Header */}
-        <div className="mb-4 flex justify-between items-center bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+      <div className="max-w-6xl mx-auto px-6 py-8 pb-32">
+        {/* Header - Bluebook style */}
+        <div className="mb-8 flex justify-between items-center bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-gray-900">
               {subject === 'math' ? 'Math' : 'Reading and Writing'} Assessment
             </h1>
           </div>
-          <div className="flex items-center space-x-6">
-            <QuizStats
-              time={time}
-              currentQuestionIndex={currentQuestionIndex}
-              totalQuestions={questions.length}
-              answeredCount={answeredCount}
-            />
-          </div>
+          <QuizStats
+            time={time}
+            currentQuestionIndex={currentQuestionIndex}
+            totalQuestions={questions.length}
+            answeredCount={answeredCount}
+          />
         </div>
 
-        {/* Main Content - Two column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Side - Question Content (reduced width) */}
-          <div className="lg:max-w-md">
+        {/* Main Content - Two column layout like Bluebook */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Side - Question Content */}
+          <div>
             <QuizQuestionContent
               question={currentQuestion}
               questionNumber={currentQuestionIndex + 1}
@@ -172,7 +170,6 @@ const QuizView: React.FC<QuizViewProps> = ({
               onSubmit={handleSubmitQuiz}
               onEndQuiz={handleEndQuiz}
               canGoNext={canGoNext}
-              topics={topics}
             />
           </div>
 
@@ -187,42 +184,19 @@ const QuizView: React.FC<QuizViewProps> = ({
               feedbackPreference={feedbackPreference}
               hasAnswered={hasAnswered}
             />
-
-            {/* Next Question Button positioned below answer options */}
-            {selectedAnswer !== null && (
-              <div className="mt-6 flex justify-center">
-                {canGoNext ? (
-                  <Button
-                    onClick={handleNext}
-                    size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-medium"
-                  >
-                    Next Question
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSubmitQuiz}
-                    size="lg"
-                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-medium"
-                  >
-                    Submit Quiz
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex justify-center">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-center">
           <Button
             variant="outline"
             onClick={() => setIsNavigationOpen(!isNavigationOpen)}
             className="flex items-center space-x-3 border-gray-300 hover:bg-gray-50"
           >
-            <span className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded">
+            <span className="text-sm font-medium bg-gray-800 text-white px-4 py-2 rounded">
               Question {currentQuestionIndex + 1} of {questions.length}
             </span>
             <ChevronUp className={`h-4 w-4 transition-transform ${isNavigationOpen ? 'rotate-180' : ''}`} />

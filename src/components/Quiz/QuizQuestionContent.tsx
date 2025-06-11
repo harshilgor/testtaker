@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Flag, LogOut } from 'lucide-react';
+import { Flag } from 'lucide-react';
 import QuestionImage from '../QuestionImage';
 
 interface Question {
@@ -30,7 +30,6 @@ interface QuizQuestionContentProps {
   onSubmit: () => void;
   onEndQuiz: () => void;
   canGoNext: boolean;
-  topics: string[];
 }
 
 const QuizQuestionContent: React.FC<QuizQuestionContentProps> = ({
@@ -44,25 +43,12 @@ const QuizQuestionContent: React.FC<QuizQuestionContentProps> = ({
   onNext,
   onSubmit,
   onEndQuiz,
-  canGoNext,
-  topics
+  canGoNext
 }) => {
   const isCorrect = selectedAnswer === question.correctAnswer;
 
   return (
-    <div className="space-y-4">
-      {/* Skills and Progress Header */}
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-sm font-medium text-gray-600">
-            {topics.join(', ')} – {questionNumber} Questions
-          </h2>
-        </div>
-        <div className="text-sm text-gray-600">
-          Attempted: {selectedAnswer !== null ? questionNumber : questionNumber - 1}/{questionNumber}
-        </div>
-      </div>
-
+    <div className="space-y-6">
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardContent className="p-6">
           <div className="flex justify-between items-start mb-6">
@@ -72,11 +58,10 @@ const QuizQuestionContent: React.FC<QuizQuestionContentProps> = ({
               </h2>
               <Button
                 onClick={onEndQuiz}
-                variant="destructive"
+                variant="outline"
                 size="sm"
-                className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+                className="text-red-600 border-red-300 hover:bg-red-50"
               >
-                <LogOut className="h-4 w-4" />
                 End Quiz
               </Button>
             </div>
@@ -126,6 +111,29 @@ const QuizQuestionContent: React.FC<QuizQuestionContentProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Navigation buttons positioned below the question content */}
+      {selectedAnswer !== null && (
+        <div className="flex justify-center">
+          {canGoNext ? (
+            <Button
+              onClick={onNext}
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-medium"
+            >
+              Next Question
+            </Button>
+          ) : (
+            <Button
+              onClick={onSubmit}
+              size="lg"
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-medium"
+            >
+              Submit Quiz
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
