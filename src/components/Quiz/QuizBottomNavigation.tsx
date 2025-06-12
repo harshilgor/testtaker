@@ -42,46 +42,51 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
 
   return (
     <div className="absolute bottom-full left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">{generateSectionTitle()}</h3>
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">{generateSectionTitle()}</h3>
+          <div className="text-sm text-gray-600">
+            Attempted: {answeredCount}/{questions.length}
+          </div>
         </div>
         
-        <div className="flex items-center space-x-6 mb-4 text-sm">
+        {/* Bluebook-style legend */}
+        <div className="flex items-center justify-center space-x-8 mb-6 text-sm">
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-blue-600 rounded mr-2"></div>
-            <span>Current</span>
+            <div className="w-6 h-6 bg-blue-600 border-2 border-blue-600 rounded mr-2"></div>
+            <span className="text-gray-700">Current</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded mr-2"></div>
-            <span>Answered</span>
+            <div className="w-6 h-6 bg-blue-100 border-2 border-blue-300 rounded mr-2"></div>
+            <span className="text-gray-700">Answered</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 border-2 border-dashed border-gray-400 rounded mr-2"></div>
-            <span>Unanswered</span>
+            <div className="w-6 h-6 bg-white border-2 border-dashed border-gray-400 rounded mr-2"></div>
+            <span className="text-gray-700">Unanswered</span>
           </div>
           <div className="flex items-center">
             <Flag className="w-4 h-4 text-red-500 mr-2" />
-            <span>For Review</span>
+            <span className="text-gray-700">For Review</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-10 gap-2 mb-6">
+        {/* Enhanced Bluebook-style question grid */}
+        <div className="grid grid-cols-10 gap-3 mb-6 justify-items-center">
           {questions.map((_, index) => (
             <button
               key={index}
               onClick={() => onGoToQuestion(index)}
-              className={`w-8 h-8 rounded text-sm font-medium border transition-colors relative ${
+              className={`w-8 h-8 rounded border-2 text-sm font-medium transition-all duration-200 hover:scale-105 relative ${
                 index === currentQuestionIndex
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-md'
                   : answers[index] !== null
-                  ? 'bg-blue-100 text-blue-600 border-blue-300'
-                  : 'border-2 border-dashed border-gray-400 text-gray-600'
+                  ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200'
+                  : 'bg-white text-gray-600 border-dashed border-gray-400 hover:border-gray-500'
               }`}
             >
               {index + 1}
               {flaggedQuestions[index] && (
-                <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1" />
+                <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 drop-shadow-sm" />
               )}
             </button>
           ))}

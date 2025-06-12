@@ -126,7 +126,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
           correctAnswers: session?.correctAnswers || 0,
           incorrectAnswers: session?.incorrectAnswers || 0,
           showAnswerUsed: session?.showAnswerUsed || 0,
-          timeSpent: totalTimeSpent + timeSpent, // Include current question time
+          timeSpent: totalTimeSpent + timeSpent,
           pointsEarned: sessionPoints
         }}
         onBackToDashboard={onBack}
@@ -170,7 +170,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         />
       )}
       
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-4 pt-2">
         <MarathonHeader
           sessionStats={sessionStats}
           totalPoints={totalPoints}

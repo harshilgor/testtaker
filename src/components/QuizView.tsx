@@ -138,11 +138,11 @@ const QuizView: React.FC<QuizViewProps> = ({
     <div className="min-h-screen bg-gray-50">
       <QuizTimer onTimeUpdate={setTime} />
       
-      <div className="max-w-6xl mx-auto px-6 py-8 pb-32">
+      <div className="max-w-6xl mx-auto px-4 py-2 pb-32">
         {/* Header - Bluebook style */}
-        <div className="mb-8 flex justify-between items-center bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div className="mb-4 flex justify-between items-center bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <div className="flex items-center">
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-gray-900">
               {subject === 'math' ? 'Math' : 'Reading and Writing'} Assessment
             </h1>
           </div>
@@ -155,7 +155,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         </div>
 
         {/* Main Content - Two column layout like Bluebook */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Side - Question Content */}
           <div>
             <QuizQuestionContent
@@ -188,22 +188,22 @@ const QuizView: React.FC<QuizViewProps> = ({
         </div>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Bluebook style */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-center">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex justify-center">
           <Button
             variant="outline"
             onClick={() => setIsNavigationOpen(!isNavigationOpen)}
-            className="flex items-center space-x-3 border-gray-300 hover:bg-gray-50"
+            className="flex items-center space-x-3 border-gray-300 hover:bg-gray-50 px-6 py-2"
           >
-            <span className="text-sm font-medium bg-gray-800 text-white px-4 py-2 rounded">
+            <span className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded text-center min-w-[120px]">
               Question {currentQuestionIndex + 1} of {questions.length}
             </span>
             <ChevronUp className={`h-4 w-4 transition-transform ${isNavigationOpen ? 'rotate-180' : ''}`} />
           </Button>
         </div>
 
-        {/* Navigation Popup */}
+        {/* Navigation Popup - Enhanced Bluebook style */}
         {isNavigationOpen && (
           <QuizBottomNavigation
             questions={questions}

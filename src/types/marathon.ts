@@ -9,7 +9,6 @@ export interface MarathonSession {
   showAnswerUsed: number;
   subjects: ('math' | 'english' | 'both')[];
   difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
-  adaptiveLearning: boolean;
   timedMode: boolean;
   timeGoalMinutes?: number;
   attempts?: QuestionAttempt[];
@@ -39,7 +38,6 @@ export interface WeakTopic {
 export interface MarathonSettings {
   subjects: ('math' | 'english' | 'both')[];
   difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
-  adaptiveLearning: boolean;
   timedMode: boolean;
   timeGoalMinutes?: number;
   calculatorEnabled: boolean;
