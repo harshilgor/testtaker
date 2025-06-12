@@ -22,7 +22,6 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
   const [settings, setSettings] = useState<MarathonSettings>({
     subjects: ['both'],
     difficulty: 'mixed',
-    adaptiveLearning: true,
     timedMode: false,
     timeGoalMinutes: 30,
     calculatorEnabled: true,

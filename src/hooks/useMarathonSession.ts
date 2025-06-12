@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { MarathonSession, QuestionAttempt, WeakTopic, MarathonSettings } from '../types/marathon';
 import { questionService } from '@/services/questionService';
@@ -59,7 +60,6 @@ export const useMarathonSession = (settings?: MarathonSettings | null) => {
       showAnswerUsed: 0,
       subjects: marathonSettings.subjects,
       difficulty: marathonSettings.difficulty,
-      adaptiveLearning: marathonSettings.adaptiveLearning,
       timedMode: marathonSettings.timedMode,
       timeGoalMinutes: marathonSettings.timeGoalMinutes,
     };

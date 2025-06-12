@@ -16,21 +16,6 @@ const SettingsToggles: React.FC<SettingsTogglesProps> = ({
 }) => {
   return (
     <>
-      {/* Adaptive Learning */}
-      <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-        <div>
-          <Label className="font-medium">Adaptive Learning</Label>
-          <p className="text-sm text-gray-600">Focus on your weak topics automatically</p>
-        </div>
-        <Switch 
-          checked={settings.adaptiveLearning} 
-          onCheckedChange={checked => onSettingsChange({
-            ...settings,
-            adaptiveLearning: checked
-          })} 
-        />
-      </div>
-
       {/* Timed Mode */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
