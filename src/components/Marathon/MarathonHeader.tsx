@@ -22,7 +22,7 @@ const MarathonHeader: React.FC<MarathonHeaderProps> = ({
         <h1 className="text-2xl font-bold text-slate-900">Marathon Mode</h1>
         <div className="flex items-center gap-4 mt-1">
           <p className="text-slate-600">
-            Question {sessionStats.used} of {sessionStats.total}
+            {sessionStats.used} questions attempted
           </p>
           <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
             <Trophy className="h-4 w-4 text-blue-600" />
