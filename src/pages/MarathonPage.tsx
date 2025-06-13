@@ -22,16 +22,16 @@ const MarathonPage: React.FC = () => {
     }
   }, [user, session, loading, navigate]);
 
-  // Set body styles for full-screen mode
+  // Set body styles for full-screen mode but allow scrolling
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
     document.body.style.margin = '0';
     document.body.style.padding = '0';
+    document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll only
     
     return () => {
-      document.body.style.overflow = '';
       document.body.style.margin = '';
       document.body.style.padding = '';
+      document.body.style.overflowX = '';
     };
   }, []);
 
@@ -62,7 +62,7 @@ const MarathonPage: React.FC = () => {
 
   if (showSettings) {
     return (
-      <div className="fixed inset-0 bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
         <MarathonSettings
           onStart={handleMarathonSettingsComplete}
           onBack={handleBack}
@@ -72,7 +72,7 @@ const MarathonPage: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Marathon 
         settings={marathonSettings}
         onBack={handleBack}

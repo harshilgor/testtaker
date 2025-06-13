@@ -148,7 +148,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
   console.log('Marathon: Rendering main question interface');
   return (
-    <div className="h-full bg-gray-50 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50 overflow-y-auto">
       {settings.timedMode && settings.timeGoalMinutes && (
         <MarathonTimer 
           timeGoalMinutes={settings.timeGoalMinutes} 

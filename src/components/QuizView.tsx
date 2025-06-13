@@ -121,7 +121,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const hasAnswered = selectedAnswer !== null;
 
   return (
-    <div className="h-full bg-gray-50 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50 overflow-y-auto">
       <QuizTimer onTimeUpdate={setTime} />
       
       <div className="max-w-6xl mx-auto px-4 py-2 pb-32">

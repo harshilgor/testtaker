@@ -16,16 +16,16 @@ const QuizPage: React.FC = () => {
     }
   }, [user, session, loading, navigate]);
 
-  // Set body styles for full-screen mode
+  // Set body styles for full-screen mode but allow scrolling
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
     document.body.style.margin = '0';
     document.body.style.padding = '0';
+    document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll only
     
     return () => {
-      document.body.style.overflow = '';
       document.body.style.margin = '';
       document.body.style.padding = '';
+      document.body.style.overflowX = '';
     };
   }, []);
 
@@ -48,7 +48,7 @@ const QuizPage: React.FC = () => {
   const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
 
   return (
-    <div className="fixed inset-0 bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Quiz
         userName={userName}
         onBack={handleBack}
