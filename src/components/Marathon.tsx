@@ -73,37 +73,17 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     startTimer
   });
 
-  // Hide navigation and push content up
+  // Hide navigation on mount and restore on unmount
   useEffect(() => {
     const nav = document.querySelector('nav');
-    const body = document.body;
-    
     if (nav) {
       nav.style.display = 'none';
-      // Add class to body to remove top padding/margin that was accounting for nav
-      body.classList.add('marathon-mode-active');
     }
-
-    // Add CSS for marathon mode
-    const style = document.createElement('style');
-    style.textContent = `
-      .marathon-mode-active {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-      }
-      .marathon-mode-active > div {
-        padding-top: 0 !important;
-      }
-    `;
-    document.head.appendChild(style);
 
     return () => {
       if (nav) {
         nav.style.display = '';
-        body.classList.remove('marathon-mode-active');
       }
-      // Remove the style element
-      document.head.removeChild(style);
     };
   }, []);
 
@@ -182,7 +162,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
   console.log('Marathon: Rendering main question interface');
   return (
-    <div className="min-h-screen bg-gray-50 pt-0">
+    <div className="min-h-screen bg-gray-50">
       {settings.timedMode && settings.timeGoalMinutes && (
         <MarathonTimer 
           timeGoalMinutes={settings.timeGoalMinutes} 
@@ -190,7 +170,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         />
       )}
       
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-6xl mx-auto p-4 pt-2">
         <MarathonHeader
           sessionStats={sessionStats}
           totalPoints={totalPoints}
