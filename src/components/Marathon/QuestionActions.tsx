@@ -24,7 +24,7 @@ const QuestionActions: React.FC<QuestionActionsProps> = ({
           <Button
             variant="outline"
             onClick={onShowAnswer}
-            className="text-orange-600 border-orange-600 hover:bg-orange-50"
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
           >
             Show Answer
           </Button>

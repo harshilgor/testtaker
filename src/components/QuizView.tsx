@@ -46,20 +46,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
 
-  // Hide navigation on mount and restore on unmount
-  useEffect(() => {
-    const nav = document.querySelector('nav');
-    if (nav) {
-      nav.style.display = 'none';
-    }
-
-    return () => {
-      if (nav) {
-        nav.style.display = '';
-      }
-    };
-  }, []);
-
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
@@ -135,7 +121,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const hasAnswered = selectedAnswer !== null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full bg-gray-50 overflow-y-auto">
       <QuizTimer onTimeUpdate={setTime} />
       
       <div className="max-w-6xl mx-auto px-4 py-2 pb-32">

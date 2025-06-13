@@ -1,25 +1,20 @@
-
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LandingScreen from '@/components/LandingScreen';
 import AuthPage from '@/components/AuthPage';
 import Dashboard from '@/components/Dashboard';
-import Marathon from '@/components/Marathon';
-import MarathonSettings from '@/components/MarathonSettings';
-import Quiz from '@/components/Quiz';
-import MockTest from '@/components/MockTest';
 import Leaderboard from '@/components/Leaderboard';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
 import Navigation from '@/components/Navigation';
-import { MarathonSettings as MarathonSettingsType } from '@/types/marathon';
 
 export type Subject = 'math' | 'english' | 'both';
-export type Screen = 'landing' | 'auth' | 'dashboard' | 'marathon-settings' | 'marathon' | 'quiz' | 'mocktest' | 'leaderboard' | 'performance-dashboard';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { user, session, loading, signOut } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
-  const [marathonSettings, setMarathonSettings] = useState<MarathonSettingsType | null>(null);
 
   console.log('Index: Auth state', { 
     user: !!user, 
@@ -63,96 +58,17 @@ const Index = () => {
     setCurrentScreen(screen);
   };
 
-  const handleMarathonSettingsComplete = (settings: MarathonSettingsType) => {
-    console.log('Index: Marathon settings completed:', settings);
-    setMarathonSettings(settings);
-    setCurrentScreen('marathon');
+  const handleMarathonSelect = () => {
+    console.log('Index: Navigating to marathon');
+    navigate('/marathon');
   };
 
-  // Show marathon settings page
-  if (currentScreen === 'marathon-settings') {
-    console.log('Index: Showing marathon settings');
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation
-          currentScreen={currentScreen}
-          onNavigate={handleNavigate}
-          userName={userName}
-          onSignOut={handleSignOut}
-        />
-        <div className="pt-16">
-          <MarathonSettings
-            onStart={handleMarathonSettingsComplete}
-            onBack={() => setCurrentScreen('dashboard')}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Show marathon with settings
-  if (currentScreen === 'marathon') {
-    console.log('Index: Showing marathon');
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation
-          currentScreen={currentScreen}
-          onNavigate={handleNavigate}
-          userName={userName}
-          onSignOut={handleSignOut}
-        />
-        <div className="pt-16">
-          <Marathon 
-            settings={marathonSettings}
-            onBack={() => setCurrentScreen('dashboard')}
-            onEndMarathon={() => setCurrentScreen('dashboard')}
-          />
-        </div>
-      </div>
-    );
-  }
+  const handleQuizSelect = () => {
+    console.log('Index: Navigating to quiz');
+    navigate('/quiz');
+  };
 
   // Show different screens based on current state
-  if (currentScreen === 'quiz') {
-    console.log('Index: Showing quiz');
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation
-          currentScreen={currentScreen}
-          onNavigate={handleNavigate}
-          userName={userName}
-          onSignOut={handleSignOut}
-        />
-        <div className="pt-16">
-          <Quiz
-            userName={userName}
-            onBack={() => setCurrentScreen('dashboard')}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (currentScreen === 'mocktest') {
-    console.log('Index: Showing mock test');
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation
-          currentScreen={currentScreen}
-          onNavigate={handleNavigate}
-          userName={userName}
-          onSignOut={handleSignOut}
-        />
-        <div className="pt-16">
-          <MockTest
-            userName={userName}
-            onBack={() => setCurrentScreen('dashboard')}
-          />
-        </div>
-      </div>
-    );
-  }
-
   if (currentScreen === 'leaderboard') {
     console.log('Index: Showing leaderboard');
     return (
@@ -206,9 +122,9 @@ const Index = () => {
       <div className="pt-16">
         <Dashboard
           userName={userName}
-          onMarathonSelect={() => setCurrentScreen('marathon-settings')}
-          onMockTestSelect={() => setCurrentScreen('mocktest')}
-          onQuizSelect={() => setCurrentScreen('quiz')}
+          onMarathonSelect={handleMarathonSelect}
+          onMockTestSelect={() => {}} // Keep existing mock test functionality
+          onQuizSelect={handleQuizSelect}
         />
       </div>
     </div>
