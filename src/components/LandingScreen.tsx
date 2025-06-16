@@ -47,7 +47,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             An AI tutor made for <span className="text-blue-600">SAT</span>
           </h2>
           
-          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">learn from real-time feedback, and adaptive tests  Practice from more than 3000 + questions, 10+ mock tests and </p>
+          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">Get real-time feedback on every question, adaptive drills tailored to your strengths, and access 3,000+ practice problems plus 10+ full-length mock exams.</p>
           
           <Button onClick={onGetStarted} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-8">
             Start Learning Today
