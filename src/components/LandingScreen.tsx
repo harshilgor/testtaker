@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,7 +58,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             Start Learning Today
           </Button>
           
-          <div className="flex items-center justify-center space-x-2 text-gray-600 mb-16">
+          <div className="flex items-center justify-center space-x-2 text-gray-600 mb-20">
             <div className="flex space-x-1">
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -67,7 +68,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             <span className="font-medium">Trusted by 10,000+ students worldwide</span>
           </div>
 
-          <p className="text-gray-500 text-lg mb-8">
+          <p className="text-gray-500 text-lg mb-12">
             Our students have gotten into top elite universities
           </p>
           
