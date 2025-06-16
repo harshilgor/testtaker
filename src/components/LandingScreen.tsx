@@ -151,9 +151,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       {/* Final CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h3 className="text-white text-3xl md:text-4xl font-bold mb-6">
-            - from a student who faced problems finding resources to practice for SAT
-          </h3>
+          <h3 className="text-white text-3xl md:text-4xl font-bold mb-6">- The only SAT prep website you need </h3>
           
           <p className="text-blue-100 text-xl mb-8 max-w-2xl mx-auto">
             Join thousands of students who have improved their scores with our AI-powered platform.
