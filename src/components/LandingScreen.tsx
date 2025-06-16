@@ -81,7 +81,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h3 className="text-4xl font-bold text-slate-900 mb-6">Practice non-stop, learn smarter.</h3>
+            <h3 className="text-4xl font-bold text-slate-900 mb-6">learn smarter, Practice non-stop </h3>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               From personalized practice to comprehensive analytics, we've got your SAT preparation covered.
             </p>
