@@ -189,7 +189,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <div className="bg-blue-600 rounded-lg p-2">
                 <Brain className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-semibold">TestTaker.ai</span>
+              <span className="text-lg font-semibold">get1600.co</span>
             </div>
             
             <div className="flex space-x-6 text-sm text-slate-400">
