@@ -93,7 +93,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="bg-blue-100 rounded-2xl p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
                   <Brain className="h-8 w-8 text-blue-600" />
                 </div>
-                <h4 className="text-xl font-semibold text-slate-900 mb-4">AI-Powered Tutoring</h4>
+                <h4 className="text-xl font-semibold text-slate-900 mb-4">Focus on your weakness</h4>
                 <p className="text-gray-600 leading-relaxed">
                   Advanced algorithms analyze your performance and adapt questions to your 
                   skill level, ensuring optimal learning efficiency.
