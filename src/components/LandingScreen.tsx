@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,11 +47,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             An AI tutor made for <span className="text-blue-600">SAT</span>
           </h2>
           
-          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-            Transform your SAT preparation with personalized AI tutoring. Get more than 
-            3000 + questions to practice from, real-time feedback, and comprehensive mock 
-            tests designed to maximize your score.
-          </p>
+          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">learn from real-time feedback, and adaptive tests  Practice from more than 3000 + questions, 10+ mock tests and </p>
           
           <Button onClick={onGetStarted} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-8">
             Start Learning Today
