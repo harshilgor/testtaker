@@ -12,6 +12,7 @@ import MarathonCompletionState from './Marathon/MarathonCompletionState';
 import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
 import MarathonSummary from './MarathonSummary';
 import MarathonTimer from './Marathon/MarathonTimer';
+import { calculatePoints } from '@/services/pointsService';
 
 interface MarathonProps {
   settings: MarathonSettings | null;
@@ -88,6 +89,12 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     confirmEndMarathon();
   };
 
+  // Calculate points for current question based on difficulty
+  const getCurrentQuestionPoints = () => {
+    if (!currentQuestion) return 0;
+    return calculatePoints(currentQuestion.difficulty as 'easy' | 'medium' | 'hard', true);
+  };
+
   console.log('Marathon: Rendering state', {
     hasSettings: !!settings,
     hasSession: !!session,
@@ -161,6 +168,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
           sessionStats={sessionStats}
           totalPoints={totalPoints}
           sessionPoints={sessionPoints}
+          currentQuestionPoints={getCurrentQuestionPoints()}
           onEndMarathon={handleEndMarathon}
         />
 

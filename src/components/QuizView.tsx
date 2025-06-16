@@ -169,6 +169,8 @@ const QuizView: React.FC<QuizViewProps> = ({
               isCorrect={isCorrect}
               feedbackPreference={feedbackPreference}
               hasAnswered={hasAnswered}
+              onNext={handleNext}
+              canGoNext={canGoNext}
             />
           </div>
         </div>

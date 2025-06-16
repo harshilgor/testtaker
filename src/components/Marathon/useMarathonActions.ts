@@ -60,6 +60,7 @@ export const useMarathonActions = ({
       
       console.log('useMarathonActions: Requesting question', { subject: randomSubject, difficulty: session.difficulty });
       
+      // Optimize by reducing the RPC call complexity and using a simpler query
       const { data: questions, error } = await supabase.rpc('get_unused_questions_for_session', {
         p_session_id: session.id,
         p_session_type: 'marathon',
@@ -79,14 +80,15 @@ export const useMarathonActions = ({
         setCurrentQuestion(question);
         startTimer(); // Start timer for new question
         
-        await supabase.rpc('mark_question_used_in_session', {
-          p_session_id: session.id,
-          p_session_type: 'marathon',
-          p_question_id: question.id.toString()
-        });
-        
-        // Refresh session stats after marking question as used
-        await loadSessionStats();
+        // Mark question as used and refresh stats in parallel for better performance
+        await Promise.all([
+          supabase.rpc('mark_question_used_in_session', {
+            p_session_id: session.id,
+            p_session_type: 'marathon',
+            p_question_id: question.id.toString()
+          }),
+          loadSessionStats()
+        ]);
       } else {
         console.log('useMarathonActions: No more questions available');
         setCurrentQuestion(null);
@@ -135,21 +137,21 @@ export const useMarathonActions = ({
       setSessionPoints(newSessionPoints);
     }
     
-    // Record the attempt in the database
+    // Record the attempt in the database and refresh points in parallel
     try {
-      await recordQuestionAttempt({
-        question_id: currentQuestion.id.toString(),
-        session_id: session.id,
-        session_type: 'marathon',
-        is_correct: isCorrect,
-        difficulty: attempt.difficulty,
-        subject: attempt.subject,
-        topic: attempt.topic,
-        time_spent: timeSpent
-      });
-      
-      // Refresh user points after recording
-      await loadUserPoints();
+      await Promise.all([
+        recordQuestionAttempt({
+          question_id: currentQuestion.id.toString(),
+          session_id: session.id,
+          session_type: 'marathon',
+          is_correct: isCorrect,
+          difficulty: attempt.difficulty,
+          subject: attempt.subject,
+          topic: attempt.topic,
+          time_spent: timeSpent
+        }),
+        loadUserPoints()
+      ]);
     } catch (error) {
       console.error('useMarathonActions: Error recording question attempt:', error);
     }

@@ -7,6 +7,7 @@ interface MarathonHeaderProps {
   sessionStats: { used: number; total: number };
   totalPoints: number;
   sessionPoints: number;
+  currentQuestionPoints: number;
   onEndMarathon: () => void;
 }
 
@@ -14,6 +15,7 @@ const MarathonHeader: React.FC<MarathonHeaderProps> = ({
   sessionStats,
   totalPoints,
   sessionPoints,
+  currentQuestionPoints,
   onEndMarathon
 }) => {
   return (
@@ -27,7 +29,7 @@ const MarathonHeader: React.FC<MarathonHeaderProps> = ({
           <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
             <Trophy className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-medium text-blue-800">
-              {totalPoints} pts (+{sessionPoints} this session)
+              {totalPoints} pts (+{currentQuestionPoints} this question)
             </span>
           </div>
         </div>

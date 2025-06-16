@@ -113,10 +113,6 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
       <div className="w-1/2 flex flex-col">
         <Card className="flex-1 border-slate-200">
           <CardContent className="p-6 h-full flex flex-col">
-            <h3 className="text-lg font-medium mb-4 text-slate-900">
-              Which choice completes the text with the most logical and precise word or phrase?
-            </h3>
-            
             <div className="flex-1 flex flex-col justify-between">
               <AnswerOptions
                 optionA={question.option_a}
