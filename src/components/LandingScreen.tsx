@@ -25,7 +25,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <div className="bg-blue-600 rounded-lg p-2">
                 <Brain className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-slate-900">TestTaker.ai</h1>
+              <h1 className="text-xl font-bold text-slate-900">get1600.co</h1>
             </div>
             
             <div className="flex items-center space-x-4">
