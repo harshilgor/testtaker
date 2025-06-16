@@ -196,8 +196,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </div>
           
           <div className="border-t border-slate-800 mt-6 pt-6 text-center">
-            <p className="text-slate-400">San Francisco                                      
-                                                          © 2025 get1600.co . All rights reserved. By Harshil Gor</p>
+            <p className="text-slate-400">San Francisco                                                       If you have any feedback contact - harshilgor06@gmail.com</p>
           </div>
         </div>
       </footer>
