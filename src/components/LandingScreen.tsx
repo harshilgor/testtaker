@@ -94,10 +94,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                   <Brain className="h-8 w-8 text-blue-600" />
                 </div>
                 <h4 className="text-xl font-semibold text-slate-900 mb-4">Focus on your weakness</h4>
-                <p className="text-gray-600 leading-relaxed">
-                  Advanced algorithms analyze your performance and adapt questions to your 
-                  skill level, ensuring optimal learning efficiency.
-                </p>
+                <p className="text-gray-600 leading-relaxed">Adaptive learning mode to analyze your performance and adapt questions to your skill level, ensuring optimal learning efficiency.</p>
               </CardContent>
             </Card>
             
@@ -107,9 +104,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                   <Target className="h-8 w-8 text-green-600" />
                 </div>
                 <h4 className="text-xl font-semibold text-slate-900 mb-4">Unlimited Practice</h4>
-                <p className="text-gray-600 leading-relaxed">
-                  Solve from over 3000 questions, 30+ mock tests and unlimited AI generated questions
-                </p>
+                <p className="text-gray-600 leading-relaxed">Solve from over 3000 questions and unlimited AI generated questions</p>
               </CardContent>
             </Card>
             
@@ -119,10 +114,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                   <Award className="h-8 w-8 text-purple-600" />
                 </div>
                 <h4 className="text-xl font-semibold text-slate-900 mb-4">Real SAT Experience</h4>
-                <p className="text-gray-600 leading-relaxed">
-                  Full-length mock tests simulate the actual SAT environment, preparing you for test 
-                  day with realistic timing and format.
-                </p>
+                <p className="text-gray-600 leading-relaxed">20+ Full-length mock tests simulate the actual SAT environment</p>
               </CardContent>
             </Card>
           </div>
