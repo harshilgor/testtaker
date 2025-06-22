@@ -29,9 +29,9 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        console.log('Fetching accurate question stats from question_bank using test column...');
+        console.log('Fetching question stats from question_bank using test column...');
         
-        // Fetch all questions with non-null content from question_bank
+        // Fetch all questions with valid content
         const { data: allQuestions, error } = await supabase
           .from('question_bank')
           .select('difficulty, test')
@@ -54,12 +54,11 @@ export const useMarathonQuestionStats = () => {
             english: { total: 0, easy: 0, medium: 0, hard: 0 }
           };
 
-          // Categorize questions based on test column
+          // Categorize questions by test column
           allQuestions.forEach(q => {
             const difficulty = q.difficulty?.toLowerCase();
             const test = q.test?.toLowerCase() || '';
             
-            // Determine if it's math or english based on test column
             const isMath = test.includes('math');
             
             if (isMath) {
@@ -68,7 +67,7 @@ export const useMarathonQuestionStats = () => {
               else if (difficulty === 'medium') stats.math.medium++;
               else if (difficulty === 'hard') stats.math.hard++;
             } else {
-              // Everything else is Reading and Writing
+              // Reading and Writing questions
               stats.english.total++;
               if (difficulty === 'easy') stats.english.easy++;
               else if (difficulty === 'medium') stats.english.medium++;
@@ -76,7 +75,7 @@ export const useMarathonQuestionStats = () => {
             }
           });
 
-          console.log('Calculated accurate stats using test column:', {
+          console.log('Calculated stats using test column:', {
             total: stats.total,
             math: stats.math,
             english: stats.english

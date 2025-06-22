@@ -74,6 +74,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     startTimer
   });
 
+  // Initialize session when ready
   useEffect(() => {
     console.log('Marathon: useEffect triggered', { session: !!session, currentQuestion: !!currentQuestion, loading });
     if (session && !currentQuestion && !loading) {
@@ -89,7 +90,6 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     confirmEndMarathon();
   };
 
-  // Calculate points for current question based on difficulty
   const getCurrentQuestionPoints = () => {
     if (!currentQuestion) return 0;
     return calculatePoints(currentQuestion.difficulty as 'easy' | 'medium' | 'hard', true);
@@ -105,6 +105,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     sessionStatsTotal: sessionStats.total
   });
 
+  // Render states
   if (!settings) {
     console.log('Marathon: No settings, showing NoSettingsState');
     return <MarathonNoSettingsState onBack={onBack} />;

@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
@@ -54,7 +55,7 @@ export const useMarathonActions = ({
     console.log('useMarathonActions: Loading next question for session', session.id);
     
     try {
-      // Get used questions first
+      // Get used questions
       const { data: sessionData } = await supabase
         .from('question_sessions')
         .select('questions_used')
@@ -65,7 +66,7 @@ export const useMarathonActions = ({
 
       const usedQuestions = sessionData?.questions_used || [];
       
-      // Build optimized query for unused questions from question_bank
+      // Build query for unused questions
       let query = supabase
         .from('question_bank')
         .select(`
@@ -90,25 +91,23 @@ export const useMarathonActions = ({
           image
         `)
         .not('question_text', 'is', null)
-        .limit(50); // Get more questions to have options
+        .limit(50);
 
-      // Add used questions filter if any exist
+      // Exclude used questions
       if (usedQuestions.length > 0) {
         query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
       }
       
-      // Filter by subject if specified - now using test column
+      // Filter by subject using test column
       if (session.subjects && !session.subjects.includes('both')) {
         if (session.subjects.includes('math')) {
-          // Filter for math questions using test column
           query = query.ilike('test', '%math%');
         } else if (session.subjects.includes('english')) {
-          // Filter for non-math questions (Reading and Writing)
           query = query.not('test', 'ilike', '%math%');
         }
       }
       
-      // Add difficulty filter if not mixed
+      // Filter by difficulty
       if (session.difficulty && session.difficulty !== 'mixed') {
         query = query.eq('difficulty', session.difficulty);
       }
@@ -121,12 +120,12 @@ export const useMarathonActions = ({
       }
 
       if (questions && questions.length > 0) {
-        // Pick a random question from the results
+        // Pick random question
         const randomIndex = Math.floor(Math.random() * questions.length);
         const question = questions[randomIndex];
         console.log('useMarathonActions: Loaded question:', question.id, question.question_text?.substring(0, 50));
         
-        // Format question to match expected interface
+        // Format question
         const formattedQuestion = {
           id: question.id,
           question_text: question.question_text || '',
@@ -150,9 +149,9 @@ export const useMarathonActions = ({
         };
         
         setCurrentQuestion(formattedQuestion);
-        startTimer(); // Start timer for new question
+        startTimer();
         
-        // Mark question as used and refresh stats in parallel for better performance
+        // Mark question as used and refresh stats
         await Promise.all([
           supabase.rpc('mark_question_used_in_session', {
             p_session_id: session.id,
@@ -178,9 +177,8 @@ export const useMarathonActions = ({
       return;
     }
     
-    stopTimer(); // Stop timer when answer is submitted
+    stopTimer();
     
-    // If show answer was used, mark as incorrect regardless of the actual answer
     const isCorrect = showAnswerUsed ? false : selectedAnswer === currentQuestion.correct_answer;
     console.log('useMarathonActions: Recording answer', { selectedAnswer, isCorrect, timeSpent, showAnswerUsed });
     
@@ -199,7 +197,7 @@ export const useMarathonActions = ({
     
     recordAttempt(attempt);
     
-    // Calculate and record points (0 points if show answer was used)
+    // Calculate points (0 if show answer was used)
     const points = showAnswerUsed ? 0 : calculatePoints(attempt.difficulty, isCorrect);
     console.log('useMarathonActions: Calculated points for answer:', points);
     
@@ -209,7 +207,7 @@ export const useMarathonActions = ({
       setSessionPoints(newSessionPoints);
     }
     
-    // Record the attempt in the database and refresh points in parallel
+    // Record attempt and refresh points
     try {
       await Promise.all([
         recordQuestionAttempt({
@@ -236,7 +234,7 @@ export const useMarathonActions = ({
 
   const handleEndMarathon = useCallback(() => {
     console.log('useMarathonActions: Ending marathon requested');
-    stopTimer(); // Stop timer when ending marathon
+    stopTimer();
     setShowEndConfirmation(true);
   }, [setShowEndConfirmation, stopTimer]);
 

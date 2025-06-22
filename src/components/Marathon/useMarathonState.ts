@@ -8,7 +8,7 @@ import { getUserTotalPoints } from '@/services/pointsService';
 export const useMarathonState = (session: MarathonSession | null) => {
   const [currentQuestion, setCurrentQuestion] = useState<DatabaseQuestion | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
-  const [totalTimeSpent, setTotalTimeSpent] = useState(0); // Track total time across all questions
+  const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sessionStats, setSessionStats] = useState({ used: 0, total: 0 });
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
@@ -19,6 +19,7 @@ export const useMarathonState = (session: MarathonSession | null) => {
 
   const { getSessionStats, getTotalQuestions, initializeSession } = useQuestionSession();
 
+  // Timer effect
   useEffect(() => {
     if (!session || !currentQuestion || !isTimerRunning) return;
 

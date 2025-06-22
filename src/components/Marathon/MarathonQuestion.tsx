@@ -38,7 +38,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     setShowAnswer(true);
     setShowFeedback(true);
     setSelectedAnswer(question.correct_answer);
-    onAnswer(question.correct_answer, true); // Pass showAnswerUsed as true
+    onAnswer(question.correct_answer, true);
   };
 
   const handleSubmit = () => {
@@ -60,7 +60,6 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
     onNext();
   };
 
-  // Get the incorrect rationale based on the selected answer
   const getIncorrectRationale = (selectedAnswer: string) => {
     switch (selectedAnswer) {
       case 'A':
@@ -78,7 +77,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
 
   return (
     <div className="flex gap-6 h-[calc(100vh-180px)]">
-      {/* Left side - Question content */}
+      {/* Question content */}
       <div className="w-1/2 flex flex-col">
         <Card className="flex-1 border-slate-200">
           <CardContent className="p-6 h-full overflow-y-auto">
@@ -109,7 +108,7 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
         </Card>
       </div>
 
-      {/* Right side - Answer options and actions */}
+      {/* Answer options and actions */}
       <div className="w-1/2 flex flex-col">
         <Card className="flex-1 border-slate-200">
           <CardContent className="p-6 h-full flex flex-col">
