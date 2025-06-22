@@ -97,28 +97,12 @@ export const useMarathonActions = ({
         query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
       }
       
-      // Filter by subject if specified
+      // Filter by subject if specified using test column
       if (session.subjects && !session.subjects.includes('both')) {
-        // Since all questions have assessment "SAT", we need to filter by skill instead
         if (session.subjects.includes('math')) {
-          // Filter for math-related skills
-          query = query.or('skill.ilike.%algebra%,skill.ilike.%geometry%,skill.ilike.%trigonometry%,skill.ilike.%statistics%,skill.ilike.%calculus%,skill.ilike.%arithmetic%,skill.ilike.%math%,skill.ilike.%linear%,skill.ilike.%quadratic%,skill.ilike.%probability%,skill.ilike.%data%,skill.ilike.%number%,skill.ilike.%ratio%,skill.ilike.%percent%');
+          query = query.eq('test', 'Math');
         } else if (session.subjects.includes('english')) {
-          // Filter for non-math skills (everything else)
-          query = query.not('skill', 'ilike', '%algebra%')
-                      .not('skill', 'ilike', '%geometry%')
-                      .not('skill', 'ilike', '%trigonometry%')
-                      .not('skill', 'ilike', '%statistics%')
-                      .not('skill', 'ilike', '%calculus%')
-                      .not('skill', 'ilike', '%arithmetic%')
-                      .not('skill', 'ilike', '%math%')
-                      .not('skill', 'ilike', '%linear%')
-                      .not('skill', 'ilike', '%quadratic%')
-                      .not('skill', 'ilike', '%probability%')
-                      .not('skill', 'ilike', '%data%')
-                      .not('skill', 'ilike', '%number%')
-                      .not('skill', 'ilike', '%ratio%')
-                      .not('skill', 'ilike', '%percent%');
+          query = query.eq('test', 'Reading and Writing');
         }
       }
       
@@ -160,7 +144,7 @@ export const useMarathonActions = ({
           domain: question.domain || '',
           test_name: question.test || '',
           question_type: 'multiple-choice',
-          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === true
+          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === true || false
         };
         
         setCurrentQuestion(formattedQuestion);
