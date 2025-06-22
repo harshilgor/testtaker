@@ -54,15 +54,6 @@ export const useMarathonActions = ({
     console.log('useMarathonActions: Loading next question for session', session.id);
     
     try {
-      // Map subjects correctly for database query
-      const subjects = session.subjects.includes('both') ? ['math', 'reading-writing'] : session.subjects;
-      const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
-      
-      // Map to database assessment field
-      const sectionFilter = randomSubject === 'math' ? 'Math' : 'Reading and Writing';
-      
-      console.log('useMarathonActions: Requesting question', { subject: randomSubject, sectionFilter, difficulty: session.difficulty });
-      
       // Get used questions first
       const { data: sessionData } = await supabase
         .from('question_sessions')
@@ -74,7 +65,7 @@ export const useMarathonActions = ({
 
       const usedQuestions = sessionData?.questions_used || [];
       
-      // Build optimized query for unused questions
+      // Build optimized query for unused questions from question_bank
       let query = supabase
         .from('question_bank')
         .select(`
@@ -98,13 +89,37 @@ export const useMarathonActions = ({
           question_prompt,
           image
         `)
-        .eq('assessment', sectionFilter)
         .not('question_text', 'is', null)
-        .limit(1);
+        .limit(50); // Get more questions to have options
 
       // Add used questions filter if any exist
       if (usedQuestions.length > 0) {
         query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
+      }
+      
+      // Filter by subject if specified
+      if (session.subjects && !session.subjects.includes('both')) {
+        // Since all questions have assessment "SAT", we need to filter by skill instead
+        if (session.subjects.includes('math')) {
+          // Filter for math-related skills
+          query = query.or('skill.ilike.%algebra%,skill.ilike.%geometry%,skill.ilike.%trigonometry%,skill.ilike.%statistics%,skill.ilike.%calculus%,skill.ilike.%arithmetic%,skill.ilike.%math%,skill.ilike.%linear%,skill.ilike.%quadratic%,skill.ilike.%probability%,skill.ilike.%data%,skill.ilike.%number%,skill.ilike.%ratio%,skill.ilike.%percent%');
+        } else if (session.subjects.includes('english')) {
+          // Filter for non-math skills (everything else)
+          query = query.not('skill', 'ilike', '%algebra%')
+                      .not('skill', 'ilike', '%geometry%')
+                      .not('skill', 'ilike', '%trigonometry%')
+                      .not('skill', 'ilike', '%statistics%')
+                      .not('skill', 'ilike', '%calculus%')
+                      .not('skill', 'ilike', '%arithmetic%')
+                      .not('skill', 'ilike', '%math%')
+                      .not('skill', 'ilike', '%linear%')
+                      .not('skill', 'ilike', '%quadratic%')
+                      .not('skill', 'ilike', '%probability%')
+                      .not('skill', 'ilike', '%data%')
+                      .not('skill', 'ilike', '%number%')
+                      .not('skill', 'ilike', '%ratio%')
+                      .not('skill', 'ilike', '%percent%');
+        }
       }
       
       // Add difficulty filter if not mixed
@@ -112,7 +127,7 @@ export const useMarathonActions = ({
         query = query.eq('difficulty', session.difficulty);
       }
 
-      const { data: questions, error } = await query.order('random()');
+      const { data: questions, error } = await query.order('id');
 
       if (error) {
         console.error('useMarathonActions: Error loading question:', error);
@@ -120,7 +135,9 @@ export const useMarathonActions = ({
       }
 
       if (questions && questions.length > 0) {
-        const question = questions[0];
+        // Pick a random question from the results
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        const question = questions[randomIndex];
         console.log('useMarathonActions: Loaded question:', question.id, question.question_text?.substring(0, 50));
         
         // Format question to match expected interface
@@ -137,13 +154,13 @@ export const useMarathonActions = ({
           incorrect_rationale_b: question.incorrect_rationale_b || '',
           incorrect_rationale_c: question.incorrect_rationale_c || '',
           incorrect_rationale_d: question.incorrect_rationale_d || '',
-          section: question.assessment || '',
+          section: question.assessment || 'SAT',
           skill: question.skill || '',
           difficulty: question.difficulty || 'medium',
           domain: question.domain || '',
           test_name: question.test || '',
           question_type: 'multiple-choice',
-          image: question.image === 'true' || question.image === 'True' || question.image === '1' || false
+          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === true
         };
         
         setCurrentQuestion(formattedQuestion);
