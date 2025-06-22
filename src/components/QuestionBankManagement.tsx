@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,13 +85,29 @@ const QuestionBankManagement: React.FC = () => {
 
       if (error) throw error;
       
-      // Convert bigint IDs to strings
-      const questionsWithStringIds = (data || []).map(q => ({
-        ...q,
-        id: q.id?.toString() || ''
+      // Convert database fields to interface format
+      const questionsWithMappedFields = (data || []).map(q => ({
+        id: q.id?.toString() || '',
+        question_text: q.question_text || '',
+        option_a: q.option_a || '',
+        option_b: q.option_b || '',
+        option_c: q.option_c || '',
+        option_d: q.option_d || '',
+        correct_answer: q.correct_answer || '',
+        correct_rationale: q.correct_rationale || '',
+        incorrect_rationale_a: q.incorrect_rationale_a || '',
+        incorrect_rationale_b: q.incorrect_rationale_b || '',
+        incorrect_rationale_c: q.incorrect_rationale_c || '',
+        incorrect_rationale_d: q.incorrect_rationale_d || '',
+        section: q.assessment || '', // Map assessment to section
+        skill: q.skill || '',
+        difficulty: q.difficulty || '',
+        domain: q.domain || '',
+        test_name: q.test || '', // Map test to test_name
+        question_type: 'multiple-choice' // Default value
       }));
       
-      setQuestions(questionsWithStringIds);
+      setQuestions(questionsWithMappedFields);
     } catch (error) {
       console.error('Error fetching questions:', error);
       toast.error('Failed to fetch questions');
@@ -248,7 +263,7 @@ const QuestionBankManagement: React.FC = () => {
               <CardTitle className="text-sm font-medium">Math Questions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.bySection.math || 0}</div>
+              <div className="text-2xl font-bold">{stats.bySection.Math || 0}</div>
             </CardContent>
           </Card>
           
@@ -257,7 +272,7 @@ const QuestionBankManagement: React.FC = () => {
               <CardTitle className="text-sm font-medium">Reading-Writing</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.bySection['reading-writing'] || 0}</div>
+              <div className="text-2xl font-bold">{stats.bySection['Reading and Writing'] || 0}</div>
             </CardContent>
           </Card>
           

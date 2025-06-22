@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -90,7 +89,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         difficulty: formData.difficulty || 'medium',
         domain: formData.domain || '',
         test: formData.test_name || 'SAT', // Map test_name to test
-        image: formData.image ? 'true' : 'false' // Map boolean to string
+        image: formData.image === true ? 'true' : 'false' // Fixed boolean comparison
       };
 
       if (question?.id) {
@@ -128,7 +127,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           metadata: {},
-          image: data.image === 'true' || data.image === true || false
+          image: data.image === 'true' || data.image === 'True' || data.image === '1' || false
         };
         onSave(convertedData);
       } else {
@@ -165,7 +164,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           metadata: {},
-          image: data.image === 'true' || data.image === true || false
+          image: data.image === 'true' || data.image === 'True' || data.image === '1' || false
         };
         onSave(convertedData);
       }

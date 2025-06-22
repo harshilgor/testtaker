@@ -178,7 +178,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           metadata: {},
-          image: dbQuestion.image === 'true' || dbQuestion.image === true || false
+          image: dbQuestion.image === 'true' || dbQuestion.image === 'True' || dbQuestion.image === '1' || false
         };
       }
 

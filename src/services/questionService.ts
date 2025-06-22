@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DatabaseQuestion {
@@ -126,7 +125,7 @@ class QuestionService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {},
-        image: q.image === 'true' || q.image === true || false
+        image: q.image === 'true' || q.image === 'True' || q.image === '1' || false
       }));
 
       console.log(`Successfully loaded ${questions.length} questions from question_bank`);
@@ -203,7 +202,7 @@ class QuestionService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       metadata: {},
-      image: data.image === 'true' || data.image === true || false
+      image: data.image === 'true' || data.image === 'True' || data.image === '1' || false
     };
   }
 
