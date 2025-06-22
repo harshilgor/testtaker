@@ -1,7 +1,8 @@
 
 import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
+import { useQuestionLoader } from './useQuestionLoader';
+import { useAnswerHandler } from './useAnswerHandler';
+import { useMarathonNavigation } from './useMarathonNavigation';
 
 interface UseMarathonActionsProps {
   session: any;
@@ -24,258 +25,58 @@ interface UseMarathonActionsProps {
   startTimer: () => void;
 }
 
-export const useMarathonActions = ({
-  session,
-  currentQuestion,
-  timeSpent,
-  totalTimeSpent,
-  setCurrentQuestion,
-  setTimeSpent,
-  setTotalTimeSpent,
-  setLoading,
-  setSessionPoints,
-  loadUserPoints,
-  loadSessionStats,
-  recordAttempt,
-  endSession,
-  setShowSummary,
-  setShowEndConfirmation,
-  sessionPoints,
-  stopTimer,
-  startTimer
-}: UseMarathonActionsProps) => {
+export const useMarathonActions = (props: UseMarathonActionsProps) => {
+  const {
+    session,
+    currentQuestion,
+    timeSpent,
+    setCurrentQuestion,
+    setLoading,
+    setSessionPoints,
+    loadUserPoints,
+    loadSessionStats,
+    recordAttempt,
+    endSession,
+    setShowSummary,
+    setShowEndConfirmation,
+    sessionPoints,
+    stopTimer,
+    startTimer
+  } = props;
 
-  const loadNextQuestion = useCallback(async () => {
-    if (!session) {
-      console.log('useMarathonActions: No session available');
-      return;
-    }
-    
-    setLoading(true);
-    console.log('useMarathonActions: Loading next question for session', session.id);
-    
-    try {
-      // Get used questions
-      const { data: sessionData } = await supabase
-        .from('question_sessions')
-        .select('questions_used')
-        .eq('session_id', session.id)
-        .eq('session_type', 'marathon')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .maybeSingle();
+  // Use the smaller, focused hooks
+  const { loadNextQuestion } = useQuestionLoader({
+    session,
+    setCurrentQuestion,
+    setLoading,
+    loadSessionStats,
+    startTimer
+  });
 
-      const usedQuestions = sessionData?.questions_used || [];
-      
-      // Build query for unused questions
-      let query = supabase
-        .from('question_bank')
-        .select(`
-          id,
-          question_text,
-          option_a,
-          option_b,
-          option_c,
-          option_d,
-          correct_answer,
-          correct_rationale,
-          incorrect_rationale_a,
-          incorrect_rationale_b,
-          incorrect_rationale_c,
-          incorrect_rationale_d,
-          assessment,
-          skill,
-          difficulty,
-          domain,
-          test,
-          question_prompt,
-          image
-        `)
-        .not('question_text', 'is', null)
-        .limit(50);
+  const { handleAnswer } = useAnswerHandler({
+    currentQuestion,
+    timeSpent,
+    session,
+    sessionPoints,
+    setSessionPoints,
+    recordAttempt,
+    loadUserPoints,
+    stopTimer
+  });
 
-      // Exclude used questions
-      if (usedQuestions.length > 0) {
-        query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
-      }
-      
-      // Filter by subject using test column
-      if (session.subjects && !session.subjects.includes('both')) {
-        if (session.subjects.includes('math')) {
-          query = query.ilike('test', '%math%');
-        } else if (session.subjects.includes('english')) {
-          query = query.not('test', 'ilike', '%math%');
-        }
-      }
-      
-      // Filter by difficulty
-      if (session.difficulty && session.difficulty !== 'mixed') {
-        query = query.eq('difficulty', session.difficulty);
-      }
-
-      const { data: questions, error } = await query.order('id');
-
-      if (error) {
-        console.error('useMarathonActions: Error loading question:', error);
-        return;
-      }
-
-      if (questions && questions.length > 0) {
-        // Pick random question
-        const randomIndex = Math.floor(Math.random() * questions.length);
-        const question = questions[randomIndex];
-        console.log('useMarathonActions: Loaded question:', question.id, question.question_text?.substring(0, 50));
-        
-        // Format question
-        const formattedQuestion = {
-          id: question.id,
-          question_text: question.question_text || '',
-          option_a: question.option_a || '',
-          option_b: question.option_b || '',
-          option_c: question.option_c || '',
-          option_d: question.option_d || '',
-          correct_answer: question.correct_answer || '',
-          correct_rationale: question.correct_rationale || '',
-          incorrect_rationale_a: question.incorrect_rationale_a || '',
-          incorrect_rationale_b: question.incorrect_rationale_b || '',
-          incorrect_rationale_c: question.incorrect_rationale_c || '',
-          incorrect_rationale_d: question.incorrect_rationale_d || '',
-          section: question.assessment || 'SAT',
-          skill: question.skill || '',
-          difficulty: question.difficulty || 'medium',
-          domain: question.domain || '',
-          test_name: question.test || '',
-          question_type: 'multiple-choice',
-          image: question.image === 'true' || question.image === 'True' || question.image === '1'
-        };
-        
-        setCurrentQuestion(formattedQuestion);
-        startTimer();
-        
-        // Mark question as used and refresh stats
-        await Promise.all([
-          supabase.rpc('mark_question_used_in_session', {
-            p_session_id: session.id,
-            p_session_type: 'marathon',
-            p_question_id: question.id.toString()
-          }),
-          loadSessionStats()
-        ]);
-      } else {
-        console.log('useMarathonActions: No more questions available');
-        setCurrentQuestion(null);
-      }
-    } catch (error) {
-      console.error('useMarathonActions: Error in loadNextQuestion:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [session, setCurrentQuestion, setLoading, loadSessionStats, startTimer]);
-
-  const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
-    if (!currentQuestion) {
-      console.log('useMarathonActions: No current question for answer');
-      return;
-    }
-    
-    stopTimer();
-    
-    const isCorrect = showAnswerUsed ? false : selectedAnswer === currentQuestion.correct_answer;
-    console.log('useMarathonActions: Recording answer', { selectedAnswer, isCorrect, timeSpent, showAnswerUsed });
-    
-    const attempt = {
-      questionId: currentQuestion.id.toString(),
-      subject: currentQuestion.section === 'Reading and Writing' ? 'english' : 'math',
-      topic: currentQuestion.skill || 'general',
-      difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
-      isCorrect,
-      timeSpent,
-      hintsUsed: 0,
-      showAnswerUsed,
-      flagged: false,
-      timestamp: new Date()
-    };
-    
-    recordAttempt(attempt);
-    
-    // Calculate points (0 if show answer was used)
-    const points = showAnswerUsed ? 0 : calculatePoints(attempt.difficulty, isCorrect);
-    console.log('useMarathonActions: Calculated points for answer:', points);
-    
-    if (points > 0) {
-      const newSessionPoints = sessionPoints + points;
-      console.log('useMarathonActions: Updating session points from', sessionPoints, 'to', newSessionPoints);
-      setSessionPoints(newSessionPoints);
-    }
-    
-    // Record attempt and refresh points
-    try {
-      await Promise.all([
-        recordQuestionAttempt({
-          question_id: currentQuestion.id.toString(),
-          session_id: session.id,
-          session_type: 'marathon',
-          is_correct: isCorrect,
-          difficulty: attempt.difficulty,
-          subject: attempt.subject,
-          topic: attempt.topic,
-          time_spent: timeSpent
-        }),
-        loadUserPoints()
-      ]);
-    } catch (error) {
-      console.error('useMarathonActions: Error recording question attempt:', error);
-    }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer]);
+  const { handleEndMarathon, confirmEndMarathon } = useMarathonNavigation({
+    setShowEndConfirmation,
+    setShowSummary,
+    endSession,
+    loadUserPoints,
+    loadSessionStats,
+    stopTimer
+  });
 
   const handleNext = useCallback(() => {
     console.log('useMarathonActions: Moving to next question');
     loadNextQuestion();
   }, [loadNextQuestion]);
-
-  const handleEndMarathon = useCallback(() => {
-    console.log('useMarathonActions: Ending marathon requested');
-    stopTimer();
-    setShowEndConfirmation(true);
-  }, [setShowEndConfirmation, stopTimer]);
-
-  const confirmEndMarathon = useCallback(async () => {
-    console.log('useMarathonActions: Confirming marathon end');
-    try {
-      const sessionData = endSession();
-      
-      if (sessionData?.session) {
-        // Save marathon session to Supabase
-        const { data: user } = await supabase.auth.getUser();
-        if (user.user) {
-          console.log('useMarathonActions: Saving session to database');
-          const { error } = await supabase
-            .from('marathon_sessions')
-            .insert({
-              user_id: user.user.id,
-              total_questions: sessionData.session.totalQuestions,
-              correct_answers: sessionData.session.correctAnswers,
-              difficulty: sessionData.session.difficulty,
-              subjects: sessionData.session.subjects,
-              start_time: sessionData.session.startTime,
-              end_time: sessionData.session.endTime || new Date(),
-            });
-
-          if (error) {
-            console.error('useMarathonActions: Error saving marathon session:', error);
-          } else {
-            console.log('useMarathonActions: Marathon session saved successfully');
-          }
-        }
-      }
-      
-      await loadUserPoints();
-      await loadSessionStats();
-      setShowSummary(true);
-    } catch (error) {
-      console.error('useMarathonActions: Error ending marathon:', error);
-      setShowSummary(true);
-    }
-  }, [endSession, loadUserPoints, loadSessionStats, setShowSummary]);
 
   return {
     loadNextQuestion,
