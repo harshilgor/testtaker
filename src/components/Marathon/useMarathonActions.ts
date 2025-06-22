@@ -144,7 +144,7 @@ export const useMarathonActions = ({
           domain: question.domain || '',
           test_name: question.test || '',
           question_type: 'multiple-choice',
-          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === true || false
+          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === 1 || question.image === true
         };
         
         setCurrentQuestion(formattedQuestion);
