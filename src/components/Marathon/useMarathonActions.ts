@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
@@ -147,7 +146,7 @@ export const useMarathonActions = ({
           domain: question.domain || '',
           test_name: question.test || '',
           question_type: 'multiple-choice',
-          image: question.image === 'true' || question.image === 'True' || question.image === '1' || question.image === true
+          image: question.image === 'true' || question.image === 'True' || question.image === '1'
         };
         
         setCurrentQuestion(formattedQuestion);
