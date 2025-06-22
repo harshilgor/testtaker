@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
@@ -55,19 +54,65 @@ export const useMarathonActions = ({
     console.log('useMarathonActions: Loading next question for session', session.id);
     
     try {
+      // Map subjects correctly for database query
       const subjects = session.subjects.includes('both') ? ['math', 'reading-writing'] : session.subjects;
       const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
       
-      console.log('useMarathonActions: Requesting question', { subject: randomSubject, difficulty: session.difficulty });
+      // Map to database assessment field
+      const sectionFilter = randomSubject === 'math' ? 'Math' : 'Reading and Writing';
       
-      // Optimize by reducing the RPC call complexity and using a simpler query
-      const { data: questions, error } = await supabase.rpc('get_unused_questions_for_session', {
-        p_session_id: session.id,
-        p_session_type: 'marathon',
-        p_section: randomSubject,
-        p_difficulty: session.difficulty === 'mixed' ? null : session.difficulty,
-        p_limit: 1
-      });
+      console.log('useMarathonActions: Requesting question', { subject: randomSubject, sectionFilter, difficulty: session.difficulty });
+      
+      // Get used questions first
+      const { data: sessionData } = await supabase
+        .from('question_sessions')
+        .select('questions_used')
+        .eq('session_id', session.id)
+        .eq('session_type', 'marathon')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
+
+      const usedQuestions = sessionData?.questions_used || [];
+      
+      // Build optimized query for unused questions
+      let query = supabase
+        .from('question_bank')
+        .select(`
+          id,
+          question_text,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_answer,
+          correct_rationale,
+          incorrect_rationale_a,
+          incorrect_rationale_b,
+          incorrect_rationale_c,
+          incorrect_rationale_d,
+          assessment,
+          skill,
+          difficulty,
+          domain,
+          test,
+          question_prompt,
+          image
+        `)
+        .eq('assessment', sectionFilter)
+        .not('question_text', 'is', null)
+        .limit(1);
+
+      // Add used questions filter if any exist
+      if (usedQuestions.length > 0) {
+        query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
+      }
+      
+      // Add difficulty filter if not mixed
+      if (session.difficulty && session.difficulty !== 'mixed') {
+        query = query.eq('difficulty', session.difficulty);
+      }
+
+      const { data: questions, error } = await query.order('random()');
 
       if (error) {
         console.error('useMarathonActions: Error loading question:', error);
@@ -77,7 +122,31 @@ export const useMarathonActions = ({
       if (questions && questions.length > 0) {
         const question = questions[0];
         console.log('useMarathonActions: Loaded question:', question.id, question.question_text?.substring(0, 50));
-        setCurrentQuestion(question);
+        
+        // Format question to match expected interface
+        const formattedQuestion = {
+          id: question.id,
+          question_text: question.question_text || '',
+          option_a: question.option_a || '',
+          option_b: question.option_b || '',
+          option_c: question.option_c || '',
+          option_d: question.option_d || '',
+          correct_answer: question.correct_answer || '',
+          correct_rationale: question.correct_rationale || '',
+          incorrect_rationale_a: question.incorrect_rationale_a || '',
+          incorrect_rationale_b: question.incorrect_rationale_b || '',
+          incorrect_rationale_c: question.incorrect_rationale_c || '',
+          incorrect_rationale_d: question.incorrect_rationale_d || '',
+          section: question.assessment || '',
+          skill: question.skill || '',
+          difficulty: question.difficulty || 'medium',
+          domain: question.domain || '',
+          test_name: question.test || '',
+          question_type: 'multiple-choice',
+          image: question.image === 'true' || question.image === 'True' || question.image === '1' || false
+        };
+        
+        setCurrentQuestion(formattedQuestion);
         startTimer(); // Start timer for new question
         
         // Mark question as used and refresh stats in parallel for better performance
@@ -98,7 +167,7 @@ export const useMarathonActions = ({
     } finally {
       setLoading(false);
     }
-  }, [session, setCurrentQuestion, setTimeSpent, setLoading, loadSessionStats, startTimer]);
+  }, [session, setCurrentQuestion, setLoading, loadSessionStats, startTimer]);
 
   const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
     if (!currentQuestion) {
@@ -114,7 +183,7 @@ export const useMarathonActions = ({
     
     const attempt = {
       questionId: currentQuestion.id.toString(),
-      subject: currentQuestion.section === 'reading-writing' ? 'english' : currentQuestion.section as 'math' | 'english',
+      subject: currentQuestion.section === 'Reading and Writing' ? 'english' : 'math',
       topic: currentQuestion.skill || 'general',
       difficulty: currentQuestion.difficulty as 'easy' | 'medium' | 'hard',
       isCorrect,

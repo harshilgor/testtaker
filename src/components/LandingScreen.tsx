@@ -1,14 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
+
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
+
 const LandingScreen: React.FC<LandingScreenProps> = ({
   onGetStarted
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -16,7 +20,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  return <div className="min-h-screen bg-white">
+
+  return (
+    <div className="min-h-screen bg-white">
       {/* Sticky Transparent Header */}
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -186,10 +192,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </div>
           
           <div className="border-t border-slate-800 mt-6 pt-6 text-center">
-            <p className="text-slate-400">San Francisco                                                       If you have any feedback contact - harshilgor06@gmail.com</p>
+            <p className="text-slate-400">San Francisco                                                       If you have any feedback contact - harshilgor06@gmail.com</p>
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default LandingScreen;
