@@ -85,12 +85,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         incorrect_rationale_b: formData.incorrect_rationale_b || '',
         incorrect_rationale_c: formData.incorrect_rationale_c || '',
         incorrect_rationale_d: formData.incorrect_rationale_d || '',
-        section: formData.section || 'math',
+        assessment: formData.section || 'math', // Map section to assessment
         skill: formData.skill || '',
         difficulty: formData.difficulty || 'medium',
         domain: formData.domain || '',
-        test_name: formData.test_name || 'SAT',
-        question_type: formData.question_type || 'multiple-choice'
+        test: formData.test_name || 'SAT', // Map test_name to test
+        image: formData.image ? 'true' : 'false' // Map boolean to string
       };
 
       if (question?.id) {
@@ -104,14 +104,31 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
         if (error) throw error;
         
-        // Convert the response to match DatabaseQuestion interface with default values
+        // Convert the response to match DatabaseQuestion interface
         const convertedData: DatabaseQuestion = {
-          ...data,
           id: data.id?.toString() || '',
-          is_active: true, // Default value since question_bank doesn't have this
-          created_at: new Date().toISOString(), // Default value
-          updated_at: new Date().toISOString(), // Default value
-          metadata: {} // Default value since question_bank doesn't have this
+          question_text: data.question_text || '',
+          option_a: data.option_a || '',
+          option_b: data.option_b || '',
+          option_c: data.option_c || '',
+          option_d: data.option_d || '',
+          correct_answer: data.correct_answer || '',
+          correct_rationale: data.correct_rationale || '',
+          incorrect_rationale_a: data.incorrect_rationale_a || '',
+          incorrect_rationale_b: data.incorrect_rationale_b || '',
+          incorrect_rationale_c: data.incorrect_rationale_c || '',
+          incorrect_rationale_d: data.incorrect_rationale_d || '',
+          section: data.assessment || '',
+          skill: data.skill || '',
+          difficulty: data.difficulty || 'medium',
+          domain: data.domain || '',
+          test_name: data.test || '',
+          question_type: 'multiple-choice',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {},
+          image: data.image === 'true' || data.image === true || false
         };
         onSave(convertedData);
       } else {
@@ -124,14 +141,31 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
         if (error) throw error;
         
-        // Convert the response to match DatabaseQuestion interface with default values
+        // Convert the response to match DatabaseQuestion interface
         const convertedData: DatabaseQuestion = {
-          ...data,
           id: data.id?.toString() || '',
-          is_active: true, // Default value
-          created_at: new Date().toISOString(), // Default value
-          updated_at: new Date().toISOString(), // Default value
-          metadata: {} // Default value
+          question_text: data.question_text || '',
+          option_a: data.option_a || '',
+          option_b: data.option_b || '',
+          option_c: data.option_c || '',
+          option_d: data.option_d || '',
+          correct_answer: data.correct_answer || '',
+          correct_rationale: data.correct_rationale || '',
+          incorrect_rationale_a: data.incorrect_rationale_a || '',
+          incorrect_rationale_b: data.incorrect_rationale_b || '',
+          incorrect_rationale_c: data.incorrect_rationale_c || '',
+          incorrect_rationale_d: data.incorrect_rationale_d || '',
+          section: data.assessment || '',
+          skill: data.skill || '',
+          difficulty: data.difficulty || 'medium',
+          domain: data.domain || '',
+          test_name: data.test || '',
+          question_type: 'multiple-choice',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {},
+          image: data.image === 'true' || data.image === true || false
         };
         onSave(convertedData);
       }

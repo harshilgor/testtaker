@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DatabaseQuestion } from '@/services/questionService';
@@ -179,7 +178,7 @@ export const useQuestionSession = (): QuestionSessionHook => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           metadata: {},
-          image: dbQuestion.image || false
+          image: dbQuestion.image === 'true' || dbQuestion.image === true || false
         };
       }
 

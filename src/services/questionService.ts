@@ -57,7 +57,7 @@ class QuestionService {
           incorrect_rationale_b,
           incorrect_rationale_c,
           incorrect_rationale_d,
-          assessment as section,
+          assessment,
           skill,
           difficulty,
           domain,
@@ -116,7 +116,7 @@ class QuestionService {
         incorrect_rationale_b: q.incorrect_rationale_b || '',
         incorrect_rationale_c: q.incorrect_rationale_c || '',
         incorrect_rationale_d: q.incorrect_rationale_d || '',
-        section: q.assessment || q.section || '',
+        section: q.assessment || '',
         skill: q.skill || '',
         difficulty: q.difficulty || 'medium',
         domain: q.domain || '',
@@ -126,7 +126,7 @@ class QuestionService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {},
-        image: q.image || false
+        image: q.image === 'true' || q.image === true || false
       }));
 
       console.log(`Successfully loaded ${questions.length} questions from question_bank`);
@@ -161,7 +161,7 @@ class QuestionService {
         incorrect_rationale_b,
         incorrect_rationale_c,
         incorrect_rationale_d,
-        assessment as section,
+        assessment,
         skill,
         difficulty,
         domain,
@@ -193,7 +193,7 @@ class QuestionService {
       incorrect_rationale_b: data.incorrect_rationale_b || '',
       incorrect_rationale_c: data.incorrect_rationale_c || '',
       incorrect_rationale_d: data.incorrect_rationale_d || '',
-      section: data.section || '',
+      section: data.assessment || '',
       skill: data.skill || '',
       difficulty: data.difficulty || 'medium',
       domain: data.domain || '',
@@ -203,7 +203,7 @@ class QuestionService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       metadata: {},
-      image: data.image || false
+      image: data.image === 'true' || data.image === true || false
     };
   }
 

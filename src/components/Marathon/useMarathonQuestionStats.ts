@@ -34,10 +34,10 @@ export const useMarathonQuestionStats = () => {
         // Fetch all questions with non-null content
         const { data: allQuestions, error } = await supabase
           .from('question_bank')
-          .select('section, difficulty')
+          .select('assessment, difficulty')
           .not('question_text', 'is', null)
           .not('difficulty', 'is', null)
-          .not('section', 'is', null);
+          .not('assessment', 'is', null);
 
         if (error) {
           console.error('Error fetching questions from question_bank:', error);
@@ -55,15 +55,15 @@ export const useMarathonQuestionStats = () => {
           };
 
           allQuestions.forEach(q => {
-            const section = q.section?.toLowerCase();
+            const assessment = q.assessment?.toLowerCase();
             const difficulty = q.difficulty?.toLowerCase();
             
-            if (section === 'math') {
+            if (assessment === 'math') {
               stats.math.total++;
               if (difficulty === 'easy') stats.math.easy++;
               else if (difficulty === 'medium') stats.math.medium++;
               else if (difficulty === 'hard') stats.math.hard++;
-            } else if (section === 'reading-writing') {
+            } else if (assessment === 'reading and writing') {
               stats.english.total++;
               if (difficulty === 'easy') stats.english.easy++;
               else if (difficulty === 'medium') stats.english.medium++;
