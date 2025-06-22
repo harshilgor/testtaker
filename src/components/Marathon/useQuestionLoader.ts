@@ -99,9 +99,9 @@ export const useQuestionLoader = ({
         const question = questions[randomIndex];
         console.log('useQuestionLoader: Loaded question:', question.id, question.question_text?.substring(0, 50));
         
-        // Format question
+        // Format question with proper type conversion
         const formattedQuestion: DatabaseQuestion = {
-          id: question.id,
+          id: question.id.toString(), // Convert number to string
           question_text: question.question_text || '',
           option_a: question.option_a || '',
           option_b: question.option_b || '',
@@ -119,7 +119,11 @@ export const useQuestionLoader = ({
           domain: question.domain || '',
           test_name: question.test || '',
           question_type: 'multiple-choice',
-          image: typeof question.image === 'string' && (question.image === 'true' || question.image === 'True' || question.image === '1')
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {},
+          image: typeof question.image === 'string' && ['true', 'True', '1'].includes(question.image)
         };
         
         setCurrentQuestion(formattedQuestion);
@@ -130,7 +134,7 @@ export const useQuestionLoader = ({
           supabase.rpc('mark_question_used_in_session', {
             p_session_id: session.id,
             p_session_type: 'marathon',
-            p_question_id: question.id.toString()
+            p_question_id: question.id.toString() // Convert to string here too
           }),
           loadSessionStats()
         ]);
