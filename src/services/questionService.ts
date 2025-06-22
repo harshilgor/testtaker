@@ -41,15 +41,35 @@ class QuestionService {
     console.log('Getting random questions with filters:', filters);
     
     try {
-      // Build optimized query with minimal data transfer
+      // Build optimized query to get all required fields from question_bank
       let query = supabase
         .from('question_bank')
-        .select('*')
+        .select(`
+          id,
+          question_text,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_answer,
+          correct_rationale,
+          incorrect_rationale_a,
+          incorrect_rationale_b,
+          incorrect_rationale_c,
+          incorrect_rationale_d,
+          assessment as section,
+          skill,
+          difficulty,
+          domain,
+          test,
+          question_prompt,
+          image
+        `)
         .not('question_text', 'is', null);
 
       // Apply filters for immediate optimization
       if (filters.section) {
-        query = query.eq('section', filters.section);
+        query = query.eq('assessment', filters.section);
       }
       
       if (filters.difficulty && filters.difficulty !== 'mixed') {
@@ -69,7 +89,7 @@ class QuestionService {
       
       const { data, error } = await query
         .order('id')
-        .limit(limit);
+        .limit(limit * 2); // Get more to ensure we have enough after filtering
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -81,11 +101,27 @@ class QuestionService {
         return [];
       }
 
-      // Quick shuffle for randomization
+      // Quick shuffle for randomization and format the data
       const shuffled = data.sort(() => Math.random() - 0.5);
-      const questions = shuffled.map(q => ({
-        ...q,
+      const questions = shuffled.slice(0, limit).map(q => ({
         id: q.id?.toString() || '',
+        question_text: q.question_text || '',
+        option_a: q.option_a || '',
+        option_b: q.option_b || '',
+        option_c: q.option_c || '',
+        option_d: q.option_d || '',
+        correct_answer: q.correct_answer || '',
+        correct_rationale: q.correct_rationale || '',
+        incorrect_rationale_a: q.incorrect_rationale_a || '',
+        incorrect_rationale_b: q.incorrect_rationale_b || '',
+        incorrect_rationale_c: q.incorrect_rationale_c || '',
+        incorrect_rationale_d: q.incorrect_rationale_d || '',
+        section: q.assessment || q.section || '',
+        skill: q.skill || '',
+        difficulty: q.difficulty || 'medium',
+        domain: q.domain || '',
+        test_name: q.test || '',
+        question_type: 'multiple-choice',
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -112,7 +148,27 @@ class QuestionService {
 
     const { data, error } = await supabase
       .from('question_bank')
-      .select('*')
+      .select(`
+        id,
+        question_text,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_answer,
+        correct_rationale,
+        incorrect_rationale_a,
+        incorrect_rationale_b,
+        incorrect_rationale_c,
+        incorrect_rationale_d,
+        assessment as section,
+        skill,
+        difficulty,
+        domain,
+        test,
+        question_prompt,
+        image
+      `)
       .eq('id', numericId)
       .not('question_text', 'is', null)
       .single();
@@ -125,8 +181,24 @@ class QuestionService {
     if (!data) return null;
 
     return {
-      ...data,
       id: data.id?.toString() || '',
+      question_text: data.question_text || '',
+      option_a: data.option_a || '',
+      option_b: data.option_b || '',
+      option_c: data.option_c || '',
+      option_d: data.option_d || '',
+      correct_answer: data.correct_answer || '',
+      correct_rationale: data.correct_rationale || '',
+      incorrect_rationale_a: data.incorrect_rationale_a || '',
+      incorrect_rationale_b: data.incorrect_rationale_b || '',
+      incorrect_rationale_c: data.incorrect_rationale_c || '',
+      incorrect_rationale_d: data.incorrect_rationale_d || '',
+      section: data.section || '',
+      skill: data.skill || '',
+      difficulty: data.difficulty || 'medium',
+      domain: data.domain || '',
+      test_name: data.test || '',
+      question_type: 'multiple-choice',
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -169,8 +241,8 @@ class QuestionService {
 
   convertToLegacyFormat(dbQuestion: DatabaseQuestion) {
     const getSubject = (section: string): 'math' | 'english' => {
-      if (section === 'math') return 'math';
-      if (section === 'reading-writing') return 'english';
+      if (section === 'math' || section === 'Math') return 'math';
+      if (section === 'reading-writing' || section === 'Reading and Writing' || section === 'english' || section === 'English') return 'english';
       return 'english';
     };
 

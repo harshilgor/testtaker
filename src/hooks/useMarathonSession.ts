@@ -19,7 +19,8 @@ export const useMarathonSession = (settings?: MarathonSettings | null) => {
       const allQuestions = [];
       
       for (const subject of marathonSettings.subjects) {
-        const section = subject === 'math' ? 'math' : 'reading-writing';
+        // Map subjects to database assessment field
+        const section = subject === 'math' ? 'Math' : 'Reading and Writing';
         const filters = {
           section,
           difficulty: marathonSettings.difficulty === 'mixed' ? undefined : marathonSettings.difficulty,

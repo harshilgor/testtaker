@@ -28,15 +28,36 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
     console.log('Loading quiz questions...');
     setLoading(true);
     try {
-      const sectionFilter = subject === 'math' ? 'math' : 'reading-writing';
+      // Map subject to database section field (assessment column)
+      const sectionFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
       console.log('Section filter:', sectionFilter);
       console.log('Selected topics:', selectedTopics);
       console.log('Question count requested:', questionCount);
       
       let query = supabase
         .from('question_bank')
-        .select('*')
-        .eq('section', sectionFilter)
+        .select(`
+          id,
+          question_text,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_answer,
+          correct_rationale,
+          incorrect_rationale_a,
+          incorrect_rationale_b,
+          incorrect_rationale_c,
+          incorrect_rationale_d,
+          assessment,
+          skill,
+          difficulty,
+          domain,
+          test,
+          question_prompt,
+          image
+        `)
+        .eq('assessment', sectionFilter)
         .not('question_text', 'is', null);
 
       if (selectedTopics.length > 0 && !selectedTopics.includes('wrong-questions')) {

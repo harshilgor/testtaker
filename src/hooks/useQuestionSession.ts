@@ -80,80 +80,106 @@ export const useQuestionSession = (): QuestionSessionHook => {
         return null;
       }
 
-      // Map subject filters
+      // Get used questions for this session
+      const { data: sessionData } = await supabase
+        .from('question_sessions')
+        .select('questions_used')
+        .eq('session_id', sessionId)
+        .eq('session_type', sessionType)
+        .eq('user_id', user.user.id)
+        .maybeSingle();
+
+      const usedQuestions = sessionData?.questions_used || [];
+
+      // Map subject filters to database assessment field
       let sectionFilter = null;
       if (filters.section) {
-        sectionFilter = filters.section;
+        if (filters.section === 'math') {
+          sectionFilter = 'Math';
+        } else if (filters.section === 'reading-writing') {
+          sectionFilter = 'Reading and Writing';
+        }
       } else if (filters.subjects) {
         if (filters.subjects.includes('math') && !filters.subjects.includes('english')) {
-          sectionFilter = 'math';
+          sectionFilter = 'Math';
         } else if (filters.subjects.includes('english') && !filters.subjects.includes('math')) {
-          sectionFilter = 'reading-writing';
+          sectionFilter = 'Reading and Writing';
         }
       }
 
       console.log('Mapped section filter:', sectionFilter);
       
-      // Use optimized RPC function
-      const { data, error } = await supabase.rpc('get_unused_questions_for_session', {
-        p_session_id: sessionId,
-        p_session_type: sessionType,
-        p_section: sectionFilter,
-        p_difficulty: filters.difficulty === 'mixed' ? null : filters.difficulty,
-        p_limit: 1
-      });
+      // Build query to get unused questions
+      let query = supabase
+        .from('question_bank')
+        .select(`
+          id,
+          question_text,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_answer,
+          correct_rationale,
+          incorrect_rationale_a,
+          incorrect_rationale_b,
+          incorrect_rationale_c,
+          incorrect_rationale_d,
+          assessment,
+          skill,
+          difficulty,
+          domain,
+          test,
+          question_prompt,
+          image
+        `)
+        .not('question_text', 'is', null)
+        .not('id', 'in', `(${usedQuestions.map(id => `'${id}'`).join(',')})`)
+        .limit(1);
+
+      if (sectionFilter) {
+        query = query.eq('assessment', sectionFilter);
+      }
+      
+      if (filters.difficulty && filters.difficulty !== 'mixed') {
+        query = query.eq('difficulty', filters.difficulty);
+      }
+
+      const { data, error } = await query.order('random()');
 
       if (error) {
-        console.error('Error calling get_unused_questions_for_session:', error);
-        
-        // Fast fallback query
-        let query = supabase
-          .from('question_bank')
-          .select('*')
-          .not('question_text', 'is', null)
-          .limit(1);
-
-        if (sectionFilter) {
-          query = query.eq('section', sectionFilter);
-        }
-        
-        if (filters.difficulty && filters.difficulty !== 'mixed') {
-          query = query.eq('difficulty', filters.difficulty);
-        }
-
-        const { data: fallbackData, error: fallbackError } = await query;
-
-        if (fallbackError) {
-          console.error('Fallback query also failed:', fallbackError);
-          return null;
-        }
-
-        if (fallbackData && fallbackData.length > 0) {
-          const dbQuestion = fallbackData[0];
-          console.log('Successfully loaded question via fallback:', dbQuestion.id);
-          
-          return {
-            ...dbQuestion,
-            id: dbQuestion.id?.toString() || '',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-        }
-        
+        console.error('Error fetching question:', error);
         return null;
       }
 
       if (data && data.length > 0) {
         const dbQuestion = data[0];
-        console.log('Successfully loaded question:', dbQuestion.id, 'Section:', dbQuestion.section);
+        console.log('Successfully loaded question:', dbQuestion.id, 'Section:', dbQuestion.assessment);
         
         return {
-          ...dbQuestion,
           id: dbQuestion.id?.toString() || '',
+          question_text: dbQuestion.question_text || '',
+          option_a: dbQuestion.option_a || '',
+          option_b: dbQuestion.option_b || '',
+          option_c: dbQuestion.option_c || '',
+          option_d: dbQuestion.option_d || '',
+          correct_answer: dbQuestion.correct_answer || '',
+          correct_rationale: dbQuestion.correct_rationale || '',
+          incorrect_rationale_a: dbQuestion.incorrect_rationale_a || '',
+          incorrect_rationale_b: dbQuestion.incorrect_rationale_b || '',
+          incorrect_rationale_c: dbQuestion.incorrect_rationale_c || '',
+          incorrect_rationale_d: dbQuestion.incorrect_rationale_d || '',
+          section: dbQuestion.assessment || '',
+          skill: dbQuestion.skill || '',
+          difficulty: dbQuestion.difficulty || 'medium',
+          domain: dbQuestion.domain || '',
+          test_name: dbQuestion.test || '',
+          question_type: 'multiple-choice',
           is_active: true,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          metadata: {},
+          image: dbQuestion.image || false
         };
       }
 

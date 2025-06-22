@@ -285,12 +285,13 @@ export type Database = {
       }
       question_bank: {
         Row: {
+          assessment: string | null
           correct_answer: string | null
           correct_rationale: string | null
           difficulty: string | null
           domain: string | null
           id: number
-          image: boolean | null
+          image: string | null
           incorrect_rationale_a: string | null
           incorrect_rationale_b: string | null
           incorrect_rationale_c: string | null
@@ -299,19 +300,19 @@ export type Database = {
           option_b: string | null
           option_c: string | null
           option_d: string | null
+          question_prompt: string | null
           question_text: string | null
-          question_type: string | null
-          section: string | null
           skill: string | null
-          test_name: string | null
+          test: string | null
         }
         Insert: {
+          assessment?: string | null
           correct_answer?: string | null
           correct_rationale?: string | null
           difficulty?: string | null
           domain?: string | null
           id?: number
-          image?: boolean | null
+          image?: string | null
           incorrect_rationale_a?: string | null
           incorrect_rationale_b?: string | null
           incorrect_rationale_c?: string | null
@@ -320,19 +321,19 @@ export type Database = {
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
+          question_prompt?: string | null
           question_text?: string | null
-          question_type?: string | null
-          section?: string | null
           skill?: string | null
-          test_name?: string | null
+          test?: string | null
         }
         Update: {
+          assessment?: string | null
           correct_answer?: string | null
           correct_rationale?: string | null
           difficulty?: string | null
           domain?: string | null
           id?: number
-          image?: boolean | null
+          image?: string | null
           incorrect_rationale_a?: string | null
           incorrect_rationale_b?: string | null
           incorrect_rationale_c?: string | null
@@ -341,11 +342,10 @@ export type Database = {
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
+          question_prompt?: string | null
           question_text?: string | null
-          question_type?: string | null
-          section?: string | null
           skill?: string | null
-          test_name?: string | null
+          test?: string | null
         }
         Relationships: []
       }
