@@ -29,15 +29,15 @@ export const useMarathonQuestionStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        console.log('Fetching accurate question stats from question_bank...');
+        console.log('Fetching accurate question stats from question_bank using test column...');
         
         // Fetch all questions with non-null content from question_bank
         const { data: allQuestions, error } = await supabase
           .from('question_bank')
-          .select('difficulty, skill')
+          .select('difficulty, test')
           .not('question_text', 'is', null)
           .not('difficulty', 'is', null)
-          .not('skill', 'is', null);
+          .not('test', 'is', null);
 
         if (error) {
           console.error('Error fetching questions from question_bank:', error);
@@ -54,26 +54,13 @@ export const useMarathonQuestionStats = () => {
             english: { total: 0, easy: 0, medium: 0, hard: 0 }
           };
 
-          // Categorize questions based on skill field since assessment is all "SAT"
+          // Categorize questions based on test column
           allQuestions.forEach(q => {
             const difficulty = q.difficulty?.toLowerCase();
-            const skill = q.skill?.toLowerCase() || '';
+            const test = q.test?.toLowerCase() || '';
             
-            // Determine if it's math or english based on skill keywords
-            const isMath = skill.includes('algebra') || 
-                          skill.includes('geometry') || 
-                          skill.includes('trigonometry') || 
-                          skill.includes('statistics') || 
-                          skill.includes('calculus') || 
-                          skill.includes('arithmetic') || 
-                          skill.includes('math') ||
-                          skill.includes('linear') ||
-                          skill.includes('quadratic') ||
-                          skill.includes('probability') ||
-                          skill.includes('data') ||
-                          skill.includes('number') ||
-                          skill.includes('ratio') ||
-                          skill.includes('percent');
+            // Determine if it's math or english based on test column
+            const isMath = test.includes('math');
             
             if (isMath) {
               stats.math.total++;
@@ -81,7 +68,7 @@ export const useMarathonQuestionStats = () => {
               else if (difficulty === 'medium') stats.math.medium++;
               else if (difficulty === 'hard') stats.math.hard++;
             } else {
-              // Assume everything else is English/Reading & Writing
+              // Everything else is Reading and Writing
               stats.english.total++;
               if (difficulty === 'easy') stats.english.easy++;
               else if (difficulty === 'medium') stats.english.medium++;
@@ -89,7 +76,7 @@ export const useMarathonQuestionStats = () => {
             }
           });
 
-          console.log('Calculated accurate stats:', {
+          console.log('Calculated accurate stats using test column:', {
             total: stats.total,
             math: stats.math,
             english: stats.english
