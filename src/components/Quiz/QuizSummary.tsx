@@ -1,13 +1,15 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trophy, Target, Check, X, FileText } from 'lucide-react';
+import { getSessionTotalPoints } from '@/services/pointsService';
 
 interface QuizSummaryProps {
   mode: 'quiz' | 'marathon';
   userName: string;
   quizResults: any;
   sessionPoints: number;
+  sessionId?: string;
   onComplete: (results: any) => void;
   onViewDetailed?: () => void;
 }
@@ -17,9 +19,36 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
   userName,
   quizResults,
   sessionPoints,
+  sessionId,
   onComplete,
   onViewDetailed
 }) => {
+  const [actualPointsEarned, setActualPointsEarned] = useState(sessionPoints);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActualPoints = async () => {
+      if (sessionId) {
+        try {
+          console.log('QuizSummary: Fetching actual points for session:', sessionId);
+          const points = await getSessionTotalPoints(sessionId, 'quiz');
+          console.log('QuizSummary: Actual points from database:', points);
+          setActualPointsEarned(points);
+        } catch (error) {
+          console.error('QuizSummary: Error fetching session points:', error);
+          // Fallback to the passed points if database fetch fails
+          setActualPointsEarned(sessionPoints);
+        }
+      } else {
+        // If no sessionId provided, use the passed points
+        setActualPointsEarned(sessionPoints);
+      }
+      setLoading(false);
+    };
+
+    fetchActualPoints();
+  }, [sessionId, sessionPoints]);
+
   const accuracy = Math.round((quizResults.correctAnswers / quizResults.totalQuestions) * 100);
 
   return (
@@ -70,7 +99,9 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
                 <Trophy className="h-6 w-6 text-blue-600 mr-2" />
                 <span className="text-sm text-blue-700 font-medium">Points Earned</span>
               </div>
-              <div className="text-2xl font-bold text-blue-800">{sessionPoints}</div>
+              <div className="text-2xl font-bold text-blue-800">
+                {loading ? '...' : actualPointsEarned}
+              </div>
             </div>
           </div>
 

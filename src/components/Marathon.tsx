@@ -123,6 +123,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
           timeSpent: totalTimeSpent + timeSpent,
           pointsEarned: sessionPoints
         }}
+        sessionId={session?.id}
         onBackToDashboard={onBack}
         onBackToSettings={() => {
           setShowSummary(false);

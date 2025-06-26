@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trophy, Target, Clock, Award } from 'lucide-react';
+import { getSessionTotalPoints } from '@/services/pointsService';
 
 interface MarathonSummaryProps {
   sessionStats: {
@@ -13,6 +14,7 @@ interface MarathonSummaryProps {
     timeSpent: number;
     pointsEarned: number;
   };
+  sessionId?: string;
   onBackToDashboard: () => void;
   onBackToSettings: () => void;
   userName: string;
@@ -20,10 +22,37 @@ interface MarathonSummaryProps {
 
 const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   sessionStats,
+  sessionId,
   onBackToDashboard,
   onBackToSettings,
   userName
 }) => {
+  const [actualPointsEarned, setActualPointsEarned] = useState(sessionStats.pointsEarned);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActualPoints = async () => {
+      if (sessionId) {
+        try {
+          console.log('MarathonSummary: Fetching actual points for session:', sessionId);
+          const points = await getSessionTotalPoints(sessionId, 'marathon');
+          console.log('MarathonSummary: Actual points from database:', points);
+          setActualPointsEarned(points);
+        } catch (error) {
+          console.error('MarathonSummary: Error fetching session points:', error);
+          // Fallback to the passed points if database fetch fails
+          setActualPointsEarned(sessionStats.pointsEarned);
+        }
+      } else {
+        // If no sessionId provided, use the passed points
+        setActualPointsEarned(sessionStats.pointsEarned);
+      }
+      setLoading(false);
+    };
+
+    fetchActualPoints();
+  }, [sessionId, sessionStats.pointsEarned]);
+
   const accuracy = sessionStats.totalQuestions > 0 
     ? Math.round((sessionStats.correctAnswers / sessionStats.totalQuestions) * 100) 
     : 0;
@@ -85,7 +114,9 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
                 <Award className="h-6 w-6 text-purple-600 mr-2" />
                 <span className="text-sm text-purple-700 font-medium">Total Points Earned</span>
               </div>
-              <div className="text-2xl font-bold text-purple-800">{sessionStats.pointsEarned}</div>
+              <div className="text-2xl font-bold text-purple-800">
+                {loading ? '...' : actualPointsEarned}
+              </div>
               <div className="text-xs text-purple-600 mt-1">Easy: 3pts • Medium: 6pts • Hard: 9pts</div>
             </div>
           </div>

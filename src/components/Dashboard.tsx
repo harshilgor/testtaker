@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText, Zap, Clock, BookOpen, Brain, Settings } from 'lucide-react';
 import AdminPanel from './AdminPanel';
+import MockTest from './MockTest';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface DashboardProps {
@@ -20,11 +21,25 @@ const Dashboard: React.FC<DashboardProps> = ({
   onQuizSelect
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showMockTest, setShowMockTest] = useState(false);
   const { isAdmin } = useAdminAccess();
 
   if (showAdminPanel) {
     return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
   }
+
+  if (showMockTest) {
+    return (
+      <MockTest 
+        userName={userName} 
+        onBack={() => setShowMockTest(false)} 
+      />
+    );
+  }
+
+  const handleMockTestSelect = () => {
+    setShowMockTest(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-4 md:py-8">
@@ -126,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
 
-                <Button onClick={onMockTestSelect} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
+                <Button onClick={handleMockTestSelect} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
                   Take Mock Test
                 </Button>
               </div>

@@ -112,3 +112,36 @@ export const getUserTotalPoints = async (userId?: string): Promise<number> => {
     return 0;
   }
 };
+
+// NEW: Function to get session total points from database
+export const getSessionTotalPoints = async (sessionId: string, sessionType: string): Promise<number> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.log('getSessionTotalPoints: No user authenticated');
+      return 0;
+    }
+
+    console.log('getSessionTotalPoints: Getting points for session:', sessionId, sessionType);
+
+    const { data, error } = await supabase
+      .from('question_attempts_v2')
+      .select('points_earned')
+      .eq('user_id', user.id)
+      .eq('session_id', sessionId)
+      .eq('session_type', sessionType);
+
+    if (error) {
+      console.error('getSessionTotalPoints: Database error:', error);
+      return 0;
+    }
+
+    const totalPoints = data?.reduce((sum, attempt) => sum + (attempt.points_earned || 0), 0) || 0;
+    console.log('getSessionTotalPoints: Session total points from database:', totalPoints);
+    return totalPoints;
+  } catch (error) {
+    console.error('getSessionTotalPoints: Error:', error);
+    return 0;
+  }
+};
