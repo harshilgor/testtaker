@@ -4,14 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowRight, Flag, X, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, Flag, X, Volume2, VolumeX, CheckCircle } from 'lucide-react';
+import SATMockTestResults from './SATMockTestResults';
 
 interface Question {
-  id: number;
+  id: string;
   content: string;
   passage?: string;
   options: string[];
   correctAnswer: number;
+  explanation: string;
+  section: 'reading-writing' | 'math';
+  topic: string;
+}
+
+interface TestAnswer {
+  questionId: string;
+  selectedAnswer: number | null;
+  isCorrect: boolean;
+  timeSpent: number;
+  flagged: boolean;
 }
 
 interface SATMockTestInterfaceProps {
@@ -26,10 +38,12 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
   const [eliminateMode, setEliminateMode] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(31 * 60 + 20); // 31:20 as shown in screenshot
   const [isMuted, setIsMuted] = useState(false);
+  const [testCompleted, setTestCompleted] = useState(false);
+  const [startTime] = useState(Date.now());
 
-  // Sample question data
+  // Sample question data with explanations
   const questions: Question[] = Array.from({ length: 27 }, (_, i) => ({
-    id: i + 1,
+    id: `q-${i + 1}`,
     content: i === 0 
       ? "During a spirited class debate about the most influential technological innovations of the 21st century, one student asserted that social media platforms have ____ our ability to communicate effectively. She argued that while these platforms have increased the quantity of our communication, the quality and depth have significantly diminished."
       : `Sample question ${i + 1} content goes here...`,
@@ -42,16 +56,29 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
       "undermined",
       "diversified"
     ],
-    correctAnswer: 2
+    correctAnswer: 2,
+    explanation: i === 0 
+      ? "The correct answer is 'undermined' because the context suggests that while social media has increased the quantity of communication, it has decreased the quality and depth, which means it has weakened or undermined our ability to communicate effectively."
+      : `This is the explanation for question ${i + 1}. The correct answer demonstrates the proper understanding of the concept being tested.`,
+    section: i < 14 ? 'reading-writing' : 'math',
+    topic: i < 14 ? 'Writing and Language' : 'Algebra'
   }));
 
   // Timer effect
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (!testCompleted) {
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleTestComplete();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [testCompleted]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -59,19 +86,21 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerSelect = (questionId: number, answerIndex: number) => {
+  const handleAnswerSelect = (questionId: string, answerIndex: number) => {
     if (!eliminateMode) {
+      const questionNum = parseInt(questionId.split('-')[1]);
       setSelectedAnswers(prev => ({
         ...prev,
-        [questionId]: answerIndex
+        [questionNum]: answerIndex
       }));
     }
   };
 
-  const handleEliminateAnswer = (questionId: number, answerIndex: number) => {
+  const handleEliminateAnswer = (questionId: string, answerIndex: number) => {
     if (eliminateMode) {
+      const questionNum = parseInt(questionId.split('-')[1]);
       setEliminatedAnswers(prev => {
-        const questionEliminated = prev[questionId] || new Set();
+        const questionEliminated = prev[questionNum] || new Set();
         const newEliminated = new Set(questionEliminated);
         
         if (newEliminated.has(answerIndex)) {
@@ -82,23 +111,75 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
         
         return {
           ...prev,
-          [questionId]: newEliminated
+          [questionNum]: newEliminated
         };
       });
     }
   };
 
-  const toggleMarkForReview = (questionId: number) => {
+  const toggleMarkForReview = (questionId: string) => {
+    const questionNum = parseInt(questionId.split('-')[1]);
     setMarkedForReview(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
+      if (newSet.has(questionNum)) {
+        newSet.delete(questionNum);
       } else {
-        newSet.add(questionId);
+        newSet.add(questionNum);
       }
       return newSet;
     });
   };
+
+  const handleTestComplete = () => {
+    setTestCompleted(true);
+  };
+
+  const handleRetakeTest = () => {
+    // Reset all state
+    setCurrentQuestion(1);
+    setSelectedAnswers({});
+    setMarkedForReview(new Set());
+    setEliminatedAnswers({});
+    setEliminateMode(false);
+    setTimeRemaining(31 * 60 + 20);
+    setTestCompleted(false);
+  };
+
+  const generateTestAnswers = (): Map<string, TestAnswer> => {
+    const answers = new Map();
+    const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
+    
+    questions.forEach((question, index) => {
+      const questionNum = index + 1;
+      const selectedAnswer = selectedAnswers[questionNum];
+      const isCorrect = selectedAnswer === question.correctAnswer;
+      
+      answers.set(question.id, {
+        questionId: question.id,
+        selectedAnswer: selectedAnswer !== undefined ? selectedAnswer : null,
+        isCorrect,
+        timeSpent: Math.floor(totalTimeSpent / questions.length), // Rough estimate
+        flagged: markedForReview.has(questionNum)
+      });
+    });
+    
+    return answers;
+  };
+
+  if (testCompleted) {
+    const testAnswers = generateTestAnswers();
+    const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
+    
+    return (
+      <SATMockTestResults
+        answers={testAnswers}
+        questions={questions}
+        totalTimeSpent={totalTimeSpent}
+        onRetakeTest={handleRetakeTest}
+        onBackToHome={onBack}
+      />
+    );
+  }
 
   const currentQuestionData = questions[currentQuestion - 1];
   const currentEliminated = eliminatedAnswers[currentQuestion] || new Set();
@@ -155,7 +236,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
                 <button
                   key={questionNum}
                   onClick={() => setCurrentQuestion(questionNum)}
-                  className={`w-8 h-8 rounded-full text-xs font-medium border-2 transition-colors ${
+                  className={`w-8 h-8 rounded-full text-xs font-medium border-2 transition-colors relative ${
                     isCurrent
                       ? 'bg-blue-600 border-blue-600 text-white'
                       : isAnswered
@@ -164,6 +245,9 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
                   } ${isMarked ? 'ring-2 ring-yellow-400' : ''}`}
                 >
                   {questionNum}
+                  {isMarked && (
+                    <Flag className="h-3 w-3 absolute -top-1 -right-1 text-yellow-400" />
+                  )}
                 </button>
               );
             })}
@@ -186,7 +270,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
                   <Checkbox
                     id="mark-review"
                     checked={markedForReview.has(currentQuestion)}
-                    onCheckedChange={() => toggleMarkForReview(currentQuestion)}
+                    onCheckedChange={() => toggleMarkForReview(currentQuestionData.id)}
                   />
                   <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
                     Mark for Review
@@ -194,12 +278,12 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
                 </div>
 
                 <div className="text-sm text-gray-600 mb-4">
-                  Choose the most appropriate alternative to line 1. If the original version is best, choose "NO CHANGE."
+                  Choose the most appropriate alternative. If the original version is best, choose "NO CHANGE."
                 </div>
 
                 <RadioGroup 
                   value={currentAnswer?.toString() || ""} 
-                  onValueChange={(value) => handleAnswerSelect(currentQuestion, parseInt(value))}
+                  onValueChange={(value) => handleAnswerSelect(currentQuestionData.id, parseInt(value))}
                   className="space-y-3"
                 >
                   {currentQuestionData.options.map((option, index) => {
@@ -237,7 +321,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEliminateAnswer(currentQuestion, index)}
+                            onClick={() => handleEliminateAnswer(currentQuestionData.id, index)}
                             className={`p-1 h-6 w-6 ${
                               isEliminated 
                                 ? 'text-red-600 bg-red-100 hover:bg-red-200' 
@@ -263,13 +347,24 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
           Question {currentQuestion} of 27
         </div>
         
-        <Button
-          onClick={() => setCurrentQuestion(prev => Math.min(27, prev + 1))}
-          disabled={currentQuestion >= 27}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
-        >
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        <div className="flex space-x-3">
+          {currentQuestion < 27 ? (
+            <Button
+              onClick={() => setCurrentQuestion(prev => Math.min(27, prev + 1))}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleTestComplete}
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              <span>Complete Test</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
