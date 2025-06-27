@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import QuizPage from "./pages/QuizPage";
 import MarathonPage from "./pages/MarathonPage";
+import SATMockTestPage from "./pages/SATMockTestPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/marathon" element={<MarathonPage />} />
+            <Route path="/sat-mock-test" element={<SATMockTestPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

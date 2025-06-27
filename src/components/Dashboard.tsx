@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText, Zap, Clock, BookOpen, Brain, Settings } from 'lucide-react';
 import AdminPanel from './AdminPanel';
-import MockTest from './MockTest';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardProps {
   userName: string;
@@ -21,24 +21,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   onQuizSelect
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [showMockTest, setShowMockTest] = useState(false);
   const { isAdmin } = useAdminAccess();
+  const navigate = useNavigate();
 
   if (showAdminPanel) {
     return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
   }
 
-  if (showMockTest) {
-    return (
-      <MockTest 
-        userName={userName} 
-        onBack={() => setShowMockTest(false)} 
-      />
-    );
-  }
-
   const handleMockTestSelect = () => {
-    setShowMockTest(true);
+    navigate('/sat-mock-test');
   };
 
   return (
