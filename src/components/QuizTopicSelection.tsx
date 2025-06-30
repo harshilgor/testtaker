@@ -98,7 +98,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
               <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5" />
               <div>
                 <p className="text-yellow-800 font-medium">Unable to load topics from database</p>
-                <p className="text-yellow-700 text-sm mt-1">Using default topic list. Error: {error}</p>
+                <p className="text-yellow-700 text-sm mt-1">Using fallback topic list. Error: {error}</p>
               </div>
             </div>
           )}
