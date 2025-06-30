@@ -65,7 +65,7 @@ export const useQuestionLoader = ({
           image
         `)
         .not('question_text', 'is', null)
-        .limit(10); // Reduced limit for faster response
+        .limit(50); // Increased limit for better variety
 
       // Exclude used questions more efficiently
       if (usedQuestions.length > 0) {
@@ -80,7 +80,7 @@ export const useQuestionLoader = ({
         if (session.subjects.includes('math')) {
           query = query.or('test.ilike.%math%,assessment.ilike.%math%');
         } else if (session.subjects.includes('english')) {
-          query = query.and('test.not.ilike.%math%,assessment.not.ilike.%math%');
+          query = query.not('test', 'ilike', '%math%').not('assessment', 'ilike', '%math%');
         }
       }
       
