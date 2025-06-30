@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
@@ -5,7 +6,7 @@ import { Subject } from '../pages/Index';
 import QuizView from './QuizView';
 import { useQuestionTopics } from '../hooks/useQuestionTopics';
 import { useQuizTopicSelection } from '../hooks/useQuizTopicSelection';
-import QuizTopicSelector from './Quiz/QuizTopicSelector';
+import DomainTopicSelector from './Quiz/DomainTopicSelector';
 import QuizSettings from './Quiz/QuizSettings';
 
 interface QuizTopicSelectionProps {
@@ -63,6 +64,8 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     );
   }
 
+  const isStartDisabled = selectedTopics.length === 0 || questionCount <= 0 || loading;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -109,7 +112,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                 onFeedbackPreferenceChange={setFeedbackPreference}
               />
 
-              <QuizTopicSelector
+              <DomainTopicSelector
                 topics={topics}
                 selectedTopics={selectedTopics}
                 onTopicToggle={handleTopicToggle}
@@ -117,13 +120,27 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                 loading={topicsLoading}
               />
 
+              {/* Gentle message when no topics selected */}
+              {selectedTopics.length === 0 && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-blue-800 text-center">Please select at least one topic to continue.</p>
+                </div>
+              )}
+
               <Button
                 onClick={handleStartQuiz}
-                disabled={selectedTopics.length === 0 || questionCount <= 0 || loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+                disabled={isStartDisabled}
+                className={`w-full py-3 text-lg ${
+                  isStartDisabled 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
                 <Play className="h-5 w-5 mr-2" />
-                Start Quiz ({selectedTopics.length} topics, {questionCount} questions)
+                {selectedTopics.length === 0 
+                  ? 'Select Topics to Start Quiz'
+                  : `Start Quiz (${selectedTopics.length} topics, ${questionCount} questions)`
+                }
               </Button>
             </>
           )}
