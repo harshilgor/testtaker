@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowRight, Flag, X, CheckCircle, ChevronDown } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+import React, { useEffect } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import SATMockTestResults from './SATMockTestResults';
 import { questionService } from '@/services/questionService';
-import { supabase } from '@/integrations/supabase/client';
+import { useSATTestState } from '@/hooks/useSATTestState';
+import SATTestHeader from './SAT/SATTestHeader';
+import SATQuestionPanel from './SAT/SATQuestionPanel';
+import SATAnswerPanel from './SAT/SATAnswerPanel';
+import SATBottomNavigation from './SAT/SATBottomNavigation';
+import SATQuestionNavigatorModal from './SAT/SATQuestionNavigatorModal';
+import SATTransitionScreen from './SAT/SATTransitionScreen';
 
 interface Question {
   id: string;
@@ -38,52 +39,33 @@ interface SATMockTestInterfaceProps {
 type TestSection = 'reading-writing' | 'math';
 type TestModule = 1 | 2;
 
-interface TestProgress {
-  section: TestSection;
-  module: TestModule;
-  questionIndex: number;
-  timeRemaining: number;
-}
-
 const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onPauseTest, onQuitTest }) => {
-  const [currentProgress, setCurrentProgress] = useState<TestProgress>({
-    section: 'reading-writing',
-    module: 1,
-    questionIndex: 0,
-    timeRemaining: 32 * 60 // 32 minutes for Reading & Writing Module 1
-  });
-  
-  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: number }>({});
-  const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
-  const [eliminatedAnswers, setEliminatedAnswers] = useState<{ [key: string]: Set<number> }>({});
-  const [eliminateMode, setEliminateMode] = useState(false);
-  const [testCompleted, setTestCompleted] = useState(false);
-  const [startTime] = useState(Date.now());
-  const [showNavigator, setShowNavigator] = useState(false);
-  const [showTransition, setShowTransition] = useState(false);
-  const [moduleResults, setModuleResults] = useState<any[]>([]);
-  const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userDisplayName, setUserDisplayName] = useState('User');
-
-  // Load user info
-  useEffect(() => {
-    const loadUserInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .maybeSingle();
-        
-        if (profile?.display_name) {
-          setUserDisplayName(profile.display_name);
-        }
-      }
-    };
-    loadUserInfo();
-  }, []);
+  const {
+    currentProgress,
+    setCurrentProgress,
+    selectedAnswers,
+    setSelectedAnswers,
+    markedForReview,
+    setMarkedForReview,
+    eliminatedAnswers,
+    setEliminatedAnswers,
+    eliminateMode,
+    setEliminateMode,
+    testCompleted,
+    setTestCompleted,
+    showNavigator,
+    setShowNavigator,
+    showTransition,
+    setShowTransition,
+    moduleResults,
+    setModuleResults,
+    currentQuestions,
+    setCurrentQuestions,
+    loading,
+    setLoading,
+    userDisplayName,
+    startTime
+  } = useSATTestState();
 
   // Load questions from database
   const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
@@ -157,12 +139,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
       return () => clearInterval(timer);
     }
   }, [testCompleted, showTransition]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleAnswerSelect = (questionId: string, answerIndex: number) => {
     if (!eliminateMode) {
@@ -343,21 +319,17 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   };
 
   const handlePauseTest = () => {
-    // Call the onPauseTest callback if provided
     if (onPauseTest) {
       onPauseTest();
     } else {
-      // Default behavior - go back to previous screen
       onBack();
     }
   };
 
   const handleQuitTest = () => {
-    // Call the onQuitTest callback if provided
     if (onQuitTest) {
       onQuitTest();
     } else {
-      // Default behavior - reset and go back
       handleRetakeTest();
       onBack();
     }
@@ -365,15 +337,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
 
   // Show transition screen
   if (showTransition) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Analyzing your performance...</h2>
-          <p className="text-indigo-200">Preparing your next module</p>
-        </div>
-      </div>
-    );
+    return <SATTransitionScreen />;
   }
 
   if (testCompleted) {
@@ -421,326 +385,70 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   const currentEliminated = eliminatedAnswers[currentQuestionId] || new Set();
   const currentAnswer = selectedAnswers[currentQuestionId];
 
-  // Question Navigator Modal
-  const QuestionNavigator = () => (
-    showNavigator && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              Section {currentProgress.section === 'reading-writing' ? '1' : '2'}, Module {currentProgress.module}: {currentProgress.section === 'reading-writing' ? 'Reading and Writing' : 'Math'} Questions
-            </h3>
-            <Button
-              onClick={() => setShowNavigator(false)}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center space-x-4 mb-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 rounded-full bg-blue-600"></div>
-              <span>Current</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 rounded border-2 border-gray-300"></div>
-              <span>Unanswered</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Flag className="h-4 w-4 text-red-500" />
-              <span>For Review</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-10 gap-2 mb-6">
-            {currentQuestions.map((_, index) => {
-              const questionId = currentQuestions[index].id;
-              const isAnswered = selectedAnswers[questionId] !== undefined;
-              const isMarked = markedForReview.has(questionId);
-              const isCurrent = currentProgress.questionIndex === index;
-              
-              return (
-                <button
-                  key={index}
-                  onClick={() => navigateToQuestion(index)}
-                  className={`relative w-12 h-12 rounded border-2 text-sm font-medium transition-colors ${
-                    isCurrent
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : isAnswered
-                      ? 'bg-blue-100 border-blue-300 text-blue-800'
-                      : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                  }`}
-                >
-                  {index + 1}
-                  {isMarked && (
-                    <Flag className="h-3 w-3 absolute -top-1 -right-1 text-red-500" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          
-          <div className="flex justify-between">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="px-6">
-                  Exit Practice Test
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Exit Practice Test</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    What would you like to do with your current progress?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
-                  <Button onClick={handlePauseTest} className="w-full">
-                    Pause Test
-                    <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
-                  </Button>
-                  <Button onClick={handleQuitTest} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                    Quit Test
-                    <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
-                  </Button>
-                  <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            
-            <Button
-              onClick={() => setShowNavigator(false)}
-              variant="outline"
-              className="px-6"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  );
-
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="bg-blue-600 rounded px-3 py-1 text-sm font-medium">
-            SAT
-          </div>
-          <span className="text-sm">
-            Section {currentProgress.section === 'reading-writing' ? '1' : '2'}, Module {currentProgress.module}: {currentProgress.section === 'reading-writing' ? 'Reading and Writing' : 'Math'}
-          </span>
-        </div>
-        
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2 text-lg font-mono">
-            <span>{formatTime(currentProgress.timeRemaining)}</span>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-sm">
-            <span>Eliminate Answers</span>
-            <Switch
-              checked={eliminateMode}
-              onCheckedChange={setEliminateMode}
-              className="data-[state=checked]:bg-blue-600"
-            />
-          </div>
-        </div>
-      </div>
+      <SATTestHeader
+        section={currentProgress.section}
+        module={currentProgress.module}
+        timeRemaining={currentProgress.timeRemaining}
+        eliminateMode={eliminateMode}
+        onEliminateModeChange={setEliminateMode}
+      />
 
       {/* Main Content with Resizable Panels */}
       <div className="flex-1 pb-20">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Left Panel - Question Text/Passage */}
           <ResizablePanel defaultSize={50} minSize={30}>
-            <div className="h-full overflow-y-auto p-8">
-              <div className="max-w-3xl">
-                {currentQuestion?.passage && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Passage</h3>
-                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                      <p className="text-gray-900 leading-relaxed whitespace-pre-wrap">
-                        {currentQuestion.passage}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {!currentQuestion?.passage && (
-                  <div className="mb-8">
-                    <p className="text-lg leading-relaxed text-gray-900">
-                      {currentQuestion?.content}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <SATQuestionPanel question={currentQuestion} />
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
           {/* Right Panel - Question Prompt and Options */}
           <ResizablePanel defaultSize={50} minSize={30}>
-            <div className="h-full overflow-y-auto p-8">
-              <div className="max-w-2xl">
-                {currentQuestion?.passage && (
-                  <div className="mb-6">
-                    <p className="text-lg leading-relaxed text-gray-900">
-                      {currentQuestion.content}
-                    </p>
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Checkbox
-                      id="mark-review"
-                      checked={markedForReview.has(currentQuestionId)}
-                      onCheckedChange={() => toggleMarkForReview(currentQuestionId)}
-                    />
-                    <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
-                      Mark for Review
-                    </label>
-                  </div>
-
-                  <div className="text-sm text-gray-600 mb-4">
-                    Choose the most appropriate alternative. If the original version is best, choose "NO CHANGE."
-                  </div>
-
-                  <RadioGroup 
-                    value={currentAnswer?.toString() || ""} 
-                    onValueChange={(value) => handleAnswerSelect(currentQuestionId, parseInt(value))}
-                    className="space-y-3"
-                  >
-                    {currentQuestion?.options.map((option, index) => {
-                      const isEliminated = currentEliminated.has(index);
-                      const optionLabel = String.fromCharCode(65 + index);
-                      
-                      return (
-                        <div 
-                          key={index} 
-                          className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 ${
-                            isEliminated ? 'opacity-50 bg-gray-100' : 'bg-white'
-                          } ${currentAnswer === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
-                        >
-                          <div className="flex items-center space-x-3 flex-1">
-                            <RadioGroupItem 
-                              value={index.toString()} 
-                              id={`option-${index}`}
-                              disabled={isEliminated}
-                              className="text-blue-600"
-                            />
-                            <label 
-                              htmlFor={`option-${index}`} 
-                              className="cursor-pointer flex-1 flex items-center"
-                            >
-                              <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
-                                {optionLabel}
-                              </span>
-                              <span className={isEliminated ? 'line-through text-gray-400' : 'text-gray-900'}>
-                                {option}
-                              </span>
-                            </label>
-                          </div>
-                          
-                          {eliminateMode && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEliminateAnswer(currentQuestionId, index)}
-                              className={`p-1 h-6 w-6 ${
-                                isEliminated 
-                                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                                  : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                              }`}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </RadioGroup>
-                </div>
-              </div>
-            </div>
+            <SATAnswerPanel
+              question={currentQuestion}
+              currentAnswer={currentAnswer}
+              markedForReview={markedForReview.has(currentQuestionId)}
+              eliminatedAnswers={currentEliminated}
+              eliminateMode={eliminateMode}
+              onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
+              onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
+              onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
 
       {/* Sticky Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-        <div className="text-sm text-gray-600">
-          {userDisplayName}
-        </div>
-        
-        <div className="flex items-center">
-          <Button
-            onClick={() => setShowNavigator(true)}
-            variant="ghost"
-            className="bg-gray-800 text-white hover:bg-gray-700 px-4 py-2 rounded flex items-center space-x-2"
-          >
-            <span>Question {currentProgress.questionIndex + 1} of {currentQuestions.length}</span>
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        <div className="flex space-x-3">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="px-4 py-2">
-                Exit Practice Test
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Exit Practice Test</AlertDialogTitle>
-                <AlertDialogDescription>
-                  What would you like to do with your current progress?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction onClick={handlePauseTest} className="w-full">
-                  Pause Test
-                  <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
-                </AlertDialogAction>
-                <AlertDialogAction 
-                  onClick={handleQuitTest}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Quit Test
-                  <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      <SATBottomNavigation
+        userDisplayName={userDisplayName}
+        currentQuestionIndex={currentProgress.questionIndex}
+        totalQuestions={currentQuestions.length}
+        isLastQuestion={currentProgress.questionIndex === currentQuestions.length - 1}
+        onShowNavigator={() => setShowNavigator(true)}
+        onNextQuestion={handleNextQuestion}
+        onModuleComplete={handleModuleComplete}
+        onPauseTest={handlePauseTest}
+        onQuitTest={handleQuitTest}
+      />
 
-          {currentProgress.questionIndex < currentQuestions.length - 1 ? (
-            <Button
-              onClick={handleNextQuestion}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              onClick={handleModuleComplete}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2 px-6 py-2"
-            >
-              <CheckCircle className="h-4 w-4" />
-              <span>Complete {currentProgress.module === 1 ? 'Module' : 'Test'}</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <QuestionNavigator />
+      {/* Question Navigator Modal */}
+      <SATQuestionNavigatorModal
+        showNavigator={showNavigator}
+        currentSection={currentProgress.section}
+        currentModule={currentProgress.module}
+        currentQuestionIndex={currentProgress.questionIndex}
+        questions={currentQuestions}
+        selectedAnswers={selectedAnswers}
+        markedForReview={markedForReview}
+        onClose={() => setShowNavigator(false)}
+        onNavigateToQuestion={navigateToQuestion}
+        onPauseTest={handlePauseTest}
+        onQuitTest={handleQuitTest}
+      />
     </div>
   );
 };
