@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowRight, Flag, X, CheckCircle, ChevronDown } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SATMockTestResults from './SATMockTestResults';
 
 interface Question {
@@ -28,6 +28,8 @@ interface TestAnswer {
 
 interface SATMockTestInterfaceProps {
   onBack: () => void;
+  onPauseTest?: () => void;
+  onQuitTest?: () => void;
 }
 
 type TestSection = 'reading-writing' | 'math';
@@ -40,7 +42,7 @@ interface TestProgress {
   timeRemaining: number;
 }
 
-const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) => {
+const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onPauseTest, onQuitTest }) => {
   const [currentProgress, setCurrentProgress] = useState<TestProgress>({
     section: 'reading-writing',
     module: 1,
@@ -283,6 +285,27 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
     setModuleResults([]);
   };
 
+  const handlePauseTest = () => {
+    // Call the onPauseTest callback if provided
+    if (onPauseTest) {
+      onPauseTest();
+    } else {
+      // Default behavior - go back to previous screen
+      onBack();
+    }
+  };
+
+  const handleQuitTest = () => {
+    // Call the onQuitTest callback if provided
+    if (onQuitTest) {
+      onQuitTest();
+    } else {
+      // Default behavior - reset and go back
+      handleRetakeTest();
+      onBack();
+    }
+  };
+
   // Show transition screen
   if (showTransition) {
     return (
@@ -392,7 +415,34 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack }) =
             })}
           </div>
           
-          <div className="flex justify-center">
+          <div className="flex justify-between">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="px-6">
+                  Exit Practice Test
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Exit Practice Test</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    What would you like to do with your current progress?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
+                  <AlertDialogAction onClick={handlePauseTest} className="w-full">
+                    Pause Test
+                    <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
+                  </AlertDialogAction>
+                  <AlertDialogAction onClick={handleQuitTest} variant="destructive" className="w-full">
+                    Quit Test
+                    <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
+                  </AlertDialogAction>
+                  <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
             <Button
               onClick={() => setShowNavigator(false)}
               variant="outline"
