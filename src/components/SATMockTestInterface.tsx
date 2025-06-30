@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import SATMockTestResults from './SATMockTestResults';
@@ -71,8 +70,18 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
     setLoading(true);
     try {
+      console.log(`Loading questions for ${section} module ${module}`);
+      
       const questionCount = section === 'reading-writing' ? 27 : 22;
-      const sectionFilter = section === 'reading-writing' ? 'Reading and Writing' : 'Math';
+      
+      // Map section names to match database values
+      const sectionMapping = {
+        'reading-writing': 'Reading and Writing',
+        'math': 'Math'
+      };
+      
+      const sectionFilter = sectionMapping[section];
+      console.log(`Querying for section: ${sectionFilter}, count: ${questionCount}`);
       
       const dbQuestions = await questionService.getRandomQuestions({
         section: sectionFilter,
@@ -80,32 +89,65 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         difficulty: 'mixed'
       });
 
-      const formattedQuestions: Question[] = dbQuestions.map((q, index) => ({
-        id: `${section}-m${module}-q${index + 1}-${q.id}`,
-        content: q.question_text,
-        passage: q.question_text.length > 200 ? q.question_text : undefined,
-        options: [q.option_a, q.option_b, q.option_c, q.option_d],
-        correctAnswer: q.correct_answer === 'A' ? 0 : 
-                     q.correct_answer === 'B' ? 1 :
-                     q.correct_answer === 'C' ? 2 : 3,
-        explanation: q.correct_rationale,
-        section,
-        topic: q.skill || 'General'
-      }));
+      console.log(`Retrieved ${dbQuestions.length} questions from database`);
 
+      if (dbQuestions.length === 0) {
+        console.warn('No questions found in database, using fallback');
+        // Create fallback questions
+        const fallbackQuestions = Array.from({ length: questionCount }, (_, index) => ({
+          id: `${section}-m${module}-q${index + 1}-fallback`,
+          content: `Sample ${section} question ${index + 1} for Module ${module}. Which of the following best completes the sentence?`,
+          passage: section === 'reading-writing' ? "This is a sample passage that provides context for the question. Students need to read carefully and choose the best answer based on the content provided." : undefined,
+          options: section === 'reading-writing' 
+            ? ["NO CHANGE", "enhanced", "expanded", "diversified"]
+            : ["2", "4", "8", "13"],
+          correctAnswer: 0,
+          explanation: `This is the explanation for ${section} Module ${module} question ${index + 1}.`,
+          section,
+          topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
+        }));
+        setCurrentQuestions(fallbackQuestions);
+        setLoading(false);
+        return;
+      }
+
+      const formattedQuestions: Question[] = dbQuestions.map((q, index) => {
+        // Ensure we have valid options
+        const options = [q.option_a, q.option_b, q.option_c, q.option_d].filter(opt => opt && opt.trim());
+        
+        // If less than 4 options, add defaults
+        while (options.length < 4) {
+          options.push(`Option ${options.length + 1}`);
+        }
+
+        return {
+          id: `${section}-m${module}-q${index + 1}-${q.id}`,
+          content: q.question_text || `Question ${index + 1}`,
+          passage: q.question_text && q.question_text.length > 200 ? q.question_text : undefined,
+          options,
+          correctAnswer: q.correct_answer === 'A' ? 0 : 
+                       q.correct_answer === 'B' ? 1 :
+                       q.correct_answer === 'C' ? 2 : 3,
+          explanation: q.correct_rationale || 'No explanation available.',
+          section,
+          topic: q.skill || 'General'
+        };
+      });
+
+      console.log(`Formatted ${formattedQuestions.length} questions`);
       setCurrentQuestions(formattedQuestions);
     } catch (error) {
       console.error('Error loading questions:', error);
-      // Fallback to sample questions if database fails
+      // Create fallback questions on error
       const questionCount = section === 'reading-writing' ? 27 : 22;
       const fallbackQuestions = Array.from({ length: questionCount }, (_, i) => ({
-        id: `${section}-m${module}-q${i + 1}`,
-        content: `Sample ${section} question ${i + 1} for Module ${module}...`,
-        passage: section === 'reading-writing' ? "Sample passage content for context..." : undefined,
+        id: `${section}-m${module}-q${i + 1}-fallback`,
+        content: `Sample ${section} question ${i + 1} for Module ${module}. Which of the following best completes the sentence?`,
+        passage: section === 'reading-writing' ? "This is a sample passage that provides context for the question. Students need to read carefully and choose the best answer based on the content provided." : undefined,
         options: section === 'reading-writing' 
-          ? ["enhanced", "expanded", "undermined", "diversified"]
+          ? ["NO CHANGE", "enhanced", "expanded", "diversified"]
           : ["2", "4", "8", "13"],
-        correctAnswer: section === 'reading-writing' ? 2 : 1,
+        correctAnswer: 0,
         explanation: `This is the explanation for ${section} Module ${module} question ${i + 1}.`,
         section,
         topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
@@ -118,11 +160,16 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
 
   // Load initial questions
   useEffect(() => {
+    console.log('Loading initial questions for:', currentProgress.section, currentProgress.module);
     loadQuestionsForModule(currentProgress.section, currentProgress.module);
   }, [currentProgress.section, currentProgress.module]);
 
   const currentQuestion = currentQuestions[currentProgress.questionIndex];
   const currentQuestionId = currentQuestion?.id || '';
+
+  console.log('Current question:', currentQuestion);
+  console.log('Current questions array length:', currentQuestions.length);
+  console.log('Current question index:', currentProgress.questionIndex);
 
   // Timer effect
   useEffect(() => {
@@ -181,13 +228,11 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     });
   };
 
-  // Navigate to specific question
   const navigateToQuestion = (index: number) => {
     setCurrentProgress(prev => ({ ...prev, questionIndex: index }));
     setShowNavigator(false);
   };
 
-  // Calculate performance for adaptive logic
   const calculateModulePerformance = () => {
     let correctCount = 0;
     currentQuestions.forEach(question => {
@@ -200,7 +245,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     const totalQuestions = currentQuestions.length;
     const performance = correctCount / totalQuestions;
     
-    // Threshold for harder module 2: 70% for Reading/Writing, 75% for Math
     const threshold = currentProgress.section === 'reading-writing' ? 0.7 : 0.75;
     
     return {
@@ -214,7 +258,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   const handleModuleComplete = async () => {
     const modulePerformance = calculateModulePerformance();
     
-    // Store module result
     const moduleResult = {
       section: currentProgress.section,
       module: currentProgress.module,
@@ -226,13 +269,11 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     setModuleResults(prev => [...prev, moduleResult]);
 
     if (currentProgress.module === 1) {
-      // Show transition screen
       setShowTransition(true);
       
       setTimeout(async () => {
         setShowTransition(false);
         
-        // Move to Module 2
         setCurrentProgress(prev => ({
           ...prev,
           module: 2,
@@ -241,7 +282,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         }));
       }, 3000);
     } else if (currentProgress.section === 'reading-writing' && currentProgress.module === 2) {
-      // Move to Math Module 1
       setCurrentProgress({
         section: 'math',
         module: 1,
@@ -249,7 +289,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         timeRemaining: 35 * 60
       });
     } else {
-      // Test completed
       setTestCompleted(true);
     }
   };
@@ -266,10 +305,8 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     const answers = new Map();
     const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
     
-    // Combine all questions from all modules
     const allQuestions: Question[] = [];
     
-    // Add questions from completed modules and current module
     moduleResults.forEach(result => {
       const moduleQuestions = Array.from({ length: result.totalQuestions }, (_, i) => ({
         id: `${result.section}-m${result.module}-q${i + 1}`,
@@ -283,7 +320,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
       allQuestions.push(...moduleQuestions);
     });
     
-    // Add current module questions
     allQuestions.push(...currentQuestions);
     
     allQuestions.forEach((question) => {
@@ -303,7 +339,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   };
 
   const handleRetakeTest = () => {
-    // Reset all state
     setCurrentProgress({
       section: 'reading-writing',
       module: 1,

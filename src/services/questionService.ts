@@ -88,11 +88,17 @@ class QuestionService {
           question_prompt,
           image
         `)
-        .not('question_text', 'is', null);
+        .not('question_text', 'is', null)
+        .not('option_a', 'is', null)
+        .not('option_b', 'is', null)
+        .not('option_c', 'is', null)
+        .not('option_d', 'is', null)
+        .not('correct_answer', 'is', null);
 
       // Apply filters efficiently
       if (filters.section) {
-        query = query.eq('assessment', filters.section);
+        // Handle both exact matches and flexible matching
+        query = query.or(`assessment.ilike.%${filters.section}%,test.ilike.%${filters.section}%`);
       }
       
       if (filters.difficulty && filters.difficulty !== 'mixed') {
@@ -108,7 +114,7 @@ class QuestionService {
       }
 
       // Get more than needed to ensure sufficient variety after filtering
-      const limit = (filters.limit || 10) * 3;
+      const limit = Math.max((filters.limit || 10) * 2, 50);
       
       const { data, error } = await query
         .order('id')

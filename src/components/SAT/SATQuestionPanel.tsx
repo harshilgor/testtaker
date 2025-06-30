@@ -20,7 +20,10 @@ const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question }) => {
   if (!question) {
     return (
       <div className="h-full overflow-y-auto p-8 flex items-center justify-center">
-        <div className="text-gray-500">Loading question...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-500">Loading question...</div>
+        </div>
       </div>
     );
   }
@@ -39,13 +42,14 @@ const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question }) => {
           </div>
         )}
         
-        {!question.passage && (
-          <div className="mb-8">
-            <p className="text-lg leading-relaxed text-gray-900">
-              {question.content}
-            </p>
-          </div>
-        )}
+        <div className="mb-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            {question.passage ? 'Question' : 'Question'}
+          </h3>
+          <p className="text-lg leading-relaxed text-gray-900">
+            {question.content}
+          </p>
+        </div>
       </div>
     </div>
   );

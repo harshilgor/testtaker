@@ -40,7 +40,10 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
   if (!question) {
     return (
       <div className="h-full overflow-y-auto p-8 flex items-center justify-center">
-        <div className="text-gray-500">Loading options...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-500">Loading options...</div>
+        </div>
       </div>
     );
   }
@@ -48,8 +51,9 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-2xl">
-        {question.passage && (
+        {!question.passage && (
           <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Question</h3>
             <p className="text-lg leading-relaxed text-gray-900">
               {question.content}
             </p>
@@ -69,7 +73,7 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
           </div>
 
           <div className="text-sm text-gray-600 mb-4">
-            Choose the most appropriate alternative. If the original version is best, choose "NO CHANGE."
+            Choose the best answer.
           </div>
 
           <RadioGroup 
