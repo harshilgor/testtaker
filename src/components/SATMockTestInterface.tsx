@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowRight, Flag, X, CheckCircle, ChevronDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import SATMockTestResults from './SATMockTestResults';
+import { adaptiveTestService } from '@/services/adaptiveTestService';
 
 interface Question {
   id: string;
@@ -434,7 +435,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
                     Pause Test
                     <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
                   </AlertDialogAction>
-                  <AlertDialogAction onClick={handleQuitTest} variant="destructive" className="w-full">
+                  <AlertDialogAction onClick={handleQuitTest} className="w-full bg-red-600 hover:bg-red-700 text-white">
                     Quit Test
                     <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
                   </AlertDialogAction>
