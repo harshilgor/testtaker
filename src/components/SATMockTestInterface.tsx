@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -431,14 +432,14 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
-                  <AlertDialogAction onClick={handlePauseTest} className="w-full">
+                  <Button onClick={handlePauseTest} className="w-full">
                     Pause Test
                     <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
-                  </AlertDialogAction>
-                  <AlertDialogAction onClick={handleQuitTest} className="w-full bg-red-600 hover:bg-red-700 text-white">
+                  </Button>
+                  <Button onClick={handleQuitTest} className="w-full bg-red-600 hover:bg-red-700 text-white">
                     Quit Test
                     <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
-                  </AlertDialogAction>
+                  </Button>
                   <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
                 </AlertDialogFooter>
               </AlertDialogContent>

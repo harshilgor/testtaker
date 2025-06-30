@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { ArrowUp, Eye, Home, RefreshCw, TrendingUp } from 'lucide-react';
+import { Eye, Home, RefreshCw, TrendingUp, TrendingDown, Clock, Target, CheckCircle } from 'lucide-react';
 
 interface MockTestAnswer {
   questionId: string;
@@ -62,19 +61,46 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
   const mathScore = Math.round(200 + (mathCorrect / mathQuestions.length) * 600);
   const totalScore = readingWritingScore + mathScore;
 
-  // Mock data for comparison (in real app, this would come from backend)
-  const percentileRank = Math.min(95, Math.round((totalScore / 1600) * 100));
-  const improvementFromLast = 40; // Mock improvement
+  // Calculate topic performance
+  const topicPerformance = new Map();
+  questions.forEach(question => {
+    const answer = answers.get(question.id);
+    const topic = question.topic;
+    
+    if (!topicPerformance.has(topic)) {
+      topicPerformance.set(topic, { correct: 0, total: 0 });
+    }
+    
+    const performance = topicPerformance.get(topic);
+    performance.total += 1;
+    if (answer?.isCorrect) {
+      performance.correct += 1;
+    }
+    topicPerformance.set(topic, performance);
+  });
+
+  // Sort topics by performance
+  const sortedTopics = Array.from(topicPerformance.entries())
+    .map(([topic, performance]) => ({
+      topic,
+      percentage: Math.round((performance.correct / performance.total) * 100),
+      correct: performance.correct,
+      total: performance.total
+    }))
+    .sort((a, b) => b.percentage - a.percentage);
+
+  const strongTopics = sortedTopics.filter(t => t.percentage >= 70);
+  const weakTopics = sortedTopics.filter(t => t.percentage < 70);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}` : `${minutes}:00`;
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
   if (showReview) {
     return (
-      <div className="min-h-screen bg-slate-50 py-8 px-4">
+      <div className="min-h-screen bg-white py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <Button
@@ -82,10 +108,9 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
               variant="outline"
               className="flex items-center space-x-2"
             >
-              <ArrowUp className="h-4 w-4 rotate-90" />
-              <span>Back to Results</span>
+              <span>← Back to Results</span>
             </Button>
-            <h1 className="text-2xl font-bold text-gray-900">Question Review</h1>
+            <h1 className="text-xl font-medium text-gray-900">Question Review</h1>
           </div>
 
           <div className="space-y-6">
@@ -94,17 +119,17 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
               const isCorrect = userAnswer?.isCorrect || false;
               
               return (
-                <Card key={question.id} className="overflow-hidden">
+                <Card key={question.id} className="border border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
                           Question {index + 1}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                           question.section === 'reading-writing' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-green-100 text-green-800'
+                            ? 'bg-blue-50 text-blue-700' 
+                            : 'bg-green-50 text-green-700'
                         }`}>
                           {question.section === 'reading-writing' ? 'Reading & Writing' : 'Math'}
                         </span>
@@ -113,14 +138,14 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
                       
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                         isCorrect 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-50 text-green-700' 
+                          : 'bg-red-50 text-red-700'
                       }`}>
                         {isCorrect ? 'Correct' : 'Incorrect'}
                       </span>
                     </div>
                     
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
                       {question.content}
                     </h3>
                     
@@ -130,9 +155,9 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
                           key={optionIndex}
                           className={`p-3 rounded-lg border ${
                             optionIndex === question.correctAnswer
-                              ? 'bg-green-50 border-green-300 text-green-900'
+                              ? 'bg-green-50 border-green-200 text-green-900'
                               : optionIndex === userAnswer?.selectedAnswer && !isCorrect
-                              ? 'bg-red-50 border-red-300 text-red-900'
+                              ? 'bg-red-50 border-red-200 text-red-900'
                               : 'bg-gray-50 border-gray-200'
                           }`}
                         >
@@ -165,149 +190,149 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">SAT Practice Test Complete!</h1>
-          <p className="text-indigo-200">Your detailed performance breakdown</p>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">SAT Practice Test Complete</h1>
+          <p className="text-gray-600">Your detailed performance breakdown</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {/* Total Score Panel - Left Side */}
-          <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
-            <CardContent className="p-6 md:p-8">
-              <h2 className="text-xl font-semibold mb-6">Total Score</h2>
-              
-              <div className="text-6xl md:text-7xl font-bold mb-4">{totalScore}</div>
-              
-              <div className="flex flex-wrap gap-3 mb-6">
-                <div className="bg-green-400 text-green-900 px-4 py-2 rounded-full flex items-center space-x-2">
-                  <ArrowUp className="h-4 w-4" />
-                  <span className="font-medium">{improvementFromLast} pts</span>
-                </div>
-                <span className="text-indigo-200">from Your Last Test</span>
-              </div>
+        {/* Score Cards */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          {/* Total Score */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Total Score</h2>
+              <div className="text-4xl font-semibold text-gray-900 mb-2">{totalScore}</div>
+              <div className="text-sm text-gray-600">out of 1600</div>
+            </CardContent>
+          </Card>
 
-              {/* Goal Progress */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-indigo-200">Goal:</span>
-                  <span className="text-sm text-indigo-200">1560</span>
-                </div>
-                <div className="bg-white/20 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-blue-400 to-cyan-400 h-2 rounded-full transition-all duration-1000"
-                    style={{ width: `${Math.min(100, (totalScore / 1560) * 100)}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-xs text-indigo-300 mt-1">
-                  <span>400</span>
-                  <span>1600</span>
-                </div>
-              </div>
+          {/* Reading & Writing */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Reading & Writing</h2>
+              <div className="text-3xl font-semibold text-blue-600 mb-2">{readingWritingScore}</div>
+              <div className="text-sm text-gray-600">{readingWritingCorrect}/{readingWritingQuestions.length} correct</div>
+            </CardContent>
+          </Card>
 
-              {/* Section Scores */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Reading & Writing</h3>
-                  <div className="text-3xl font-bold">{readingWritingScore}</div>
-                  <div className="text-indigo-300">{readingWritingCorrect}/{readingWritingQuestions.length}</div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Math</h3>
-                  <div className="text-3xl font-bold">{mathScore}</div>
-                  <div className="text-indigo-300">{mathCorrect}/{mathQuestions.length}</div>
-                </div>
+          {/* Math */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Math</h2>
+              <div className="text-3xl font-semibold text-green-600 mb-2">{mathScore}</div>
+              <div className="text-sm text-gray-600">{mathCorrect}/{mathQuestions.length} correct</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Performance Stats */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-3" />
+              <div className="text-2xl font-semibold text-gray-900 mb-1">{accuracy}%</div>
+              <div className="text-sm text-gray-600">Accuracy</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <Target className="h-8 w-8 text-blue-600 mx-auto mb-3" />
+              <div className="text-2xl font-semibold text-gray-900 mb-1">{totalCorrect}/{totalQuestions}</div>
+              <div className="text-sm text-gray-600">Questions Correct</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-gray-200">
+            <CardContent className="p-6 text-center">
+              <Clock className="h-8 w-8 text-purple-600 mx-auto mb-3" />
+              <div className="text-2xl font-semibold text-gray-900 mb-1">{formatTime(totalTimeSpent)}</div>
+              <div className="text-sm text-gray-600">Total Time</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Topic Performance */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Strong Topics */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-medium text-gray-900">Strong Areas</h3>
+              </div>
+              <div className="space-y-3">
+                {strongTopics.length > 0 ? (
+                  strongTopics.map((topic, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div>
+                        <div className="font-medium text-green-900">{topic.topic}</div>
+                        <div className="text-sm text-green-700">{topic.correct}/{topic.total} correct</div>
+                      </div>
+                      <div className="text-lg font-semibold text-green-600">{topic.percentage}%</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500 text-center py-4">No strong areas identified</div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Performance Comparison - Right Side */}
-          <div className="space-y-6">
-            {/* Percentile Comparison */}
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Your Score & Percentile</h2>
-                <p className="text-indigo-200 mb-4">
-                  You scored higher than {percentileRank}% of test takers.
-                </p>
-                
-                {/* Mock Bell Curve */}
-                <div className="relative h-32 bg-gradient-to-r from-blue-500/30 to-purple-500/30 rounded-lg overflow-hidden">
-                  <svg className="w-full h-full" viewBox="0 0 400 100">
-                    <path
-                      d="M 0 80 Q 100 20 200 30 Q 300 20 400 80"
-                      stroke="url(#gradient)"
-                      strokeWidth="3"
-                      fill="none"
-                    />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#60A5FA" />
-                        <stop offset="100%" stopColor="#A78BFA" />
-                      </linearGradient>
-                    </defs>
-                    {/* You marker */}
-                    <circle cx={320} cy={35} r="4" fill="#10B981" />
-                    <text x={325} y={30} fill="white" fontSize="12" fontWeight="bold">You</text>
-                  </svg>
-                </div>
-                
-                <p className="text-xs text-indigo-300 mt-2">
-                  Aggregate data has been normalized to remove outliers and abstracted for ease of
-                  reading. Differences can exist between test-takers.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-gradient-to-br from-green-400 to-green-500 text-green-900">
-                <CardContent className="p-6 text-center">
-                  <h3 className="text-lg font-semibold mb-2">Accuracy</h3>
-                  <div className="text-4xl font-bold">{accuracy}%</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-purple-300 to-pink-300 text-purple-900">
-                <CardContent className="p-6 text-center">
-                  <h3 className="text-lg font-semibold mb-2">Total Time</h3>
-                  <div className="text-4xl font-bold">{formatTime(totalTimeSpent)}</div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {/* Weak Topics */}
+          <Card className="border border-gray-200">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <TrendingDown className="h-5 w-5 text-red-600 mr-2" />
+                <h3 className="text-lg font-medium text-gray-900">Areas for Improvement</h3>
+              </div>
+              <div className="space-y-3">
+                {weakTopics.length > 0 ? (
+                  weakTopics.map((topic, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div>
+                        <div className="font-medium text-red-900">{topic.topic}</div>
+                        <div className="text-sm text-red-700">{topic.correct}/{topic.total} correct</div>
+                      </div>
+                      <div className="text-lg font-semibold text-red-600">{topic.percentage}%</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500 text-center py-4">All areas performed well</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap justify-center gap-4">
           <Button
             onClick={() => setShowReview(true)}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 flex items-center space-x-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 flex items-center space-x-2"
           >
-            <Eye className="h-5 w-5" />
-            <span>Review All Questions</span>
+            <Eye className="h-4 w-4" />
+            <span>Review Questions</span>
           </Button>
           
           <Button
             onClick={onRetakeTest}
-            size="lg"
             variant="outline"
-            className="border-white/30 text-white hover:bg-white/10 px-8 py-3 flex items-center space-x-2"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 flex items-center space-x-2"
           >
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className="h-4 w-4" />
             <span>Retake Test</span>
           </Button>
           
           <Button
             onClick={onBackToHome}
-            size="lg"
             variant="outline"
-            className="border-white/30 text-white hover:bg-white/10 px-8 py-3 flex items-center space-x-2"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 flex items-center space-x-2"
           >
-            <Home className="h-5 w-5" />
+            <Home className="h-4 w-4" />
             <span>Back to Dashboard</span>
           </Button>
         </div>
