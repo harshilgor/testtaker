@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -6,8 +5,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowRight, Flag, X, CheckCircle, ChevronDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import SATMockTestResults from './SATMockTestResults';
-import { adaptiveTestService } from '@/services/adaptiveTestService';
+import { questionService } from '@/services/questionService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: string;
@@ -61,29 +62,83 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   const [showNavigator, setShowNavigator] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
   const [moduleResults, setModuleResults] = useState<any[]>([]);
+  const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userDisplayName, setUserDisplayName] = useState('User');
 
-  // Generate questions based on current section and module
-  const getQuestionsForCurrentModule = (): Question[] => {
-    const { section, module } = currentProgress;
-    const questionCount = section === 'reading-writing' ? 27 : 22;
-    
-    return Array.from({ length: questionCount }, (_, i) => ({
-      id: `${section}-m${module}-q${i + 1}`,
-      content: i === 0 && section === 'reading-writing' && module === 1
-        ? "During a spirited class debate about the most influential technological innovations of the 21st century, one student asserted that social media platforms have ____ our ability to communicate effectively. She argued that while these platforms have increased the quantity of our communication, the quality and depth have significantly diminished."
-        : `Sample ${section} question ${i + 1} for Module ${module}...`,
-      passage: section === 'reading-writing' ? "Sample passage content for context..." : undefined,
-      options: section === 'reading-writing' 
-        ? ["enhanced", "expanded", "undermined", "diversified"]
-        : ["2", "4", "8", "13"],
-      correctAnswer: section === 'reading-writing' ? 2 : 1,
-      explanation: `This is the explanation for ${section} Module ${module} question ${i + 1}.`,
-      section,
-      topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
-    }));
+  // Load user info
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profile?.display_name) {
+          setUserDisplayName(profile.display_name);
+        }
+      }
+    };
+    loadUserInfo();
+  }, []);
+
+  // Load questions from database
+  const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
+    setLoading(true);
+    try {
+      const questionCount = section === 'reading-writing' ? 27 : 22;
+      const sectionFilter = section === 'reading-writing' ? 'Reading and Writing' : 'Math';
+      
+      const dbQuestions = await questionService.getRandomQuestions({
+        section: sectionFilter,
+        limit: questionCount,
+        difficulty: 'mixed'
+      });
+
+      const formattedQuestions: Question[] = dbQuestions.map((q, index) => ({
+        id: `${section}-m${module}-q${index + 1}-${q.id}`,
+        content: q.question_text,
+        passage: q.question_text.length > 200 ? q.question_text : undefined,
+        options: [q.option_a, q.option_b, q.option_c, q.option_d],
+        correctAnswer: q.correct_answer === 'A' ? 0 : 
+                     q.correct_answer === 'B' ? 1 :
+                     q.correct_answer === 'C' ? 2 : 3,
+        explanation: q.correct_rationale,
+        section,
+        topic: q.skill || 'General'
+      }));
+
+      setCurrentQuestions(formattedQuestions);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      // Fallback to sample questions if database fails
+      const questionCount = section === 'reading-writing' ? 27 : 22;
+      const fallbackQuestions = Array.from({ length: questionCount }, (_, i) => ({
+        id: `${section}-m${module}-q${i + 1}`,
+        content: `Sample ${section} question ${i + 1} for Module ${module}...`,
+        passage: section === 'reading-writing' ? "Sample passage content for context..." : undefined,
+        options: section === 'reading-writing' 
+          ? ["enhanced", "expanded", "undermined", "diversified"]
+          : ["2", "4", "8", "13"],
+        correctAnswer: section === 'reading-writing' ? 2 : 1,
+        explanation: `This is the explanation for ${section} Module ${module} question ${i + 1}.`,
+        section,
+        topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
+      }));
+      setCurrentQuestions(fallbackQuestions);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const currentQuestions = getQuestionsForCurrentModule();
+  // Load initial questions
+  useEffect(() => {
+    loadQuestionsForModule(currentProgress.section, currentProgress.module);
+  }, [currentProgress.section, currentProgress.module]);
+
   const currentQuestion = currentQuestions[currentProgress.questionIndex];
   const currentQuestionId = currentQuestion?.id || '';
 
@@ -180,7 +235,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     };
   };
 
-  const handleModuleComplete = () => {
+  const handleModuleComplete = async () => {
     const modulePerformance = calculateModulePerformance();
     
     // Store module result
@@ -198,7 +253,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
       // Show transition screen
       setShowTransition(true);
       
-      setTimeout(() => {
+      setTimeout(async () => {
         setShowTransition(false);
         
         // Move to Module 2
@@ -352,6 +407,17 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading questions...</p>
+        </div>
+      </div>
+    );
+  }
+
   const currentEliminated = eliminatedAnswers[currentQuestionId] || new Set();
   const currentAnswer = selectedAnswers[currentQuestionId];
 
@@ -450,7 +516,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
               variant="outline"
               className="px-6"
             >
-              Go to Review Page
+              Close
             </Button>
           </div>
         </div>
@@ -459,7 +525,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   );
 
   return (
-    <div className="min-h-screen bg-purple-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -487,93 +553,130 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 bg-white p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <p className="text-lg leading-relaxed text-gray-900">
-              {currentQuestion.content}
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Checkbox
-                id="mark-review"
-                checked={markedForReview.has(currentQuestionId)}
-                onCheckedChange={() => toggleMarkForReview(currentQuestionId)}
-              />
-              <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
-                Mark for Review
-              </label>
-            </div>
-
-            <div className="text-sm text-gray-600 mb-4">
-              Choose the most appropriate alternative. If the original version is best, choose "NO CHANGE."
-            </div>
-
-            <RadioGroup 
-              value={currentAnswer?.toString() || ""} 
-              onValueChange={(value) => handleAnswerSelect(currentQuestionId, parseInt(value))}
-              className="space-y-3"
-            >
-              {currentQuestion.options.map((option, index) => {
-                const isEliminated = currentEliminated.has(index);
-                const optionLabel = String.fromCharCode(65 + index);
-                
-                return (
-                  <div 
-                    key={index} 
-                    className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 ${
-                      isEliminated ? 'opacity-50 bg-gray-100' : 'bg-white'
-                    } ${currentAnswer === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
-                  >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <RadioGroupItem 
-                        value={index.toString()} 
-                        id={`option-${index}`}
-                        disabled={isEliminated}
-                        className="text-blue-600"
-                      />
-                      <label 
-                        htmlFor={`option-${index}`} 
-                        className="cursor-pointer flex-1 flex items-center"
-                      >
-                        <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
-                          {optionLabel}
-                        </span>
-                        <span className={isEliminated ? 'line-through text-gray-400' : 'text-gray-900'}>
-                          {option}
-                        </span>
-                      </label>
+      {/* Main Content with Resizable Panels */}
+      <div className="flex-1 pb-20">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          {/* Left Panel - Question Text/Passage */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="h-full overflow-y-auto p-8">
+              <div className="max-w-3xl">
+                {currentQuestion?.passage && (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Passage</h3>
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                      <p className="text-gray-900 leading-relaxed whitespace-pre-wrap">
+                        {currentQuestion.passage}
+                      </p>
                     </div>
-                    
-                    {eliminateMode && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEliminateAnswer(currentQuestionId, index)}
-                        className={`p-1 h-6 w-6 ${
-                          isEliminated 
-                            ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                            : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                        }`}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
-        </div>
+                )}
+                
+                {!currentQuestion?.passage && (
+                  <div className="mb-8">
+                    <p className="text-lg leading-relaxed text-gray-900">
+                      {currentQuestion?.content}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Right Panel - Question Prompt and Options */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="h-full overflow-y-auto p-8">
+              <div className="max-w-2xl">
+                {currentQuestion?.passage && (
+                  <div className="mb-6">
+                    <p className="text-lg leading-relaxed text-gray-900">
+                      {currentQuestion.content}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Checkbox
+                      id="mark-review"
+                      checked={markedForReview.has(currentQuestionId)}
+                      onCheckedChange={() => toggleMarkForReview(currentQuestionId)}
+                    />
+                    <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
+                      Mark for Review
+                    </label>
+                  </div>
+
+                  <div className="text-sm text-gray-600 mb-4">
+                    Choose the most appropriate alternative. If the original version is best, choose "NO CHANGE."
+                  </div>
+
+                  <RadioGroup 
+                    value={currentAnswer?.toString() || ""} 
+                    onValueChange={(value) => handleAnswerSelect(currentQuestionId, parseInt(value))}
+                    className="space-y-3"
+                  >
+                    {currentQuestion?.options.map((option, index) => {
+                      const isEliminated = currentEliminated.has(index);
+                      const optionLabel = String.fromCharCode(65 + index);
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 ${
+                            isEliminated ? 'opacity-50 bg-gray-100' : 'bg-white'
+                          } ${currentAnswer === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
+                        >
+                          <div className="flex items-center space-x-3 flex-1">
+                            <RadioGroupItem 
+                              value={index.toString()} 
+                              id={`option-${index}`}
+                              disabled={isEliminated}
+                              className="text-blue-600"
+                            />
+                            <label 
+                              htmlFor={`option-${index}`} 
+                              className="cursor-pointer flex-1 flex items-center"
+                            >
+                              <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
+                                {optionLabel}
+                              </span>
+                              <span className={isEliminated ? 'line-through text-gray-400' : 'text-gray-900'}>
+                                {option}
+                              </span>
+                            </label>
+                          </div>
+                          
+                          {eliminateMode && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEliminateAnswer(currentQuestionId, index)}
+                              className={`p-1 h-6 w-6 ${
+                                isEliminated 
+                                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
+                                  : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                              }`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </RadioGroup>
+                </div>
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
-      {/* Footer */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+      {/* Sticky Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between z-10">
         <div className="text-sm text-gray-600">
-          Harshil Gor
+          {userDisplayName}
         </div>
         
         <div className="flex items-center">
@@ -588,6 +691,36 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         </div>
         
         <div className="flex space-x-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="px-4 py-2">
+                Exit Practice Test
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Exit Practice Test</AlertDialogTitle>
+                <AlertDialogDescription>
+                  What would you like to do with your current progress?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
+                <AlertDialogAction onClick={handlePauseTest} className="w-full">
+                  Pause Test
+                  <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
+                </AlertDialogAction>
+                <AlertDialogAction 
+                  onClick={handleQuitTest}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Quit Test
+                  <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
+                </AlertDialogAction>
+                <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {currentProgress.questionIndex < currentQuestions.length - 1 ? (
             <Button
               onClick={handleNextQuestion}

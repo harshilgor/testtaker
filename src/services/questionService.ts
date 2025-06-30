@@ -36,11 +36,35 @@ export interface QuestionFilters {
 }
 
 class QuestionService {
+  private questionCache = new Map<string, DatabaseQuestion[]>();
+  private cacheExpiry = new Map<string, number>();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  private getCacheKey(filters: QuestionFilters): string {
+    return JSON.stringify(filters);
+  }
+
+  private isCacheValid(key: string): boolean {
+    const expiry = this.cacheExpiry.get(key);
+    return expiry ? Date.now() < expiry : false;
+  }
+
   async getRandomQuestions(filters: QuestionFilters = {}): Promise<DatabaseQuestion[]> {
-    console.log('Getting random questions with filters:', filters);
+    const cacheKey = this.getCacheKey(filters);
+    
+    // Check cache first
+    if (this.isCacheValid(cacheKey)) {
+      const cached = this.questionCache.get(cacheKey);
+      if (cached) {
+        console.log('Returning cached questions');
+        return cached.slice(0, filters.limit || 10);
+      }
+    }
+
+    console.log('Fetching questions from database with filters:', filters);
     
     try {
-      // Build optimized query to get all required fields from question_bank
+      // Build optimized query
       let query = supabase
         .from('question_bank')
         .select(`
@@ -66,7 +90,7 @@ class QuestionService {
         `)
         .not('question_text', 'is', null);
 
-      // Apply filters for immediate optimization
+      // Apply filters efficiently
       if (filters.section) {
         query = query.eq('assessment', filters.section);
       }
@@ -83,12 +107,12 @@ class QuestionService {
         query = query.eq('domain', filters.domain);
       }
 
-      // Optimized limit - get exact amount needed plus small buffer
-      const limit = filters.limit || 10;
+      // Get more than needed to ensure sufficient variety after filtering
+      const limit = (filters.limit || 10) * 3;
       
       const { data, error } = await query
         .order('id')
-        .limit(limit * 2); // Get more to ensure we have enough after filtering
+        .limit(limit);
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -100,9 +124,8 @@ class QuestionService {
         return [];
       }
 
-      // Quick shuffle for randomization and format the data
-      const shuffled = data.sort(() => Math.random() - 0.5);
-      const questions = shuffled.slice(0, limit).map(q => ({
+      // Format and shuffle the data
+      const questions = data.map(q => ({
         id: q.id?.toString() || '',
         question_text: q.question_text || '',
         option_a: q.option_a || '',
@@ -128,8 +151,16 @@ class QuestionService {
         image: q.image === 'true' || q.image === 'True' || q.image === '1' || false
       }));
 
-      console.log(`Successfully loaded ${questions.length} questions from question_bank`);
-      return questions;
+      // Cache the results
+      this.questionCache.set(cacheKey, questions);
+      this.cacheExpiry.set(cacheKey, Date.now() + this.CACHE_DURATION);
+
+      // Shuffle and return requested amount
+      const shuffled = questions.sort(() => Math.random() - 0.5);
+      const result = shuffled.slice(0, filters.limit || 10);
+
+      console.log(`Successfully loaded ${result.length} questions from question_bank`);
+      return result;
     } catch (error) {
       console.error('Error in getRandomQuestions:', error);
       return [];
@@ -306,9 +337,15 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      imageUrl: dbQuestion.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
+      imageUrl: dbQuestion.image ? `https://kpcprhkubqhSlazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
       hasImage: dbQuestion.image || false
     };
+  }
+
+  // Clear cache when needed
+  clearCache() {
+    this.questionCache.clear();
+    this.cacheExpiry.clear();
   }
 }
 

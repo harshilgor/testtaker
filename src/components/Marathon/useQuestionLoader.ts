@@ -40,7 +40,7 @@ export const useQuestionLoader = ({
 
       const usedQuestions = sessionData?.questions_used || [];
       
-      // Build query for unused questions
+      // Optimized query with better filtering and limits
       let query = supabase
         .from('question_bank')
         .select(`
@@ -65,23 +65,26 @@ export const useQuestionLoader = ({
           image
         `)
         .not('question_text', 'is', null)
-        .limit(50);
+        .limit(10); // Reduced limit for faster response
 
-      // Exclude used questions
+      // Exclude used questions more efficiently
       if (usedQuestions.length > 0) {
-        query = query.not('id', 'in', `(${usedQuestions.join(',')})`);
-      }
-      
-      // Filter by subject using test column
-      if (session.subjects && !session.subjects.includes('both')) {
-        if (session.subjects.includes('math')) {
-          query = query.ilike('test', '%math%');
-        } else if (session.subjects.includes('english')) {
-          query = query.not('test', 'ilike', '%math%');
+        const usedIds = usedQuestions.map(id => parseInt(id)).filter(id => !isNaN(id));
+        if (usedIds.length > 0) {
+          query = query.not('id', 'in', `(${usedIds.join(',')})`);
         }
       }
       
-      // Filter by difficulty
+      // Apply subject filters
+      if (session.subjects && !session.subjects.includes('both')) {
+        if (session.subjects.includes('math')) {
+          query = query.or('test.ilike.%math%,assessment.ilike.%math%');
+        } else if (session.subjects.includes('english')) {
+          query = query.and('test.not.ilike.%math%,assessment.not.ilike.%math%');
+        }
+      }
+      
+      // Apply difficulty filter
       if (session.difficulty && session.difficulty !== 'mixed') {
         query = query.eq('difficulty', session.difficulty);
       }
@@ -94,14 +97,14 @@ export const useQuestionLoader = ({
       }
 
       if (questions && questions.length > 0) {
-        // Pick random question
+        // Pick random question for variety
         const randomIndex = Math.floor(Math.random() * questions.length);
         const question = questions[randomIndex];
-        console.log('useQuestionLoader: Loaded question:', question.id, question.question_text?.substring(0, 50));
+        console.log('useQuestionLoader: Loaded question:', question.id);
         
         // Format question with proper type conversion
         const formattedQuestion: DatabaseQuestion = {
-          id: question.id.toString(), // Convert number to string
+          id: question.id.toString(),
           question_text: question.question_text || '',
           option_a: question.option_a || '',
           option_b: question.option_b || '',
@@ -129,15 +132,17 @@ export const useQuestionLoader = ({
         setCurrentQuestion(formattedQuestion);
         startTimer();
         
-        // Mark question as used and refresh stats
-        await Promise.all([
-          supabase.rpc('mark_question_used_in_session', {
-            p_session_id: session.id,
-            p_session_type: 'marathon',
-            p_question_id: question.id.toString() // Convert to string here too
-          }),
-          loadSessionStats()
-        ]);
+        // Mark question as used and refresh stats in parallel
+        const markUsedPromise = supabase.rpc('mark_question_used_in_session', {
+          p_session_id: session.id,
+          p_session_type: 'marathon',
+          p_question_id: question.id.toString()
+        });
+        
+        const statsPromise = loadSessionStats();
+        
+        // Don't await these operations to avoid blocking the UI
+        Promise.all([markUsedPromise, statsPromise]).catch(console.error);
       } else {
         console.log('useQuestionLoader: No more questions available');
         setCurrentQuestion(null);
