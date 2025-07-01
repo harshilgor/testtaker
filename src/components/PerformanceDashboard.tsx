@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -200,67 +201,76 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
           <CardContent className="p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Overall Performance Summary</h2>
             
-            {/* Quiz Section */}
-            {quizStats.totalQuizzes > 0 && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quizzes</h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
-                    <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
-                    <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
-                  </Card>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Marathon Section */}
+              {!isLoading && marathonStats.totalQuestions > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Marathon Sessions</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
+                      <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
+                    </Card>
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
+                      <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions - marathonStats.correctAnswers}</div>
+                    </Card>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 mb-4">
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                      <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
+                    </Card>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowMarathonHistory(!showMarathonHistory)}
+                      className="text-gray-600"
+                    >
+                      {showMarathonHistory ? 'Close Marathon History' : 'View Marathon History'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 mb-4">
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                    <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
-                  </Card>
-                </div>
-                <div className="flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowQuizHistory(!showQuizHistory)}
-                    className="text-gray-600"
-                  >
-                    {showQuizHistory ? 'Close Quiz History' : 'View Quiz History'}
-                  </Button>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Marathon Section */}
-            {!isLoading && marathonStats.totalQuestions > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Marathon Sessions</h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
-                    <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
-                    <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions - marathonStats.correctAnswers}</div>
-                  </Card>
+              {/* Quiz Section */}
+              {quizStats.totalQuizzes > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quizzes</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
+                      <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
+                    </Card>
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
+                      <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
+                    </Card>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 mb-4">
+                    <Card className="p-4">
+                      <div className="text-sm text-gray-600 mb-1">Accuracy</div>
+                      <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
+                    </Card>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowQuizHistory(!showQuizHistory)}
+                      className="text-gray-600"
+                    >
+                      {showQuizHistory ? 'Close Quiz History' : 'View Quiz History'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 mb-4">
-                  <Card className="p-4">
-                    <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                    <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
-                  </Card>
-                </div>
-                <div className="flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowMarathonHistory(!showMarathonHistory)}
-                    className="text-gray-600"
-                  >
-                    {showMarathonHistory ? 'Close Marathon History' : 'View Marathon History'}
-                  </Button>
-                </div>
+              )}
+            </div>
+
+            {/* Show message if no data available */}
+            {!isLoading && marathonStats.totalQuestions === 0 && quizStats.totalQuizzes === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No practice data available yet. Start practicing to see your performance!</p>
               </div>
             )}
           </CardContent>

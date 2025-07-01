@@ -60,11 +60,24 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
         .eq('assessment', sectionFilter)
         .not('question_text', 'is', null);
 
+      // Handle topic filtering - if topics are selected, filter by skill
       if (selectedTopics.length > 0 && !selectedTopics.includes('wrong-questions')) {
+        // Map selected topic IDs to actual skill names from the topics array
         const selectedSkills = selectedTopics.map(topicId => {
-          const topic = topics.find(t => t.id === topicId);
-          return topic?.skill;
-        }).filter(Boolean);
+          if (topicId.includes('domain-')) {
+            // This is a domain selection, get all skills for this domain
+            const domainName = topicId.replace('domain-', '');
+            return topics
+              .filter(topic => topic.domain === domainName)
+              .map(topic => topic.skill);
+          } else {
+            // This is a specific skill selection
+            const topic = topics.find(t => t.id === topicId);
+            return topic?.skill;
+          }
+        }).flat().filter(Boolean);
+        
+        console.log('Mapped skills for filtering:', selectedSkills);
         
         if (selectedSkills.length > 0) {
           query = query.in('skill', selectedSkills);
@@ -73,7 +86,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       const { data: questions, error } = await query
         .order('id')
-        .limit(questionCount * 2);
+        .limit(questionCount * 3); // Get more questions to ensure variety
 
       if (error) {
         console.error('Error loading questions:', error);
@@ -83,7 +96,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       if (!questions || questions.length === 0) {
         console.log('No questions found for criteria');
-        alert('No questions available for the selected criteria.');
+        alert('No questions available for the selected criteria. Please try selecting different topics or check if questions exist in the database.');
         return [];
       }
 
