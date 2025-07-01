@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
+import StreakTracker from './Performance/StreakTracker';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -178,6 +178,13 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
     console.log('Viewing quiz result:', result);
   };
 
+  // Mock data for streak tracker (in a real app, this would come from the database)
+  const streakData = {
+    currentStreak: 4,
+    longestStreak: 12,
+    weeklyActivity: [true, true, false, true, true, false, false] // Mon-Sun
+  };
+
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
 
@@ -258,6 +265,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
             )}
           </CardContent>
         </Card>
+
+        {/* Streak Tracker */}
+        <div className="mb-8">
+          <StreakTracker 
+            currentStreak={streakData.currentStreak}
+            longestStreak={streakData.longestStreak}
+            weeklyActivity={streakData.weeklyActivity}
+          />
+        </div>
 
         {/* Conditional History Sections */}
         {showMarathonHistory && (

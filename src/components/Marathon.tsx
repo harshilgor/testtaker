@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
@@ -44,7 +43,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     loadSessionStats,
     initializeSessionData,
     stopTimer,
-    startTimer
+    startTimer,
+    incrementQuestionsAttempted
   } = useMarathonState(session);
 
   const {
@@ -71,7 +71,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     setShowEndConfirmation,
     sessionPoints,
     stopTimer,
-    startTimer
+    startTimer,
+    incrementQuestionsAttempted
   });
 
   // Initialize session when ready

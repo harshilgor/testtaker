@@ -23,6 +23,7 @@ interface UseMarathonActionsProps {
   sessionPoints: number;
   stopTimer: () => void;
   startTimer: () => void;
+  incrementQuestionsAttempted: () => void;
 }
 
 export const useMarathonActions = (props: UseMarathonActionsProps) => {
@@ -41,7 +42,8 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     setShowEndConfirmation,
     sessionPoints,
     stopTimer,
-    startTimer
+    startTimer,
+    incrementQuestionsAttempted
   } = props;
 
   // Use the smaller, focused hooks
@@ -61,7 +63,8 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     setSessionPoints,
     recordAttempt,
     loadUserPoints,
-    stopTimer
+    stopTimer,
+    incrementQuestionsAttempted
   });
 
   const { handleEndMarathon, confirmEndMarathon } = useMarathonNavigation({

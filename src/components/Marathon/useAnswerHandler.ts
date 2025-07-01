@@ -12,6 +12,7 @@ interface UseAnswerHandlerProps {
   recordAttempt: (attempt: any) => void;
   loadUserPoints: () => Promise<void>;
   stopTimer: () => void;
+  incrementQuestionsAttempted: () => void;
 }
 
 export const useAnswerHandler = ({
@@ -22,7 +23,8 @@ export const useAnswerHandler = ({
   setSessionPoints,
   recordAttempt,
   loadUserPoints,
-  stopTimer
+  stopTimer,
+  incrementQuestionsAttempted
 }: UseAnswerHandlerProps) => {
 
   const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
@@ -32,6 +34,9 @@ export const useAnswerHandler = ({
     }
     
     stopTimer();
+    
+    // Increment questions attempted immediately
+    incrementQuestionsAttempted();
     
     const isCorrect = showAnswerUsed ? false : selectedAnswer === currentQuestion.correct_answer;
     console.log('useAnswerHandler: Recording answer', { selectedAnswer, isCorrect, timeSpent, showAnswerUsed });
@@ -79,7 +84,7 @@ export const useAnswerHandler = ({
     } catch (error) {
       console.error('useAnswerHandler: Error recording question attempt:', error);
     }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer]);
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer, incrementQuestionsAttempted]);
 
   return { handleAnswer };
 };

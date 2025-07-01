@@ -44,6 +44,13 @@ export const useMarathonState = (session: MarathonSession | null) => {
     setTimeSpent(0);
   };
 
+  const incrementQuestionsAttempted = () => {
+    setSessionStats(prev => ({
+      ...prev,
+      used: prev.used + 1
+    }));
+  };
+
   const loadUserPoints = async () => {
     console.log('useMarathonState: Loading user points');
     try {
@@ -114,6 +121,7 @@ export const useMarathonState = (session: MarathonSession | null) => {
     initializeSessionData,
     stopTimer,
     startTimer,
-    isTimerRunning
+    isTimerRunning,
+    incrementQuestionsAttempted
   };
 };
