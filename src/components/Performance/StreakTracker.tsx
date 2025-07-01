@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { fire } from 'lucide-react';
+import { Flame } from 'lucide-react';
 
 interface StreakTrackerProps {
   currentStreak: number;
@@ -20,7 +20,7 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
     <Card className="bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <fire className="h-5 w-5 text-orange-500" />
+          <Flame className="h-5 w-5 text-orange-500" />
           <h3 className="text-lg font-semibold text-gray-900">Streaks</h3>
         </div>
         
