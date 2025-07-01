@@ -8,6 +8,7 @@ interface TopicData {
   name: string;
   description: string;
   count: number;
+  domain?: string;
 }
 
 export const useQuestionTopics = () => {
@@ -19,13 +20,15 @@ export const useQuestionTopics = () => {
   useEffect(() => {
     const fetchTopics = async () => {
       try {
+        console.log('=== FETCHING TOPICS DEBUG ===');
         setError(null);
         
-        // Fetch math topics from question_bank using 'assessment' field
+        // Fetch math topics using correct database structure
         const { data: mathData, error: mathError } = await supabase
           .from('question_bank')
-          .select('skill')
-          .eq('assessment', 'Math')
+          .select('skill, domain')
+          .eq('assessment', 'SAT')
+          .eq('test', 'Math')
           .not('question_text', 'is', null)
           .not('skill', 'is', null);
 
@@ -33,67 +36,69 @@ export const useQuestionTopics = () => {
           console.error('Math topics error:', mathError);
         }
 
-        // Fetch English topics - try multiple variations to ensure we get data
-        const { data: englishData1, error: englishError1 } = await supabase
-          .from('question_bank')
-          .select('skill')
-          .eq('assessment', 'Reading and Writing')
-          .not('question_text', 'is', null)
-          .not('skill', 'is', null);
+        console.log('Math data sample:', mathData?.slice(0, 5));
 
-        const { data: englishData2, error: englishError2 } = await supabase
+        // Fetch English topics using correct database structure
+        const { data: englishData, error: englishError } = await supabase
           .from('question_bank')
-          .select('skill')
+          .select('skill, domain')
+          .eq('assessment', 'SAT')
           .eq('test', 'Reading and Writing')
           .not('question_text', 'is', null)
           .not('skill', 'is', null);
 
-        // Combine English data from both queries
-        const combinedEnglishData = [
-          ...(englishData1 || []),
-          ...(englishData2 || [])
-        ];
-
-        if (englishError1 && englishError2) {
-          console.error('English topics errors:', englishError1, englishError2);
-          throw englishError1;
+        if (englishError) {
+          console.error('English topics error:', englishError);
+          throw englishError;
         }
 
+        console.log('English data sample:', englishData?.slice(0, 5));
+
         // Count occurrences for math
-        const mathTopicCounts: Record<string, number> = {};
+        const mathTopicCounts: Record<string, { count: number; domain?: string }> = {};
         mathData?.forEach(item => {
           if (item.skill) {
-            mathTopicCounts[item.skill] = (mathTopicCounts[item.skill] || 0) + 1;
+            if (!mathTopicCounts[item.skill]) {
+              mathTopicCounts[item.skill] = { count: 0, domain: item.domain };
+            }
+            mathTopicCounts[item.skill].count++;
           }
         });
 
-        // Count occurrences for English (from combined data)
-        const englishTopicCounts: Record<string, number> = {};
-        combinedEnglishData.forEach(item => {
+        // Count occurrences for English
+        const englishTopicCounts: Record<string, { count: number; domain?: string }> = {};
+        englishData?.forEach(item => {
           if (item.skill) {
-            englishTopicCounts[item.skill] = (englishTopicCounts[item.skill] || 0) + 1;
+            if (!englishTopicCounts[item.skill]) {
+              englishTopicCounts[item.skill] = { count: 0, domain: item.domain };
+            }
+            englishTopicCounts[item.skill].count++;
           }
         });
 
         // Convert to array format with proper structure
-        const mathTopicsArray = Object.entries(mathTopicCounts).map(([skill, count]) => ({
+        const mathTopicsArray = Object.entries(mathTopicCounts).map(([skill, data]) => ({
           id: skill.toLowerCase().replace(/\s+/g, '-'),
           skill,
           name: skill,
           description: `Practice ${skill} problems`,
-          count
+          count: data.count,
+          domain: data.domain
         }));
 
-        const englishTopicsArray = Object.entries(englishTopicCounts).map(([skill, count]) => ({
+        const englishTopicsArray = Object.entries(englishTopicCounts).map(([skill, data]) => ({
           id: skill.toLowerCase().replace(/\s+/g, '-'),
           skill,
           name: skill,
           description: `Practice ${skill} problems`,
-          count
+          count: data.count,
+          domain: data.domain
         }));
 
-        console.log('Math topics loaded:', mathTopicsArray.length);
-        console.log('English topics loaded:', englishTopicsArray.length);
+        console.log('Math topics processed:', mathTopicsArray.length);
+        console.log('English topics processed:', englishTopicsArray.length);
+        console.log('Sample math topics:', mathTopicsArray.slice(0, 3));
+        console.log('Sample english topics:', englishTopicsArray.slice(0, 3));
         
         setMathTopics(mathTopicsArray);
         setEnglishTopics(englishTopicsArray);
@@ -102,20 +107,18 @@ export const useQuestionTopics = () => {
         setError(err instanceof Error ? err.message : 'Failed to load topics');
         
         // Provide fallback topics if database fails
-        if (err instanceof Error && err.message.includes('Failed to load topics')) {
-          const fallbackMathTopics = [
-            { id: 'linear-equations', skill: 'Linear Equations', name: 'Linear Equations', description: 'Practice Linear Equations problems', count: 50 },
-            { id: 'quadratic-functions', skill: 'Quadratic Functions', name: 'Quadratic Functions', description: 'Practice Quadratic Functions problems', count: 40 },
-          ];
-          
-          const fallbackEnglishTopics = [
-            { id: 'grammar', skill: 'Grammar', name: 'Grammar', description: 'Practice Grammar problems', count: 60 },
-            { id: 'reading-comprehension', skill: 'Reading Comprehension', name: 'Reading Comprehension', description: 'Practice Reading Comprehension problems', count: 45 },
-          ];
-          
-          setMathTopics(fallbackMathTopics);
-          setEnglishTopics(fallbackEnglishTopics);
-        }
+        const fallbackMathTopics = [
+          { id: 'linear-equations', skill: 'Linear Equations', name: 'Linear Equations', description: 'Practice Linear Equations problems', count: 50 },
+          { id: 'quadratic-functions', skill: 'Quadratic Functions', name: 'Quadratic Functions', description: 'Practice Quadratic Functions problems', count: 40 },
+        ];
+        
+        const fallbackEnglishTopics = [
+          { id: 'grammar', skill: 'Grammar', name: 'Grammar', description: 'Practice Grammar problems', count: 60 },
+          { id: 'reading-comprehension', skill: 'Reading Comprehension', name: 'Reading Comprehension', description: 'Practice Reading Comprehension problems', count: 45 },
+        ];
+        
+        setMathTopics(fallbackMathTopics);
+        setEnglishTopics(fallbackEnglishTopics);
       } finally {
         setLoading(false);
       }

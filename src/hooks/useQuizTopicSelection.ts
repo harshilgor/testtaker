@@ -25,14 +25,17 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
   };
 
   const loadQuizQuestions = async () => {
-    console.log('Loading quiz questions...');
+    console.log('=== QUIZ GENERATION DEBUG ===');
+    console.log('Subject:', subject);
+    console.log('Selected topics:', selectedTopics);
+    console.log('Available topics:', topics);
+    console.log('Question count requested:', questionCount);
+    
     setLoading(true);
     try {
-      // Map subject to database section field (assessment column)
-      const sectionFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
-      console.log('Section filter:', sectionFilter);
-      console.log('Selected topics:', selectedTopics);
-      console.log('Question count requested:', questionCount);
+      // Map subject to database test field
+      const testFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+      console.log('Test filter:', testFilter);
       
       let query = supabase
         .from('question_bank')
@@ -57,45 +60,90 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
           question_prompt,
           image
         `)
-        .eq('assessment', sectionFilter)
-        .not('question_text', 'is', null);
+        .eq('assessment', 'SAT')
+        .eq('test', testFilter)
+        .not('question_text', 'is', null)
+        .not('option_a', 'is', null)
+        .not('option_b', 'is', null)
+        .not('option_c', 'is', null)
+        .not('option_d', 'is', null);
+
+      console.log('Base query filters - assessment: SAT, test:', testFilter);
 
       // Handle topic filtering - if topics are selected, filter by skill
       if (selectedTopics.length > 0 && !selectedTopics.includes('wrong-questions')) {
+        console.log('Processing selected topics for skill filtering...');
+        
         // Map selected topic IDs to actual skill names from the topics array
-        const selectedSkills = selectedTopics.map(topicId => {
+        const selectedSkills: string[] = [];
+        
+        selectedTopics.forEach(topicId => {
+          console.log('Processing topic ID:', topicId);
+          
           if (topicId.includes('domain-')) {
             // This is a domain selection, get all skills for this domain
             const domainName = topicId.replace('domain-', '');
-            return topics
+            console.log('Domain selection detected:', domainName);
+            
+            const domainSkills = topics
               .filter(topic => topic.domain === domainName)
               .map(topic => topic.skill);
+            
+            console.log('Skills found for domain', domainName, ':', domainSkills);
+            selectedSkills.push(...domainSkills);
           } else {
             // This is a specific skill selection
             const topic = topics.find(t => t.id === topicId);
-            return topic?.skill;
+            if (topic?.skill) {
+              console.log('Skill selection found:', topic.skill);
+              selectedSkills.push(topic.skill);
+            } else {
+              console.log('Topic not found or missing skill for ID:', topicId);
+            }
           }
-        }).flat().filter(Boolean);
+        });
         
-        console.log('Mapped skills for filtering:', selectedSkills);
+        // Remove duplicates
+        const uniqueSkills = [...new Set(selectedSkills)];
+        console.log('Final unique skills for filtering:', uniqueSkills);
         
-        if (selectedSkills.length > 0) {
-          query = query.in('skill', selectedSkills);
+        if (uniqueSkills.length > 0) {
+          query = query.in('skill', uniqueSkills);
+          console.log('Applied skill filter with skills:', uniqueSkills);
+        } else {
+          console.log('WARNING: No valid skills found for selected topics!');
         }
+      } else {
+        console.log('No topic filtering applied (no topics selected or wrong-questions selected)');
       }
 
       const { data: questions, error } = await query
         .order('id')
         .limit(questionCount * 3); // Get more questions to ensure variety
 
+      console.log('Query executed, error:', error);
+      console.log('Questions returned:', questions?.length || 0);
+
       if (error) {
-        console.error('Error loading questions:', error);
+        console.error('Database query error:', error);
         alert('Error loading questions: ' + error.message);
         return [];
       }
 
       if (!questions || questions.length === 0) {
-        console.log('No questions found for criteria');
+        console.log('=== NO QUESTIONS FOUND DEBUG ===');
+        
+        // Let's check what's actually in the database
+        const { data: debugQuestions, error: debugError } = await supabase
+          .from('question_bank')
+          .select('assessment, test, skill, count(*)')
+          .eq('assessment', 'SAT')
+          .eq('test', testFilter)
+          .not('question_text', 'is', null);
+          
+        console.log('Debug query for available questions:', debugQuestions);
+        console.log('Debug query error:', debugError);
+        
         alert('No questions available for the selected criteria. Please try selecting different topics or check if questions exist in the database.');
         return [];
       }
@@ -103,7 +151,8 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       const shuffled = questions.sort(() => Math.random() - 0.5);
       const selectedQuestions = shuffled.slice(0, questionCount);
 
-      console.log(`Loaded ${selectedQuestions.length} questions`);
+      console.log(`Successfully loaded ${selectedQuestions.length} questions`);
+      console.log('Sample question skills:', selectedQuestions.slice(0, 3).map(q => q.skill));
       
       const formattedQuestions = selectedQuestions.map(q => ({
         id: q.id.toString(),
@@ -120,6 +169,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
         hasImage: q.image || false
       }));
 
+      console.log('=== QUIZ GENERATION COMPLETE ===');
       return formattedQuestions;
     } catch (error) {
       console.error('Error loading quiz questions:', error);
