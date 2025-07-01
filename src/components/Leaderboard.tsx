@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -72,7 +73,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         const { data: user } = await supabase.auth.getUser();
         if (!user.user) return [];
 
-        // First get the question attempts
+        console.log('Fetching attempts for timeframe with date filter:', dateFilter);
+
+        // First get the question attempts with session_id included
         const { data: attempts, error: attemptsError } = await supabase
           .from('question_attempts_v2')
           .select(`
@@ -90,8 +93,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           throw attemptsError;
         }
 
+        console.log('Found attempts for timeframe:', attempts?.length || 0);
+
+        if (!attempts || attempts.length === 0) {
+          console.log('No attempts found for timeframe:', timeFrame);
+          return [];
+        }
+
         // Get unique user IDs from attempts
-        const userIds = [...new Set(attempts?.map(attempt => attempt.user_id) || [])];
+        const userIds = [...new Set(attempts.map(attempt => attempt.user_id))];
+        console.log('Unique users with attempts:', userIds.length);
         
         // Fetch user profiles separately
         const { data: profiles, error: profilesError } = await supabase
@@ -113,7 +124,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         // Aggregate the data by user
         const userStats = new Map();
         
-        attempts?.forEach(attempt => {
+        attempts.forEach(attempt => {
           const userId = attempt.user_id;
           if (!userStats.has(userId)) {
             userStats.set(userId, {
@@ -146,11 +157,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           id: stats.user_id
         }));
 
-        // Sort by total points
-        leaderboardData.sort((a, b) => b.total_points - a.total_points);
+        // Sort by total points and filter out users with 0 points
+        const filteredData = leaderboardData
+          .filter(user => user.total_points > 0)
+          .sort((a, b) => b.total_points - a.total_points);
 
-        console.log('Leaderboard data loaded:', leaderboardData.length, 'users for', timeFrame);
-        return leaderboardData;
+        console.log(`Successfully loaded ${filteredData.length} users for ${timeFrame} with points > 0`);
+        return filteredData;
       }
     },
     staleTime: 1000, // Refetch every second for real-time updates
@@ -222,21 +235,33 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
             <Button
               onClick={() => setTimeFrame('all-time')}
               variant={timeFrame === 'all-time' ? 'default' : 'ghost'}
-              className={`flex-1 ${timeFrame === 'all-time' ? 'bg-white shadow-sm' : ''}`}
+              className={`flex-1 ${
+                timeFrame === 'all-time' 
+                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
               All Time
             </Button>
             <Button
               onClick={() => setTimeFrame('weekly')}
               variant={timeFrame === 'weekly' ? 'default' : 'ghost'}
-              className={`flex-1 ${timeFrame === 'weekly' ? 'bg-white shadow-sm' : ''}`}
+              className={`flex-1 ${
+                timeFrame === 'weekly' 
+                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
               This Week
             </Button>
             <Button
               onClick={() => setTimeFrame('monthly')}
               variant={timeFrame === 'monthly' ? 'default' : 'ghost'}
-              className={`flex-1 ${timeFrame === 'monthly' ? 'bg-white shadow-sm' : ''}`}
+              className={`flex-1 ${
+                timeFrame === 'monthly' 
+                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
               This Month
             </Button>
