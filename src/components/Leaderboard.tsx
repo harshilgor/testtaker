@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -73,14 +72,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         const { data: user } = await supabase.auth.getUser();
         if (!user.user) return [];
 
+        // First get the question attempts
         const { data: attempts, error: attemptsError } = await supabase
           .from('question_attempts_v2')
           .select(`
             user_id,
             points_earned,
             session_type,
-            created_at,
-            profiles!inner(display_name)
+            session_id,
+            created_at
           `)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false });
@@ -90,6 +90,26 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           throw attemptsError;
         }
 
+        // Get unique user IDs from attempts
+        const userIds = [...new Set(attempts?.map(attempt => attempt.user_id) || [])];
+        
+        // Fetch user profiles separately
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw profilesError;
+        }
+
+        // Create a map of user_id to display_name
+        const profileMap = new Map();
+        profiles?.forEach(profile => {
+          profileMap.set(profile.id, profile.display_name || 'Anonymous');
+        });
+
         // Aggregate the data by user
         const userStats = new Map();
         
@@ -98,7 +118,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           if (!userStats.has(userId)) {
             userStats.set(userId, {
               user_id: userId,
-              display_name: attempt.profiles?.display_name || 'Anonymous',
+              display_name: profileMap.get(userId) || 'Anonymous',
               total_points: 0,
               quiz_count: new Set(),
               mock_test_count: new Set(),
@@ -109,9 +129,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           const stats = userStats.get(userId);
           stats.total_points += attempt.points_earned || 0;
           
-          if (attempt.session_type === 'quiz') {
+          if (attempt.session_type === 'quiz' && attempt.session_id) {
             stats.quiz_count.add(attempt.session_id);
-          } else if (attempt.session_type === 'mocktest') {
+          } else if (attempt.session_type === 'mocktest' && attempt.session_id) {
             stats.mock_test_count.add(attempt.session_id);
           } else if (attempt.session_type === 'marathon') {
             stats.marathon_questions_count++;
