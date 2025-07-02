@@ -21,9 +21,9 @@ export const useStreakData = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Use raw SQL query to access the user_daily_activity table
+      // Use RPC function with proper type casting
       const { data: activities, error } = await supabase
-        .rpc('calculate_user_streak', { target_user_id: user.id });
+        .rpc('calculate_user_streak' as any, { target_user_id: user.id });
 
       if (error) {
         console.error('Error fetching streak data:', error);
@@ -36,7 +36,7 @@ export const useStreakData = () => {
         return;
       }
 
-      if (activities && activities.length > 0) {
+      if (activities && Array.isArray(activities) && activities.length > 0) {
         const result = activities[0];
         setStreakData({
           currentStreak: result.current_streak || 0,
@@ -62,8 +62,8 @@ export const useStreakData = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Use the RPC function to record activity
-      const { error } = await supabase.rpc('record_user_activity', {
+      // Use the RPC function with proper type casting
+      const { error } = await supabase.rpc('record_user_activity' as any, {
         activity_type: activityType
       });
 
