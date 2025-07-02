@@ -49,24 +49,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Optimize quiz generation by preloading next questions
-  useEffect(() => {
-    const preloadNextQuestions = async () => {
-      // Pre-fetch any additional data needed for smooth transitions
-      if (currentQuestionIndex < questions.length - 3) {
-        // Preload images for next few questions
-        for (let i = currentQuestionIndex + 1; i <= Math.min(currentQuestionIndex + 3, questions.length - 1); i++) {
-          if (questions[i]?.hasImage && questions[i]?.imageUrl) {
-            const img = new Image();
-            img.src = questions[i].imageUrl!;
-          }
-        }
-      }
-    };
-
-    preloadNextQuestions();
-  }, [currentQuestionIndex, questions]);
-
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
@@ -113,7 +95,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         return score;
       }, 0);
 
-      // Save to Supabase
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from('quiz_results').insert({
@@ -127,7 +108,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         });
       }
 
-      // Save to localStorage for backward compatibility
       const quizResult = {
         score: Math.round((correctAnswers / questions.length) * 100),
         questions: questions,
@@ -148,13 +128,12 @@ const QuizView: React.FC<QuizViewProps> = ({
       setShowResults(true);
     } catch (error) {
       console.error('Error saving quiz results:', error);
-      setShowResults(true); // Show results even if save fails
+      setShowResults(true);
     } finally {
       setLoading(false);
     }
   };
 
-  // Show results view
   if (showResults) {
     return (
       <QuizResultsView

@@ -1,26 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Quiz from '@/components/Quiz';
 
 const QuizPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, session, loading } = useAuth();
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!loading && (!user || !session)) {
       navigate('/');
     }
   }, [user, session, loading, navigate]);
 
-  // Set body styles for full-screen mode but allow scrolling
   useEffect(() => {
     document.body.style.margin = '0';
     document.body.style.padding = '0';
-    document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll only
+    document.body.style.overflowX = 'hidden';
     
     return () => {
       document.body.style.margin = '';
@@ -28,10 +25,6 @@ const QuizPage: React.FC = () => {
       document.body.style.overflowX = '';
     };
   }, []);
-
-  const handleBack = () => {
-    navigate('/');
-  };
 
   if (loading) {
     return (
@@ -51,7 +44,7 @@ const QuizPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Quiz
         userName={userName}
-        onBack={handleBack}
+        onBack={() => navigate('/')}
       />
     </div>
   );

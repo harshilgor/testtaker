@@ -41,7 +41,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             Choose your practice mode to get started
           </p>
           
-          {/* Admin Access Button - Only visible to admin */}
           {isAdmin && (
             <Button
               onClick={() => setShowAdminPanel(true)}
@@ -55,7 +54,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {/* Marathon Mode */}
           <Card className="hover:shadow-lg transition-shadow border border-gray-100">
             <CardContent className="p-4 md:p-6">
               <div className="text-center">
@@ -83,7 +81,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </CardContent>
           </Card>
 
-          {/* Quiz Mode */}
           <Card className="hover:shadow-lg transition-shadow border border-gray-100">
             <CardContent className="p-4 md:p-6">
               <div className="text-center">
@@ -111,7 +108,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </CardContent>
           </Card>
 
-          {/* Mock Test Mode */}
           <Card className="hover:shadow-lg transition-shadow border border-gray-100">
             <CardContent className="p-4 md:p-6">
               <div className="text-center">

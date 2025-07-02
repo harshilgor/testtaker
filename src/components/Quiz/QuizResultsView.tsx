@@ -40,14 +40,12 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
   }, 0);
 
   const accuracy = Math.round((correctAnswers / questions.length) * 100);
-  const totalScore = correctAnswers * 10; // Simple scoring system
+  const totalScore = correctAnswers * 10;
 
-  // For "Show all answers and explanations after completing the quiz"
   if (feedbackPreference === 'end') {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Summary Header */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
             <div className="text-center mb-6">
               <div className={`rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center ${
@@ -85,7 +83,6 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
             </div>
           </div>
 
-          {/* All Questions and Answers */}
           <div className="space-y-6">
             {questions.map((question, index) => {
               const userAnswer = answers[index];
@@ -169,7 +166,6 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     );
   }
 
-  // For "Show correct answer and explanation after each question" - Summary with Review button
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -212,7 +208,6 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
           <div className="flex justify-center space-x-4">
             <Button
               onClick={() => {
-                // Create quiz result for storage
                 const quizResult = {
                   score: accuracy,
                   questions: questions,
@@ -226,10 +221,7 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
                   totalQuestions: questions.length
                 };
 
-                // Store the result for detailed view
                 sessionStorage.setItem('currentQuizResult', JSON.stringify(quizResult));
-                
-                // Navigate to detailed results
                 window.location.hash = 'quiz-detailed-results';
               }}
               variant="outline"

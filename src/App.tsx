@@ -25,7 +25,6 @@ const App = () => (
             <Route path="/quiz" element={<QuizPage />} />
             <Route path="/marathon" element={<MarathonPage />} />
             <Route path="/sat-mock-test" element={<SATMockTestPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
