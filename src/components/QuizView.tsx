@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import QuizTimer from './Quiz/QuizTimer';
 import QuizResultsView from './Quiz/QuizResultsView';
@@ -9,6 +8,7 @@ import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import { calculatePoints } from '@/services/pointsService';
 import { supabase } from '@/integrations/supabase/client';
+import { useStreakData } from '@/hooks/useStreakData';
 
 interface Question {
   id: number;
@@ -48,6 +48,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { recordActivity } = useStreakData();
 
   // Optimize quiz generation by preloading next questions
   useEffect(() => {
@@ -112,6 +114,9 @@ const QuizView: React.FC<QuizViewProps> = ({
         }
         return score;
       }, 0);
+
+      // Record quiz completion activity for streak tracking
+      await recordActivity('quiz_completion');
 
       // Save to Supabase
       const { data: { user } } = await supabase.auth.getUser();

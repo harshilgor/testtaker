@@ -2,19 +2,28 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Flame } from 'lucide-react';
+import { useStreakData } from '@/hooks/useStreakData';
 
-interface StreakTrackerProps {
-  currentStreak: number;
-  longestStreak: number;
-  weeklyActivity: boolean[]; // Array of 7 booleans for Mon-Sun
-}
-
-const StreakTracker: React.FC<StreakTrackerProps> = ({
-  currentStreak,
-  longestStreak,
-  weeklyActivity
-}) => {
+const StreakTracker: React.FC = () => {
+  const { streakData, loading } = useStreakData();
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  if (loading) {
+    return (
+      <Card className="bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="h-5 w-5 text-orange-500" />
+            <h3 className="text-lg font-semibold text-gray-900">Streaks</h3>
+          </div>
+          <div className="animate-pulse space-y-4">
+            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-8 bg-gray-200 rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -29,11 +38,11 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-gray-600">Current Streak</div>
-              <div className="text-2xl font-bold text-gray-900">{currentStreak} days</div>
+              <div className="text-2xl font-bold text-gray-900">{streakData.currentStreak} days</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-600">Longest Streak</div>
-              <div className="text-xl font-semibold text-gray-700">{longestStreak} days</div>
+              <div className="text-xl font-semibold text-gray-700">{streakData.longestStreak} days</div>
             </div>
           </div>
 
@@ -47,7 +56,7 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
                   className={`
                     w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                     transition-all duration-200 hover:scale-110
-                    ${weeklyActivity[index] 
+                    ${streakData.weeklyActivity[index] 
                       ? 'bg-blue-500 text-white shadow-md' 
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                     }
@@ -60,12 +69,12 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
           </div>
 
           {/* Motivational Message */}
-          {currentStreak > 0 && (
+          {streakData.currentStreak > 0 && (
             <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
               <div className="text-sm text-orange-700">
-                {currentStreak >= 7 
-                  ? `Amazing! You've been consistent for ${currentStreak} days! 🎉`
-                  : `Keep it up! ${7 - currentStreak} more days to reach a week streak!`
+                {streakData.currentStreak >= 7 
+                  ? `Amazing! You've been consistent for ${streakData.currentStreak} days! 🎉`
+                  : `Keep it up! ${7 - streakData.currentStreak} more days to reach a week streak!`
                 }
               </div>
             </div>
