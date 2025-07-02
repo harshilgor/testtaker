@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,6 @@ import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
-import StreakTracker from './Performance/StreakTracker';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -275,15 +273,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
             )}
           </CardContent>
         </Card>
-
-        {/* Streak Tracker */}
-        <div className="mb-8">
-          <StreakTracker 
-            currentStreak={streakData.currentStreak}
-            longestStreak={streakData.longestStreak}
-            weeklyActivity={streakData.weeklyActivity}
-          />
-        </div>
 
         {/* Conditional History Sections */}
         {showMarathonHistory && (

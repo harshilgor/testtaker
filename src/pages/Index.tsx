@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,7 +70,10 @@ const Index = () => {
           onSignOut={handleSignOut}
         />
         <div className="pt-16">
-          <PerformanceDashboard onBack={() => setCurrentScreen('dashboard')} />
+          <PerformanceDashboard 
+            userName={userName}
+            onBack={() => setCurrentScreen('dashboard')} 
+          />
         </div>
       </div>
     );

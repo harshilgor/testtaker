@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Calculator } from 'lucide-react';
-import { Subject } from '../pages/Index';
+import { Subject } from '../types/common';
 import QuizTopicSelection from './QuizTopicSelection';
-import QuizDetailedReview from './Quiz/QuizDetailedReview';
 
 interface QuizProps {
   userName: string;

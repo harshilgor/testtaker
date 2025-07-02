@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
-import { Subject } from '../pages/Index';
+import { Subject } from '../types/common';
 import QuizView from './QuizView';
 import { useQuestionTopics } from '../hooks/useQuestionTopics';
 import { useQuizTopicSelection } from '../hooks/useQuizTopicSelection';

@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calculator, BookOpen, ChevronRight } from 'lucide-react';
-import { Subject } from '../pages/Index';
+import { Subject } from '../types/common';
 
 interface AllContentProps {
   userName: string;

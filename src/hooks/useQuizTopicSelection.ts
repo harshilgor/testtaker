@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Subject } from '../pages/Index';
+import { Subject } from '../types/common';
 
 export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
