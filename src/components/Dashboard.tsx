@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText, Zap, Clock, BookOpen, Brain, Settings } from 'lucide-react';
 import AdminPanel from './AdminPanel';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useNavigate } from 'react-router-dom';
-import { useStreakData } from '@/hooks/useStreakData';
 
 interface DashboardProps {
   userName: string;
@@ -23,12 +23,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const { isAdmin } = useAdminAccess();
   const navigate = useNavigate();
-  const { recordActivity } = useStreakData();
-
-  // Record dashboard visit activity
-  useEffect(() => {
-    recordActivity('dashboard_visit');
-  }, [recordActivity]);
 
   if (showAdminPanel) {
     return <AdminPanel onBack={() => setShowAdminPanel(false)} />;
@@ -36,21 +30,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const handleMockTestSelect = () => {
     navigate('/sat-mock-test');
-  };
-
-  const handleQuizSelect = () => {
-    recordActivity('quiz_start');
-    onQuizSelect();
-  };
-
-  const handleMarathonSelect = () => {
-    recordActivity('marathon_start');
-    onMarathonSelect();
-  };
-
-  const handleMockTestSelectWithActivity = () => {
-    recordActivity('mocktest_start');
-    handleMockTestSelect();
   };
 
   return (
@@ -97,7 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
 
-                <Button onClick={handleMarathonSelect} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
+                <Button onClick={onMarathonSelect} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
                   Start Marathon
                 </Button>
               </div>
@@ -125,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
 
-                <Button onClick={handleQuizSelect} className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
+                <Button onClick={onQuizSelect} className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
                   Create Quiz
                 </Button>
               </div>
@@ -153,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
 
-                <Button onClick={handleMockTestSelectWithActivity} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
+                <Button onClick={handleMockTestSelect} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 md:py-3 font-medium text-sm md:text-base">
                   Take Mock Test
                 </Button>
               </div>
