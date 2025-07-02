@@ -101,6 +101,7 @@ const Index = () => {
         />
         <div className="pt-16">
           <PerformanceDashboard
+            userName={userName}
             onBack={() => setCurrentScreen('dashboard')}
           />
         </div>
