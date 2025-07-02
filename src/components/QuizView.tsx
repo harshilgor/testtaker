@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Flag, ArrowRight } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import QuizTimer from './Quiz/QuizTimer';
+import QuizResultsView from './Quiz/QuizResultsView';
 import { calculatePoints } from '@/services/pointsService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: number;
@@ -42,6 +44,26 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [time, setTime] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Optimize quiz generation by preloading next questions
+  useEffect(() => {
+    const preloadNextQuestions = async () => {
+      // Pre-fetch any additional data needed for smooth transitions
+      if (currentQuestionIndex < questions.length - 3) {
+        // Preload images for next few questions
+        for (let i = currentQuestionIndex + 1; i <= Math.min(currentQuestionIndex + 3, questions.length - 1); i++) {
+          if (questions[i]?.hasImage && questions[i]?.imageUrl) {
+            const img = new Image();
+            img.src = questions[i].imageUrl!;
+          }
+        }
+      }
+    };
+
+    preloadNextQuestions();
+  }, [currentQuestionIndex, questions]);
 
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
@@ -74,34 +96,60 @@ const QuizView: React.FC<QuizViewProps> = ({
     }
   };
 
-  const handleSubmitQuiz = () => {
-    const correctAnswers = answers.reduce((count, answer, index) => {
-      return answer === questions[index].correctAnswer ? count + 1 : count;
-    }, 0);
+  const handleSubmitQuiz = async () => {
+    setLoading(true);
+    
+    try {
+      const correctAnswers = answers.reduce((count, answer, index) => {
+        return answer === questions[index].correctAnswer ? count + 1 : count;
+      }, 0);
 
-    const totalScore = answers.reduce((score, answer, index) => {
-      if (answer === questions[index].correctAnswer) {
-        return score + calculatePoints(questions[index].difficulty, true);
+      const totalScore = answers.reduce((score, answer, index) => {
+        if (answer === questions[index].correctAnswer) {
+          return score + calculatePoints(questions[index].difficulty, true);
+        }
+        return score;
+      }, 0);
+
+      // Save to Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('quiz_results').insert({
+          user_id: user.id,
+          subject: subject,
+          topics: topics,
+          total_questions: questions.length,
+          correct_answers: correctAnswers,
+          score_percentage: Math.round((correctAnswers / questions.length) * 100),
+          time_taken: time
+        });
       }
-      return score;
-    }, 0);
 
-    const quizResult = {
-      score: Math.round((correctAnswers / questions.length) * 100),
-      questions: questions,
-      answers: answers,
-      subject: subject,
-      topics: topics,
-      date: new Date().toLocaleDateString(),
-      userName: userName,
-      totalScore: totalScore,
-      correctAnswers: correctAnswers
-    };
+      // Save to localStorage for backward compatibility
+      const quizResult = {
+        score: Math.round((correctAnswers / questions.length) * 100),
+        questions: questions,
+        answers: answers,
+        subject: subject,
+        topics: topics,
+        date: new Date().toLocaleDateString(),
+        userName: userName,
+        totalScore: totalScore,
+        correctAnswers: correctAnswers,
+        totalQuestions: questions.length
+      };
 
-    const storedResults = JSON.parse(localStorage.getItem('quizResults') || '[]');
-    storedResults.push(quizResult);
-    localStorage.setItem('quizResults', JSON.stringify(storedResults));
-    onBack();
+      const storedResults = JSON.parse(localStorage.getItem('quizResults') || '[]');
+      storedResults.push(quizResult);
+      localStorage.setItem('quizResults', JSON.stringify(storedResults));
+      
+      setShowResults(true);
+    } catch (error) {
+      console.error('Error saving quiz results:', error);
+      setShowResults(true); // Show results even if save fails
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -109,6 +157,32 @@ const QuizView: React.FC<QuizViewProps> = ({
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Show results view
+  if (showResults) {
+    return (
+      <QuizResultsView
+        questions={questions}
+        answers={answers}
+        feedbackPreference={feedbackPreference}
+        onBack={onBack}
+        userName={userName}
+        subject={subject}
+        topics={topics}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-600">Saving your results...</div>
+        </div>
+      </div>
+    );
+  }
 
   const currentQuestion = questions[currentQuestionIndex];
   const selectedAnswer = answers[currentQuestionIndex];
@@ -148,7 +222,7 @@ const QuizView: React.FC<QuizViewProps> = ({
       <QuizTimer onTimeUpdate={setTime} />
 
       {/* Main Content Area */}
-      <div className="flex-1">
+      <div className="flex-1 pb-20"> {/* Add padding bottom for sticky navigation */}
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Left Panel - Question Content */}
           <ResizablePanel defaultSize={50} minSize={30}>
@@ -162,13 +236,14 @@ const QuizView: React.FC<QuizViewProps> = ({
                   </div>
                 </div>
 
-                {/* Question Image if available */}
-                {currentQuestion.imageUrl && (
+                {/* Conditional Question Image - Only show if hasImage is true */}
+                {currentQuestion.hasImage && currentQuestion.imageUrl && (
                   <div className="mb-6">
                     <img 
                       src={currentQuestion.imageUrl} 
                       alt="Question diagram" 
                       className="max-w-full h-auto rounded-lg border border-gray-200"
+                      loading="lazy"
                     />
                   </div>
                 )}
@@ -270,6 +345,7 @@ const QuizView: React.FC<QuizViewProps> = ({
                 <Button
                   onClick={handleNext}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2"
+                  disabled={loading}
                 >
                   {currentQuestionIndex === questions.length - 1 ? 'Submit Quiz' : 'Next'}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -280,8 +356,8 @@ const QuizView: React.FC<QuizViewProps> = ({
         </ResizablePanelGroup>
       </div>
 
-      {/* Bottom Navigation Bar */}
-      <div className="bg-white border-t border-gray-200 px-6 py-3">
+      {/* Bottom Navigation Bar - Made Sticky */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 z-50">
         <div className="flex justify-center">
           <Button
             variant="outline"

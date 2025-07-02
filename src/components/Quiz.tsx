@@ -1,9 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Calculator } from 'lucide-react';
 import { Subject } from '../pages/Index';
 import QuizTopicSelection from './QuizTopicSelection';
+import QuizDetailedReview from './Quiz/QuizDetailedReview';
 
 interface QuizProps {
   userName: string;
@@ -12,6 +12,7 @@ interface QuizProps {
 
 const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [showDetailedReview, setShowDetailedReview] = useState(false);
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -19,6 +20,28 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
 
   const handleBackToSubjects = () => {
     setSelectedSubject(null);
+  };
+
+  // Check for hash navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#quiz-detailed-results') {
+        setShowDetailedReview(true);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check initial hash
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  // Handle back from detailed review
+  const handleBackFromDetailedReview = () => {
+    setShowDetailedReview(false);
+    window.location.hash = '';
   };
 
   if (selectedSubject) {
@@ -30,6 +53,10 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
         onBackToDashboard={onBack}
       />
     );
+  }
+
+  if (showDetailedReview) {
+    return <QuizDetailedReview onBack={handleBackFromDetailedReview} />;
   }
 
   return (
