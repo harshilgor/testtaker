@@ -78,6 +78,9 @@ const MarathonInterface: React.FC<MarathonInterfaceProps> = ({
 
   const isCorrect = selectedAnswer === question.correct_answer && !showAnswer;
 
+  // Determine if this is a Math question based on the section property
+  const isMathQuestion = question.section === 'Math';
+
   return (
     <div className="min-h-screen bg-slate-800 text-white flex flex-col">
       {/* Header */}
@@ -87,7 +90,7 @@ const MarathonInterface: React.FC<MarathonInterfaceProps> = ({
             MARATHON
           </Badge>
           <span className="text-sm">
-            {question.test === 'Math' ? 'Section 2, Module 1: Math' : 'Section 1, Module 1: Reading and Writing'}
+            {isMathQuestion ? 'Section 2, Module 1: Math' : 'Section 1, Module 1: Reading and Writing'}
           </span>
         </div>
         <div className="flex items-center space-x-6">
@@ -116,7 +119,7 @@ const MarathonInterface: React.FC<MarathonInterfaceProps> = ({
             {/* Question header */}
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-lg font-medium text-gray-900">
-                {question.test === 'Math' ? 'Question' : 'Passage'}
+                {isMathQuestion ? 'Question' : 'Passage'}
               </h2>
               <Button
                 onClick={handleFlag}
