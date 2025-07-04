@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -67,15 +66,27 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
         return data || [];
       } else {
-        // For weekly/monthly, calculate from question_attempts_v2
+        // For weekly/monthly, get ALL users who have accounts and calculate their points
         const dateFilter = getDateFilter(timeFrame);
         
-        const { data: user } = await supabase.auth.getUser();
-        if (!user.user) return [];
-
         console.log('Fetching attempts for timeframe with date filter:', dateFilter);
 
-        // First get the question attempts with session_id included
+        // First get all user profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name');
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw profilesError;
+        }
+
+        if (!profiles || profiles.length === 0) {
+          console.log('No profiles found');
+          return [];
+        }
+
+        // Get question attempts for the timeframe
         const { data: attempts, error: attemptsError } = await supabase
           .from('question_attempts_v2')
           .select(`
@@ -95,59 +106,39 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
         console.log('Found attempts for timeframe:', attempts?.length || 0);
 
-        if (!attempts || attempts.length === 0) {
-          console.log('No attempts found for timeframe:', timeFrame);
-          return [];
-        }
-
-        // Get unique user IDs from attempts
-        const userIds = [...new Set(attempts.map(attempt => attempt.user_id))];
-        console.log('Unique users with attempts:', userIds.length);
-        
-        // Fetch user profiles separately
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name')
-          .in('id', userIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          throw profilesError;
-        }
-
-        // Create a map of user_id to display_name
-        const profileMap = new Map();
-        profiles?.forEach(profile => {
-          profileMap.set(profile.id, profile.display_name || 'Anonymous');
-        });
-
-        // Aggregate the data by user
+        // Create a map of user stats starting with all users at 0
         const userStats = new Map();
         
-        attempts.forEach(attempt => {
-          const userId = attempt.user_id;
-          if (!userStats.has(userId)) {
-            userStats.set(userId, {
-              user_id: userId,
-              display_name: profileMap.get(userId) || 'Anonymous',
-              total_points: 0,
-              quiz_count: new Set(),
-              mock_test_count: new Set(),
-              marathon_questions_count: 0
-            });
-          }
-          
-          const stats = userStats.get(userId);
-          stats.total_points += attempt.points_earned || 0;
-          
-          if (attempt.session_type === 'quiz' && attempt.session_id) {
-            stats.quiz_count.add(attempt.session_id);
-          } else if (attempt.session_type === 'mocktest' && attempt.session_id) {
-            stats.mock_test_count.add(attempt.session_id);
-          } else if (attempt.session_type === 'marathon') {
-            stats.marathon_questions_count++;
-          }
+        // Initialize all users with 0 stats
+        profiles.forEach(profile => {
+          userStats.set(profile.id, {
+            user_id: profile.id,
+            display_name: profile.display_name || 'Anonymous',
+            total_points: 0,
+            quiz_count: new Set(),
+            mock_test_count: new Set(),
+            marathon_questions_count: 0
+          });
         });
+
+        // Add points and counts for users who have attempts
+        if (attempts && attempts.length > 0) {
+          attempts.forEach(attempt => {
+            const userId = attempt.user_id;
+            if (userStats.has(userId)) {
+              const stats = userStats.get(userId);
+              stats.total_points += attempt.points_earned || 0;
+              
+              if (attempt.session_type === 'quiz' && attempt.session_id) {
+                stats.quiz_count.add(attempt.session_id);
+              } else if (attempt.session_type === 'mocktest' && attempt.session_id) {
+                stats.mock_test_count.add(attempt.session_id);
+              } else if (attempt.session_type === 'marathon') {
+                stats.marathon_questions_count++;
+              }
+            }
+          });
+        }
 
         // Convert sets to counts and create final array
         const leaderboardData = Array.from(userStats.values()).map(stats => ({
@@ -157,13 +148,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           id: stats.user_id
         }));
 
-        // Sort by total points and filter out users with 0 points
-        const filteredData = leaderboardData
-          .filter(user => user.total_points > 0)
+        // Sort by total points (users with 0 points will be included)
+        const sortedData = leaderboardData
           .sort((a, b) => b.total_points - a.total_points);
 
-        console.log(`Successfully loaded ${filteredData.length} users for ${timeFrame} with points > 0`);
-        return filteredData;
+        console.log(`Successfully loaded ${sortedData.length} users for ${timeFrame}`);
+        return sortedData;
       }
     },
     staleTime: 1000, // Refetch every second for real-time updates

@@ -1,10 +1,10 @@
+
 import React, { useEffect } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
 import { useMarathonState } from './Marathon/useMarathonState';
 import { useMarathonActions } from './Marathon/useMarathonActions';
-import MarathonHeader from './Marathon/MarathonHeader';
-import MarathonQuestion from './Marathon/MarathonQuestion';
+import MarathonInterface from './Marathon/MarathonInterface';
 import MarathonLoadingState from './Marathon/MarathonLoadingState';
 import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
 import MarathonCompletionState from './Marathon/MarathonCompletionState';
@@ -91,9 +91,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     confirmEndMarathon();
   };
 
-  const getCurrentQuestionPoints = () => {
-    if (!currentQuestion) return 0;
-    return calculatePoints(currentQuestion.difficulty as 'easy' | 'medium' | 'hard', true);
+  const handleFlag = () => {
+    // Flag functionality - could be implemented later
+    console.log('Question flagged');
   };
 
   console.log('Marathon: Rendering state', {
@@ -158,39 +158,27 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
 
   console.log('Marathon: Rendering main question interface');
   return (
-    <div className="min-h-screen bg-gray-50 overflow-y-auto">
-      {settings.timedMode && settings.timeGoalMinutes && (
-        <MarathonTimer 
-          timeGoalMinutes={settings.timeGoalMinutes} 
-          onTimeUp={handleTimerEnd}
-        />
-      )}
-      
-      <div className="max-w-6xl mx-auto p-4">
-        <MarathonHeader
-          sessionStats={sessionStats}
-          totalPoints={totalPoints}
-          sessionPoints={sessionPoints}
-          currentQuestionPoints={getCurrentQuestionPoints()}
-          onEndMarathon={handleEndMarathon}
-        />
+    <>
+      <MarathonInterface
+        question={currentQuestion}
+        currentQuestionNumber={sessionStats.used + 1}
+        totalQuestions={sessionStats.total}
+        timeRemaining={settings.timedMode && settings.timeGoalMinutes ? settings.timeGoalMinutes * 60 - (totalTimeSpent + timeSpent) : undefined}
+        onAnswer={(selectedAnswer: string, showAnswerUsed?: boolean) => {
+          console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer, showAnswerUsed });
+          handleAnswer(selectedAnswer, showAnswerUsed || false);
+        }}
+        onNext={handleNext}
+        onFlag={handleFlag}
+        onEndMarathon={handleEndMarathon}
+      />
 
-        <MarathonQuestion
-          question={currentQuestion}
-          onAnswer={(selectedAnswer: string, showAnswerUsed?: boolean) => {
-            console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer, showAnswerUsed });
-            handleAnswer(selectedAnswer, showAnswerUsed || false);
-          }}
-          onNext={handleNext}
-        />
-
-        <MarathonEndConfirmation
-          isOpen={showEndConfirmation}
-          onContinue={() => setShowEndConfirmation(false)}
-          onConfirmEnd={confirmEndMarathon}
-        />
-      </div>
-    </div>
+      <MarathonEndConfirmation
+        isOpen={showEndConfirmation}
+        onContinue={() => setShowEndConfirmation(false)}
+        onConfirmEnd={confirmEndMarathon}
+      />
+    </>
   );
 };
 
