@@ -168,7 +168,7 @@ const MarathonInterface: React.FC<MarathonInterfaceProps> = ({
               <Checkbox
                 id="mark-review"
                 checked={markedForReview}
-                onCheckedChange={setMarkedForReview}
+                onCheckedChange={(checked) => setMarkedForReview(checked === true)}
               />
               <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
                 Mark for Review
