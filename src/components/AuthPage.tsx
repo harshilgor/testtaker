@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+// Authentication cleanup utility
+const cleanupAuthState = () => {
+  console.log('Cleaning up authentication state...');
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  Object.keys(sessionStorage || {}).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
 
 const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -23,36 +39,76 @@ const AuthPage: React.FC = () => {
   });
 
   const handleGoogleSignIn = async () => {
+    console.log('Starting Google sign-in process...');
     setLoading(true);
     setError(null);
+    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Clean up any existing auth state first
+      cleanupAuthState();
+      
+      // Attempt to sign out any existing session
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.log('No existing session to sign out:', err);
+      }
+
+      // Get the current URL for redirect
+      const redirectUrl = window.location.origin;
+      console.log('Using redirect URL:', redirectUrl);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://get1600-co.lovable.app'
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
-      if (error) throw error;
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+
+      console.log('Google OAuth initiated successfully:', data);
+      
     } catch (error: any) {
-      setError(error.message);
-    } finally {
+      console.error('Google sign-in error:', error);
+      setError(`Google sign-in failed: ${error.message}`);
       setLoading(false);
     }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Starting email login...');
     setLoading(true);
     setError(null);
+    
     try {
-      const {
-        error
-      } = await supabase.auth.signInWithPassword({
+      // Clean up existing state
+      cleanupAuthState();
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email,
         password: loginData.password
       });
+      
       if (error) throw error;
+      
+      console.log('Login successful:', data);
+      
+      // Force page reload for clean state
+      if (data.user) {
+        window.location.href = '/';
+      }
+      
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -61,27 +117,38 @@ const AuthPage: React.FC = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Starting signup...');
     setLoading(true);
     setError(null);
     setSuccess(null);
+    
     if (signupData.password !== signupData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
+    
     try {
-      const {
-        error
-      } = await supabase.auth.signUp({
+      // Clean up existing state
+      cleanupAuthState();
+      
+      const redirectUrl = window.location.origin;
+      console.log('Signup redirect URL:', redirectUrl);
+      
+      const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
         options: {
           data: {
             full_name: signupData.fullName
-          }
+          },
+          emailRedirectTo: redirectUrl
         }
       });
+      
       if (error) throw error;
+      
+      console.log('Signup successful:', data);
       setSuccess('Check your email for the confirmation link!');
       setSignupData({
         email: '',
@@ -89,7 +156,9 @@ const AuthPage: React.FC = () => {
         confirmPassword: '',
         fullName: ''
       });
+      
     } catch (error: any) {
+      console.error('Signup error:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -162,14 +231,20 @@ const AuthPage: React.FC = () => {
 
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <Input type="email" placeholder="Email address" value={loginData.email} onChange={e => setLoginData(prev => ({
-                  ...prev,
-                  email: e.target.value
-                }))} required />
-                  <Input type="password" placeholder="Password" value={loginData.password} onChange={e => setLoginData(prev => ({
-                  ...prev,
-                  password: e.target.value
-                }))} required />
+                  <Input 
+                    type="email" 
+                    placeholder="Email address" 
+                    value={loginData.email} 
+                    onChange={e => setLoginData(prev => ({...prev, email: e.target.value}))} 
+                    required 
+                  />
+                  <Input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={loginData.password} 
+                    onChange={e => setLoginData(prev => ({...prev, password: e.target.value}))} 
+                    required 
+                  />
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Sign In
@@ -179,22 +254,34 @@ const AuthPage: React.FC = () => {
 
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
-                  <Input type="text" placeholder="Full Name" value={signupData.fullName} onChange={e => setSignupData(prev => ({
-                  ...prev,
-                  fullName: e.target.value
-                }))} required />
-                  <Input type="email" placeholder="Email address" value={signupData.email} onChange={e => setSignupData(prev => ({
-                  ...prev,
-                  email: e.target.value
-                }))} required />
-                  <Input type="password" placeholder="Password" value={signupData.password} onChange={e => setSignupData(prev => ({
-                  ...prev,
-                  password: e.target.value
-                }))} required />
-                  <Input type="password" placeholder="Confirm Password" value={signupData.confirmPassword} onChange={e => setSignupData(prev => ({
-                  ...prev,
-                  confirmPassword: e.target.value
-                }))} required />
+                  <Input 
+                    type="text" 
+                    placeholder="Full Name" 
+                    value={signupData.fullName} 
+                    onChange={e => setSignupData(prev => ({...prev, fullName: e.target.value}))} 
+                    required 
+                  />
+                  <Input 
+                    type="email" 
+                    placeholder="Email address" 
+                    value={signupData.email} 
+                    onChange={e => setSignupData(prev => ({...prev, email: e.target.value}))} 
+                    required 
+                  />
+                  <Input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={signupData.password} 
+                    onChange={e => setSignupData(prev => ({...prev, password: e.target.value}))} 
+                    required 
+                  />
+                  <Input 
+                    type="password" 
+                    placeholder="Confirm Password" 
+                    value={signupData.confirmPassword} 
+                    onChange={e => setSignupData(prev => ({...prev, confirmPassword: e.target.value}))} 
+                    required 
+                  />
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Create Account
