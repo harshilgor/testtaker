@@ -64,60 +64,72 @@ const MarathonSettingsComponent: React.FC<MarathonSettingsProps> = ({
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p>Loading question statistics...</p>
+          <p className="text-gray-600">Loading question statistics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-      <Card className="max-w-2xl w-full p-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Marathon Mode Settings</h1>
-          <p className="text-gray-600">Customize your practice session</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto">
+        <Card className="rounded-xl p-6 md:p-8 shadow-sm">
+          <div className="mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 text-center">
+              Marathon Mode Settings
+            </h1>
+            <p className="text-gray-600 text-center text-sm md:text-base">
+              Customize your practice session
+            </p>
+          </div>
 
-        <QuestionStatsCard 
-          questionStats={questionStats} 
-          userProgress={userProgress} 
-        />
+          <div className="space-y-6">
+            <QuestionStatsCard 
+              questionStats={questionStats} 
+              userProgress={userProgress} 
+            />
 
-        <CurrentSelectionCard 
-          availableQuestions={getAvailableQuestions()} 
-        />
+            <CurrentSelectionCard 
+              availableQuestions={getAvailableQuestions()} 
+            />
 
-        <div className="space-y-6">
-          <SubjectSelection 
-            settings={settings}
-            onSettingsChange={setSettings}
-            englishQuestionCount={questionStats.english.total}
-          />
+            <div className="space-y-6">
+              <SubjectSelection 
+                settings={settings}
+                onSettingsChange={setSettings}
+                englishQuestionCount={questionStats.english.total}
+              />
 
-          <DifficultySelection 
-            settings={settings}
-            onSettingsChange={setSettings}
-          />
+              <DifficultySelection 
+                settings={settings}
+                onSettingsChange={setSettings}
+              />
 
-          <SettingsToggles 
-            settings={settings}
-            onSettingsChange={setSettings}
-          />
-        </div>
+              <SettingsToggles 
+                settings={settings}
+                onSettingsChange={setSettings}
+              />
+            </div>
+          </div>
 
-        <div className="flex justify-between mt-8">
-          <Button variant="outline" onClick={onBack}>
-            Back to Dashboard
-          </Button>
-          <Button 
-            onClick={handleStart} 
-            className="bg-orange-600 hover:bg-orange-700" 
-            disabled={getAvailableQuestions() === 0}
-          >
-            Start Marathon ({getAvailableQuestions()} questions)
-          </Button>
-        </div>
-      </Card>
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-6 border-t border-gray-200">
+            <Button 
+              variant="outline" 
+              onClick={onBack}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl min-h-[44px]"
+            >
+              Back to Dashboard
+            </Button>
+            <Button 
+              onClick={handleStart} 
+              className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-xl min-h-[44px]" 
+              disabled={getAvailableQuestions() === 0}
+            >
+              Start Marathon ({getAvailableQuestions()} questions)
+            </Button>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
