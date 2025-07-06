@@ -12,6 +12,7 @@ interface MarathonInterfaceProps {
   onNext: () => void;
   onFlag: () => void;
   onEndMarathon: () => void;
+  questionsSolved?: number;
 }
 
 const MarathonInterface: React.FC<MarathonInterfaceProps> = (props) => {

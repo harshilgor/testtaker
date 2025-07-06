@@ -26,7 +26,7 @@ const MarathonPage: React.FC = () => {
   useEffect(() => {
     document.body.style.margin = '0';
     document.body.style.padding = '0';
-    document.body.style.overflowX = 'hidden'; // Prevent horizontal scroll only
+    document.body.style.overflowX = 'hidden';
     
     return () => {
       document.body.style.margin = '';

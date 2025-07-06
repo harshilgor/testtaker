@@ -28,9 +28,11 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
         <div className={`${modeColor} rounded px-2 md:px-3 py-1 text-xs md:text-sm font-medium`}>
           {mode}
         </div>
-        <span className={`text-xs md:text-sm font-medium ${isMobile ? 'truncate max-w-32' : ''}`}>
-          {title}
-        </span>
+        {title && (
+          <span className={`text-xs md:text-sm font-medium ${isMobile ? 'truncate max-w-32' : ''}`}>
+            {title}
+          </span>
+        )}
       </div>
       
       <div className="flex items-center space-x-2 md:space-x-4">
@@ -48,7 +50,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           size="sm"
           className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800 text-xs px-2 md:px-3 py-1 min-h-[36px] md:min-h-[44px]"
         >
-          Exit {mode}
+          Exit
         </Button>
       </div>
     </div>

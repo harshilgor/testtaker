@@ -4,13 +4,12 @@ import { DatabaseQuestion } from '@/services/questionService';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
-import BottomNavigation from '../shared/BottomNavigation';
 import QuestionDisplay from '../shared/QuestionDisplay';
 import MarathonAnswerOptions from './MarathonAnswerOptions';
 import QuestionInfoTooltip from './QuestionInfoTooltip';
-import { formatTimeRemaining } from '@/utils/timeUtils';
 
 interface ResizableMarathonInterfaceProps {
   question: DatabaseQuestion;
@@ -21,6 +20,7 @@ interface ResizableMarathonInterfaceProps {
   onNext: () => void;
   onFlag: () => void;
   onEndMarathon: () => void;
+  questionsSolved?: number;
 }
 
 const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
@@ -31,7 +31,8 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   onAnswer,
   onNext,
   onFlag,
-  onEndMarathon
+  onEndMarathon,
+  questionsSolved = 0
 }) => {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
@@ -74,7 +75,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   };
 
   const renderQuestionSection = () => (
-    <div className={`${isMobile ? 'flex-1' : 'w-1/2'} overflow-y-auto p-4 md:p-8 ${isMobile ? '' : 'border-r border-gray-200'}`}>
+    <div className="h-full overflow-y-auto p-4 md:p-8">
       <QuestionDisplay
         question={question.question_text}
         imageUrl={question.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${question.id}.png` : undefined}
@@ -85,7 +86,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   );
 
   const renderAnswerSection = () => (
-    <div className={`${isMobile ? 'bg-gray-50 border-t border-gray-200' : 'w-1/2 bg-white'} ${isMobile ? 'sticky bottom-16' : ''} p-4 md:p-6 ${isMobile ? 'max-h-[50vh] overflow-y-auto' : 'overflow-y-auto'}`}>
+    <div className="h-full bg-white p-4 md:p-6 overflow-y-auto">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center space-x-2 mb-4">
           <Checkbox
@@ -169,7 +170,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         <TopNavigation
           mode="MARATHON"
           modeColor="bg-orange-600"
-          title="Marathon Mode"
+          title=""
           timeElapsed={timeRemaining}
           onExit={onEndMarathon}
           isMobile={true}
@@ -181,7 +182,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         </div>
         <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
           <div className="text-sm text-gray-600">
-            Questions Solved: {answered ? currentQuestionNumber : currentQuestionNumber - 1}
+            Questions Solved: {questionsSolved}
           </div>
           <div className="flex space-x-3">
             {bottomNavContent}
@@ -196,19 +197,26 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
       <TopNavigation
         mode="MARATHON"
         modeColor="bg-orange-600"
-        title="Marathon Mode"
+        title=""
         timeElapsed={timeRemaining}
         onExit={onEndMarathon}
         isMobile={false}
         additionalContent={additionalTopNavContent}
       />
-      <div className="flex-1 flex">
-        {renderQuestionSection()}
-        {renderAnswerSection()}
+      <div className="flex-1">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel defaultSize={50} minSize={30}>
+            {renderQuestionSection()}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={50} minSize={30}>
+            {renderAnswerSection()}
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
         <div className="text-sm text-gray-600">
-          Questions Solved: {answered ? currentQuestionNumber : currentQuestionNumber - 1}
+          Questions Solved: {questionsSolved}
         </div>
         <div className="flex space-x-3">
           {bottomNavContent}
