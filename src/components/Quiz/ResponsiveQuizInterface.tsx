@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
@@ -76,15 +77,15 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           />
         </div>
 
-        {/* Main Content Area - Split vertically */}
+        {/* Main Content - Split Vertically */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Top Half - Question Only */}
-          <div className="flex-1 overflow-y-auto bg-white">
+          {/* Question Section - Top Half */}
+          <div className="h-1/2 overflow-y-auto bg-white">
             <QuizQuestionSection question={question} isMobile={true} />
           </div>
 
-          {/* Bottom Half - Answer Options Only */}
-          <div className="flex-1 bg-gray-50 overflow-y-auto">
+          {/* Answer Section - Bottom Half */}
+          <div className="h-1/2 overflow-y-auto bg-gray-50">
             <QuizAnswerSection
               question={question}
               selectedAnswer={selectedAnswer}
