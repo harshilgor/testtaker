@@ -169,7 +169,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
       <div className="min-h-screen bg-white flex flex-col">
         <TopNavigation
           mode="MARATHON"
-          modeColor="bg-orange-600"
+          modeColor="bg-blue-600"
           title=""
           timeElapsed={timeRemaining}
           onExit={onEndMarathon}
@@ -196,20 +196,23 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
     <div className="min-h-screen bg-white flex flex-col">
       <TopNavigation
         mode="MARATHON"
-        modeColor="bg-orange-600"
+        modeColor="bg-blue-600"
         title=""
         timeElapsed={timeRemaining}
         onExit={onEndMarathon}
         isMobile={false}
         additionalContent={additionalTopNavContent}
       />
-      <div className="flex-1">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={50} minSize={30}>
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup direction="horizontal" className="min-h-full">
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75}>
             {renderQuestionSection()}
           </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={50} minSize={30}>
+          <ResizableHandle 
+            withHandle 
+            className="w-2 bg-gray-200 hover:bg-gray-300 transition-colors duration-200 relative flex items-center justify-center"
+          />
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75}>
             {renderAnswerSection()}
           </ResizablePanel>
         </ResizablePanelGroup>

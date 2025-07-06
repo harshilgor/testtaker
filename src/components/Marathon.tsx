@@ -103,7 +103,8 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     loading,
     showSummary,
     sessionStatsUsed: sessionStats.used,
-    sessionStatsTotal: sessionStats.total
+    sessionStatsTotal: sessionStats.total,
+    correctAnswers: session?.correctAnswers || 0
   });
 
   // Render states
@@ -171,6 +172,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         onNext={handleNext}
         onFlag={handleFlag}
         onEndMarathon={handleEndMarathon}
+        questionsSolved={session?.correctAnswers || 0}
       />
 
       <MarathonEndConfirmation
