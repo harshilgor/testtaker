@@ -26,31 +26,31 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`h-full flex flex-col ${isMobile ? 'bg-gray-50 p-3' : 'w-1/2 bg-white overflow-y-auto p-6'}`}>
-      <div className="max-w-2xl mx-auto flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between mb-3 md:mb-6">
+    <div className={`${isMobile ? 'h-full p-4 bg-gray-50' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
           <h3 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900`}>
             Answer Options
           </h3>
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <div className="flex items-center space-x-1 md:space-x-2">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <Checkbox
                 id="mark-review"
                 checked={isFlagged}
                 onCheckedChange={onToggleFlag}
               />
-              <label htmlFor="mark-review" className="text-xs md:text-sm text-gray-600 cursor-pointer">
+              <label htmlFor="mark-review" className="text-xs text-gray-600 cursor-pointer">
                 Mark for Review
               </label>
             </div>
           </div>
         </div>
 
-        <div className="mb-4 md:mb-8">
-          <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} text-gray-600 mb-2 md:mb-4`}>
+        <div className="flex-1 overflow-y-auto">
+          <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} text-gray-600 mb-3`}>
             Choose the best answer.
           </p>
-          <div className="space-y-2 md:space-y-3">
+          <div className="space-y-2">
             {question.options.map((option: string, index: number) => {
               const isSelected = selectedAnswer === index;
               const isCorrectAnswer = index === question.correctAnswer;
@@ -60,7 +60,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                 <button
                   key={index}
                   onClick={() => onAnswerSelect(index)}
-                  className={`w-full p-2 md:p-4 text-left rounded-lg border-2 transition-all ${isMobile ? 'min-h-[36px]' : 'min-h-[40px] md:min-h-[44px]'} ${
+                  className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
                     isSelected
                       ? shouldShowCorrect
                         ? isCorrectAnswer
@@ -72,8 +72,8 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-start space-x-2 md:space-x-3">
-                    <div className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5 md:w-6 md:h-6'} rounded-full border-2 flex items-center justify-center text-xs md:text-sm font-medium flex-shrink-0 ${
+                  <div className="flex items-start space-x-3">
+                    <div className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
                       isSelected
                         ? shouldShowCorrect
                           ? isCorrectAnswer
@@ -86,7 +86,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                     }`}>
                       {String.fromCharCode(65 + index)}
                     </div>
-                    <span className={`flex-1 ${isMobile ? 'text-xs' : 'text-sm md:text-base'}`}>
+                    <span className={`flex-1 ${isMobile ? 'text-sm' : 'text-sm md:text-base'}`}>
                       {option}
                     </span>
                   </div>
@@ -94,22 +94,22 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
               );
             })}
           </div>
-        </div>
 
-        {showFeedback && feedbackPreference === 'immediate' && (
-          <div className={`p-3 md:p-4 rounded-lg mb-4 md:mb-6 ${
-            isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className="flex items-center mb-2">
-              <span className={`font-semibold ${isMobile ? 'text-xs' : 'text-sm md:text-base'} ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                {isCorrect ? 'Correct!' : 'Incorrect'}
-              </span>
+          {showFeedback && feedbackPreference === 'immediate' && (
+            <div className={`mt-4 p-3 rounded-lg ${
+              isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <div className="flex items-center mb-2">
+                <span className={`font-semibold ${isMobile ? 'text-sm' : 'text-base'} ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                  {isCorrect ? 'Correct!' : 'Incorrect'}
+                </span>
+              </div>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                {question.explanation}
+              </p>
             </div>
-            <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-              {question.explanation}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
