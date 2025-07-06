@@ -73,11 +73,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-8">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            className="flex items-center mr-4"
-          >
+          <Button onClick={onBack} variant="outline" className="flex items-center mr-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -123,7 +119,6 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                 loading={topicsLoading}
               />
 
-              {/* Gentle message when no topics selected */}
               {selectedTopics.length === 0 && (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-blue-800 text-center">Please select at least one topic to continue.</p>
@@ -133,18 +128,18 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
               <Button
                 onClick={handleStartQuiz}
                 disabled={isStartDisabled}
-                className={`w-full py-3 ${isMobile ? 'text-sm' : 'text-lg'} flex items-center justify-center ${
+                className={`w-full py-3 text-center ${isMobile ? 'text-sm' : 'text-base'} flex items-center justify-center ${
                   isStartDisabled 
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
                 <Play className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
-                <span className="text-center">
+                <span>
                   {selectedTopics.length === 0 
                     ? 'Select Topics to Start Quiz'
                     : isMobile
-                      ? `Start Quiz`
+                      ? 'Start Quiz'
                       : `Start Quiz (${selectedTopicsCount} topics, ${questionCount} questions)`
                   }
                 </span>

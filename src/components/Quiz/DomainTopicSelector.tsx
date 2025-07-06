@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import DomainCard from './DomainCard';
 
 interface Topic {
   id: string;
@@ -36,7 +36,6 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [domainGroups, setDomainGroups] = useState<DomainGroup[]>([]);
 
-  // Enhanced SAT domain mappings with more comprehensive skill coverage
   const mathDomains = {
     'Heart of Algebra': [
       'Linear Equations', 'Linear Functions', 'Systems of Linear Equations', 
@@ -72,16 +71,11 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
     ]
   };
 
-  const getDomainMappings = () => {
-    return subject === 'math' ? mathDomains : englishDomains;
-  };
-
   useEffect(() => {
-    const domainMappings = getDomainMappings();
+    const domainMappings = subject === 'math' ? mathDomains : englishDomains;
     const groups: DomainGroup[] = [];
     const matchedTopics = new Set<string>();
 
-    // Group topics by domain using flexible matching
     Object.entries(domainMappings).forEach(([domainName, skillKeywords]) => {
       const domainSkills = topics.filter(topic => {
         if (matchedTopics.has(topic.id)) return false;
@@ -108,7 +102,6 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
       }
     });
 
-    // Add unmatched topics to a general category
     const unmatchedTopics = topics.filter(topic => !matchedTopics.has(topic.id));
     if (unmatchedTopics.length > 0) {
       groups.push({
@@ -119,7 +112,6 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
 
     setDomainGroups(groups);
 
-    // Auto-expand first domain if there are groups
     if (groups.length > 0) {
       setExpandedDomains(new Set([groups[0].name]));
     }
@@ -146,15 +138,6 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
     });
   };
 
-  const isDomainFullySelected = (domainSkills: Topic[]) => {
-    return domainSkills.length > 0 && domainSkills.every(skill => selectedTopics.includes(skill.id));
-  };
-
-  const isDomainPartiallySelected = (domainSkills: Topic[]) => {
-    return domainSkills.some(skill => selectedTopics.includes(skill.id)) && 
-           !isDomainFullySelected(domainSkills);
-  };
-
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -168,7 +151,6 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
     <div className="mb-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Topics</h2>
       
-      {/* Questions I Got Wrong - Always visible at top */}
       <div className="mb-4">
         <div className="flex items-start space-x-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 bg-blue-50 border-blue-200">
           <Checkbox
@@ -186,70 +168,18 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
         </div>
       </div>
 
-      {/* Domain-grouped topics */}
       <div className="space-y-3">
         {domainGroups.map((domain) => (
-          <div key={domain.name} className="border border-gray-200 rounded-lg overflow-hidden">
-            <Collapsible 
-              open={expandedDomains.has(domain.name)}
-              onOpenChange={() => toggleDomain(domain.name)}
-            >
-              <CollapsibleTrigger className="w-full p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {expandedDomains.has(domain.name) ? (
-                      <ChevronDown className="h-4 w-4 text-gray-600" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-600" />
-                    )}
-                    <div className="text-left">
-                      <h3 className="font-medium text-gray-900">{domain.name}</h3>
-                      {isMobile ? (
-                        <span className="text-sm text-gray-500 block">{domain.skills.length} questions</span>
-                      ) : (
-                        <span className="text-sm text-gray-500">({domain.skills.length} skills)</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {domain.skills.length > 0 && (
-                    <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        id={`select-all-${domain.name}`}
-                        checked={isDomainFullySelected(domain.skills)}
-                        onCheckedChange={(checked) => handleSelectAllDomain(domain.skills, checked as boolean)}
-                        className={isDomainPartiallySelected(domain.skills) ? 'data-[state=checked]:bg-blue-400' : ''}
-                      />
-                      <label htmlFor={`select-all-${domain.name}`} className="text-sm text-gray-600 cursor-pointer">
-                        Select All
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </CollapsibleTrigger>
-              
-              <CollapsibleContent className="bg-white">
-                <div className="p-4 pt-0 space-y-3">
-                  {domain.skills.map(skill => (
-                    <div key={skill.id} className="flex items-start space-x-3 p-3 rounded-md border border-gray-100 hover:bg-gray-50">
-                      <Checkbox
-                        id={skill.id}
-                        checked={selectedTopics.includes(skill.id)}
-                        onCheckedChange={() => onTopicToggle(skill.id)}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <label htmlFor={skill.id} className="text-sm font-medium text-gray-900 cursor-pointer">
-                          {skill.name} ({skill.count} questions)
-                        </label>
-                        <p className="text-xs text-gray-600 mt-1">{skill.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+          <DomainCard
+            key={domain.name}
+            domainName={domain.name}
+            skills={domain.skills}
+            selectedTopics={selectedTopics}
+            isExpanded={expandedDomains.has(domain.name)}
+            onToggle={() => toggleDomain(domain.name)}
+            onTopicToggle={onTopicToggle}
+            onSelectAll={handleSelectAllDomain}
+          />
         ))}
       </div>
       
