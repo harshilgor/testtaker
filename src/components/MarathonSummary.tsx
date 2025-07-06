@@ -40,16 +40,20 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
           setActualPointsEarned(points);
         } catch (error) {
           console.error('MarathonSummary: Error fetching session points:', error);
-          setActualPointsEarned(sessionStats.pointsEarned);
+          // Calculate points based on correct answers if database fetch fails
+          const calculatedPoints = sessionStats.correctAnswers * 10;
+          setActualPointsEarned(calculatedPoints);
         }
       } else {
-        setActualPointsEarned(sessionStats.pointsEarned);
+        // Calculate points based on correct answers
+        const calculatedPoints = sessionStats.correctAnswers * 10;
+        setActualPointsEarned(calculatedPoints);
       }
       setLoading(false);
     };
 
     fetchActualPoints();
-  }, [sessionId, sessionStats.pointsEarned]);
+  }, [sessionId, sessionStats.pointsEarned, sessionStats.correctAnswers]);
 
   const accuracy = sessionStats.totalQuestions > 0 
     ? Math.round((sessionStats.correctAnswers / sessionStats.totalQuestions) * 100) 
@@ -133,19 +137,19 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
               </Card>
             </div>
 
-            {/* Accuracy and Time Section - Equal Heights */}
+            {/* Accuracy and Time Section - Equal Heights and Font Sizes */}
             <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="text-center h-32 flex flex-col justify-center">
-                <div className="text-5xl md:text-6xl font-bold text-blue-600 mb-2">{accuracy}%</div>
-                <div className="text-gray-600 font-medium">Overall Accuracy</div>
+              <div className="text-center h-40 flex flex-col justify-center">
+                <div className="text-6xl md:text-7xl font-bold text-blue-600 mb-3">{accuracy}%</div>
+                <div className="text-gray-600 font-medium text-lg">Overall Accuracy</div>
               </div>
               
-              <div className="text-center h-32 flex flex-col justify-center">
+              <div className="text-center h-40 flex flex-col justify-center">
                 <div className="flex items-center justify-center mb-3">
                   <Clock className="h-6 w-6 text-gray-600 mr-2" />
                 </div>
-                <div className="text-5xl md:text-6xl font-bold text-gray-800 mb-2">{formatTime(sessionStats.timeSpent)}</div>
-                <div className="text-gray-600 font-medium">Time Spent</div>
+                <div className="text-6xl md:text-7xl font-bold text-gray-800 mb-3">{formatTime(sessionStats.timeSpent)}</div>
+                <div className="text-gray-600 font-medium text-lg">Time Spent</div>
               </div>
             </div>
 
@@ -159,8 +163,8 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
               </Card>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {/* Action Buttons with proper spacing */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
               <Button
                 onClick={onBackToSettings}
                 variant="outline"
