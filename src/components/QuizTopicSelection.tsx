@@ -8,6 +8,7 @@ import { useQuestionTopics } from '../hooks/useQuestionTopics';
 import { useQuizTopicSelection } from '../hooks/useQuizTopicSelection';
 import DomainTopicSelector from './Quiz/DomainTopicSelector';
 import QuizSettings from './Quiz/QuizSettings';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface QuizTopicSelectionProps {
   subject: Subject;
@@ -22,6 +23,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   onBack,
   onBackToDashboard
 }) => {
+  const { isMobile } = useResponsiveLayout();
   const [startQuiz, setStartQuiz] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
   
@@ -65,6 +67,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   }
 
   const isStartDisabled = selectedTopics.length === 0 || questionCount <= 0 || loading;
+  const selectedTopicsCount = selectedTopics.length;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -130,17 +133,21 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
               <Button
                 onClick={handleStartQuiz}
                 disabled={isStartDisabled}
-                className={`w-full py-3 text-lg ${
+                className={`w-full py-3 ${isMobile ? 'text-sm' : 'text-lg'} flex items-center justify-center ${
                   isStartDisabled 
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
-                <Play className="h-5 w-5 mr-2" />
-                {selectedTopics.length === 0 
-                  ? 'Select Topics to Start Quiz'
-                  : `Start Quiz (${selectedTopics.length} topics, ${questionCount} questions)`
-                }
+                <Play className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} mr-2`} />
+                <span className="text-center">
+                  {selectedTopics.length === 0 
+                    ? 'Select Topics to Start Quiz'
+                    : isMobile
+                      ? `Start Quiz`
+                      : `Start Quiz (${selectedTopicsCount} topics, ${questionCount} questions)`
+                  }
+                </span>
               </Button>
             </>
           )}

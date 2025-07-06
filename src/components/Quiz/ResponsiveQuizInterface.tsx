@@ -93,7 +93,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   );
 
   const renderQuestionSection = () => (
-    <div className={`${isMobile ? 'h-1/2 overflow-y-auto' : 'w-1/2 overflow-y-auto'} p-3 md:p-8 ${isMobile ? '' : 'border-r border-gray-200'}`}>
+    <div className={`${isMobile ? 'flex-1 overflow-y-auto' : 'w-1/2 overflow-y-auto'} p-3 md:p-8 ${isMobile ? '' : 'border-r border-gray-200'}`}>
       <div className="max-w-3xl mx-auto">
         <h2 className="text-base md:text-lg font-medium text-gray-900 mb-3 md:mb-4">Question</h2>
         <div className="text-sm md:text-lg leading-relaxed text-gray-900 mb-3 md:mb-4">
@@ -115,7 +115,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   );
 
   const renderAnswerSection = () => (
-    <div className={`${isMobile ? 'h-1/2 flex flex-col' : 'w-1/2 bg-white overflow-y-auto'} p-3 md:p-6`}>
+    <div className={`${isMobile ? 'flex-1 flex flex-col' : 'w-1/2 bg-white overflow-y-auto'} p-3 md:p-6`}>
       <div className="max-w-2xl mx-auto flex-1">
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h3 className="text-base md:text-lg font-medium text-gray-900">Answer Options</h3>
@@ -194,62 +194,37 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           </div>
         )}
       </div>
-
-      {isMobile && (
-        <div className="flex space-x-2 md:space-x-3 mt-4">
-          {onPrevious && currentQuestionIndex > 0 && (
-            <Button
-              onClick={onPrevious}
-              variant="outline"
-              className="flex-1 px-3 py-2 min-h-[40px] text-sm"
-            >
-              <ArrowLeft className="mr-1 h-3 w-3" />
-              Previous
-            </Button>
-          )}
-          
-          <Button
-            onClick={onNext}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 min-h-[40px] text-sm"
-            disabled={loading}
-          >
-            {currentQuestionIndex === totalQuestions - 1 ? 'Submit Quiz' : 'Next'}
-            <ArrowRight className="ml-1 h-3 w-3" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 
   const renderBottomNavigation = () => (
-    <div className="bg-black text-white px-3 md:px-6 py-2 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
+    <div className="bg-black text-white px-3 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
       <div className="text-sm md:text-base text-white font-medium">
         Question {currentQuestionIndex + 1} of {totalQuestions}
       </div>
       
-      {!isMobile && (
-        <div className="flex space-x-3">
-          {onPrevious && currentQuestionIndex > 0 && (
-            <Button
-              onClick={onPrevious}
-              variant="outline"
-              className="px-4 py-2 min-h-[44px] bg-transparent border-white text-white hover:bg-white hover:text-black"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-          )}
-          
+      <div className="flex space-x-2 md:space-x-3">
+        {onPrevious && currentQuestionIndex > 0 && (
           <Button
-            onClick={onNext}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 min-h-[44px]"
-            disabled={loading}
+            onClick={onPrevious}
+            variant="outline"
+            size={isMobile ? "sm" : "default"}
+            className={`${isMobile ? 'px-3 py-2 text-xs min-h-[36px]' : 'px-4 py-2 min-h-[44px]'} bg-transparent border-white text-white hover:bg-white hover:text-black`}
           >
-            {currentQuestionIndex === totalQuestions - 1 ? 'Submit Quiz' : 'Next'}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <ArrowLeft className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+            {!isMobile && 'Previous'}
           </Button>
-        </div>
-      )}
+        )}
+        
+        <Button
+          onClick={onNext}
+          className={`bg-blue-600 hover:bg-blue-700 text-white ${isMobile ? 'px-4 py-2 text-xs min-h-[36px]' : 'px-6 py-2 min-h-[44px]'}`}
+          disabled={loading}
+        >
+          {currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
+          <ArrowRight className={`${isMobile ? 'h-3 w-3 ml-1' : 'h-4 w-4 ml-2'}`} />
+        </Button>
+      </div>
     </div>
   );
 
@@ -257,9 +232,13 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
     return (
       <div className="min-h-screen bg-white flex flex-col">
         {renderTopNavigation()}
-        <div className="flex-1 flex flex-col">
-          {renderQuestionSection()}
-          {renderAnswerSection()}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="h-1/2 overflow-y-auto">
+            {renderQuestionSection()}
+          </div>
+          <div className="h-1/2 overflow-y-auto">
+            {renderAnswerSection()}
+          </div>
         </div>
         {renderBottomNavigation()}
       </div>

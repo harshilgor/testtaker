@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface Topic {
   id: string;
@@ -32,6 +32,7 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
   subject,
   loading
 }) => {
+  const { isMobile } = useResponsiveLayout();
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [domainGroups, setDomainGroups] = useState<DomainGroup[]>([]);
 
@@ -201,8 +202,14 @@ const DomainTopicSelector: React.FC<DomainTopicSelectorProps> = ({
                     ) : (
                       <ChevronRight className="h-4 w-4 text-gray-600" />
                     )}
-                    <h3 className="font-medium text-gray-900 text-left">{domain.name}</h3>
-                    <span className="text-sm text-gray-500">({domain.skills.length} skills)</span>
+                    <div className="text-left">
+                      <h3 className="font-medium text-gray-900">{domain.name}</h3>
+                      {isMobile ? (
+                        <span className="text-sm text-gray-500 block">{domain.skills.length} questions</span>
+                      ) : (
+                        <span className="text-sm text-gray-500">({domain.skills.length} skills)</span>
+                      )}
+                    </div>
                   </div>
                   
                   {domain.skills.length > 0 && (
