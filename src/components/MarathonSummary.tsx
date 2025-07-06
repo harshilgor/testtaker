@@ -133,18 +133,18 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
               </Card>
             </div>
 
-            {/* Accuracy and Time Section */}
+            {/* Accuracy and Time Section - Equal Heights */}
             <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="text-center">
+              <div className="text-center h-32 flex flex-col justify-center">
                 <div className="text-5xl md:text-6xl font-bold text-blue-600 mb-2">{accuracy}%</div>
                 <div className="text-gray-600 font-medium">Overall Accuracy</div>
               </div>
               
-              <div className="text-center">
+              <div className="text-center h-32 flex flex-col justify-center">
                 <div className="flex items-center justify-center mb-3">
                   <Clock className="h-6 w-6 text-gray-600 mr-2" />
                 </div>
-                <div className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{formatTime(sessionStats.timeSpent)}</div>
+                <div className="text-5xl md:text-6xl font-bold text-gray-800 mb-2">{formatTime(sessionStats.timeSpent)}</div>
                 <div className="text-gray-600 font-medium">Time Spent</div>
               </div>
             </div>
