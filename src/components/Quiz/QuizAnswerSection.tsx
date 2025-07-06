@@ -26,7 +26,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`${isMobile ? 'h-1/2 bg-gray-50 flex flex-col' : 'w-1/2 bg-white overflow-y-auto'} p-3 md:p-6`}>
+    <div className={`h-full flex flex-col ${isMobile ? 'bg-gray-50 p-3' : 'w-1/2 bg-white overflow-y-auto p-6'}`}>
       <div className="max-w-2xl mx-auto flex-1 overflow-y-auto">
         <div className="flex items-center justify-between mb-3 md:mb-6">
           <h3 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900`}>

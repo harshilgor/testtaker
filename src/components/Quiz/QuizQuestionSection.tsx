@@ -14,7 +14,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
   const imageUrl = question.hasImage && question.imageUrl ? question.imageUrl : undefined;
 
   return (
-    <div className={`${isMobile ? 'h-1/2 overflow-y-auto bg-white' : 'w-1/2 overflow-y-auto border-r border-gray-200'} p-4 md:p-8`}>
+    <div className={`h-full p-4 md:p-8 ${isMobile ? 'bg-white' : 'w-1/2 overflow-y-auto border-r border-gray-200'}`}>
       <QuestionDisplay
         question={question.question}
         imageUrl={imageUrl}

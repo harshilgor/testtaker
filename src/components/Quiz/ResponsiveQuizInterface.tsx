@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
@@ -65,38 +64,54 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   if (isMobile) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        <TopNavigation
-          mode="QUIZ"
-          modeColor="bg-blue-600"
-          title={topicsDisplay}
-          timeElapsed={timeElapsed}
-          onExit={onExitQuiz}
-          isMobile={true}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <QuizQuestionSection question={question} isMobile={true} />
-          <QuizAnswerSection
-            question={question}
-            selectedAnswer={selectedAnswer}
-            onAnswerSelect={onAnswerSelect}
-            isFlagged={isFlagged}
-            onToggleFlag={onToggleFlag}
-            feedbackPreference={feedbackPreference}
-            showFeedback={showFeedback}
-            isCorrect={isCorrect}
+        {/* Sticky Top Navigation */}
+        <div className="sticky top-0 z-50">
+          <TopNavigation
+            mode="QUIZ"
+            modeColor="bg-blue-600"
+            title={topicsDisplay}
+            timeElapsed={timeElapsed}
+            onExit={onExitQuiz}
             isMobile={true}
           />
         </div>
-        <BottomNavigation
-          currentQuestion={currentQuestionIndex + 1}
-          totalQuestions={totalQuestions}
-          onPrevious={onPrevious}
-          onNext={onNext}
-          nextLabel={currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
-          showPrevious={!!onPrevious}
-          loading={loading}
-          isMobile={true}
-        />
+
+        {/* Main Content - Split Screen */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Top Half - Question */}
+          <div className="h-1/2 overflow-y-auto bg-white">
+            <QuizQuestionSection question={question} isMobile={true} />
+          </div>
+
+          {/* Bottom Half - Answer Options */}
+          <div className="h-1/2 bg-gray-50 flex flex-col min-h-0">
+            <QuizAnswerSection
+              question={question}
+              selectedAnswer={selectedAnswer}
+              onAnswerSelect={onAnswerSelect}
+              isFlagged={isFlagged}
+              onToggleFlag={onToggleFlag}
+              feedbackPreference={feedbackPreference}
+              showFeedback={showFeedback}
+              isCorrect={isCorrect}
+              isMobile={true}
+            />
+          </div>
+        </div>
+
+        {/* Sticky Bottom Navigation */}
+        <div className="sticky bottom-0 z-40">
+          <BottomNavigation
+            currentQuestion={currentQuestionIndex + 1}
+            totalQuestions={totalQuestions}
+            onPrevious={onPrevious}
+            onNext={onNext}
+            nextLabel={currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
+            showPrevious={!!onPrevious}
+            loading={loading}
+            isMobile={true}
+          />
+        </div>
       </div>
     );
   }
