@@ -73,6 +73,11 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         <span className="text-xs md:text-sm font-medium hidden md:inline">
           Topics: {topics.join(', ')}
         </span>
+        {isMobile && (
+          <span className="text-xs font-medium truncate max-w-32">
+            Topics: {topics[0]}{topics.length > 1 ? '...' : ''}
+          </span>
+        )}
       </div>
       
       <div className="flex items-center space-x-2 md:space-x-4">
@@ -93,10 +98,10 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   );
 
   const renderQuestionSection = () => (
-    <div className={`${isMobile ? 'flex-1 overflow-y-auto' : 'w-1/2 overflow-y-auto'} p-3 md:p-8 ${isMobile ? '' : 'border-r border-gray-200'}`}>
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-base md:text-lg font-medium text-gray-900 mb-3 md:mb-4">Question</h2>
-        <div className="text-sm md:text-lg leading-relaxed text-gray-900 mb-3 md:mb-4">
+    <div className={`${isMobile ? 'h-1/2 overflow-y-auto bg-white' : 'w-1/2 overflow-y-auto border-r border-gray-200'} p-4 md:p-8`}>
+      <div className="max-w-3xl mx-auto h-full">
+        <h2 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900 mb-2 md:mb-4`}>Question</h2>
+        <div className={`${isMobile ? 'text-sm' : 'text-sm md:text-lg'} leading-relaxed text-gray-900 mb-3 md:mb-4`}>
           {question.question}
         </div>
 
@@ -105,7 +110,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
             <img 
               src={question.imageUrl} 
               alt="Question diagram" 
-              className="max-w-full h-auto rounded-lg border border-gray-200"
+              className={`${isMobile ? 'max-w-full h-auto max-h-32' : 'max-w-full h-auto'} rounded-lg border border-gray-200`}
               loading="lazy"
             />
           </div>
@@ -115,10 +120,10 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   );
 
   const renderAnswerSection = () => (
-    <div className={`${isMobile ? 'flex-1 flex flex-col' : 'w-1/2 bg-white overflow-y-auto'} p-3 md:p-6`}>
-      <div className="max-w-2xl mx-auto flex-1">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h3 className="text-base md:text-lg font-medium text-gray-900">Answer Options</h3>
+    <div className={`${isMobile ? 'h-1/2 bg-gray-50 flex flex-col' : 'w-1/2 bg-white overflow-y-auto'} p-3 md:p-6`}>
+      <div className="max-w-2xl mx-auto flex-1 overflow-y-auto">
+        <div className="flex items-center justify-between mb-3 md:mb-6">
+          <h3 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900`}>Answer Options</h3>
           <div className="flex items-center space-x-2 md:space-x-3">
             <div className="flex items-center space-x-1 md:space-x-2">
               <Checkbox
@@ -134,7 +139,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         </div>
 
         <div className="mb-4 md:mb-8">
-          <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">Choose the best answer.</p>
+          <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} text-gray-600 mb-2 md:mb-4`}>Choose the best answer.</p>
           <div className="space-y-2 md:space-y-3">
             {question.options.map((option, index) => {
               const isSelected = selectedAnswer === index;
@@ -145,7 +150,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
                 <button
                   key={index}
                   onClick={() => onAnswerSelect(index)}
-                  className={`w-full p-3 md:p-4 text-left rounded-lg border-2 transition-all min-h-[40px] md:min-h-[44px] ${
+                  className={`w-full p-2 md:p-4 text-left rounded-lg border-2 transition-all ${isMobile ? 'min-h-[36px]' : 'min-h-[40px] md:min-h-[44px]'} ${
                     isSelected
                       ? shouldShowCorrect
                         ? isCorrectAnswer
@@ -158,7 +163,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
                   }`}
                 >
                   <div className="flex items-start space-x-2 md:space-x-3">
-                    <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center text-xs md:text-sm font-medium flex-shrink-0 ${
+                    <div className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5 md:w-6 md:h-6'} rounded-full border-2 flex items-center justify-center text-xs md:text-sm font-medium flex-shrink-0 ${
                       isSelected
                         ? shouldShowCorrect
                           ? isCorrectAnswer
@@ -171,7 +176,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
                     }`}>
                       {String.fromCharCode(65 + index)}
                     </div>
-                    <span className="flex-1 text-sm md:text-base">{option}</span>
+                    <span className={`flex-1 ${isMobile ? 'text-xs' : 'text-sm md:text-base'}`}>{option}</span>
                   </div>
                 </button>
               );
@@ -184,11 +189,11 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
             isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
           }`}>
             <div className="flex items-center mb-2">
-              <span className={`font-semibold text-sm md:text-base ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+              <span className={`font-semibold ${isMobile ? 'text-xs' : 'text-sm md:text-base'} ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                 {isCorrect ? 'Correct!' : 'Incorrect'}
               </span>
             </div>
-            <p className={`text-xs md:text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+            <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
               {question.explanation}
             </p>
           </div>
@@ -198,8 +203,8 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   );
 
   const renderBottomNavigation = () => (
-    <div className="bg-black text-white px-3 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
-      <div className="text-sm md:text-base text-white font-medium">
+    <div className="bg-black text-white px-3 md:px-6 py-2 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
+      <div className={`${isMobile ? 'text-sm' : 'text-sm md:text-base'} text-white font-medium`}>
         Question {currentQuestionIndex + 1} of {totalQuestions}
       </div>
       
@@ -209,7 +214,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
             onClick={onPrevious}
             variant="outline"
             size={isMobile ? "sm" : "default"}
-            className={`${isMobile ? 'px-3 py-2 text-xs min-h-[36px]' : 'px-4 py-2 min-h-[44px]'} bg-transparent border-white text-white hover:bg-white hover:text-black`}
+            className={`${isMobile ? 'px-2 py-1 text-xs min-h-[32px]' : 'px-4 py-2 min-h-[44px]'} bg-transparent border-white text-white hover:bg-white hover:text-black`}
           >
             <ArrowLeft className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
             {!isMobile && 'Previous'}
@@ -218,7 +223,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         
         <Button
           onClick={onNext}
-          className={`bg-blue-600 hover:bg-blue-700 text-white ${isMobile ? 'px-4 py-2 text-xs min-h-[36px]' : 'px-6 py-2 min-h-[44px]'}`}
+          className={`bg-blue-600 hover:bg-blue-700 text-white ${isMobile ? 'px-3 py-1 text-xs min-h-[32px]' : 'px-6 py-2 min-h-[44px]'}`}
           disabled={loading}
         >
           {currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
@@ -233,12 +238,8 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
       <div className="min-h-screen bg-white flex flex-col">
         {renderTopNavigation()}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="h-1/2 overflow-y-auto">
-            {renderQuestionSection()}
-          </div>
-          <div className="h-1/2 overflow-y-auto">
-            {renderAnswerSection()}
-          </div>
+          {renderQuestionSection()}
+          {renderAnswerSection()}
         </div>
         {renderBottomNavigation()}
       </div>
