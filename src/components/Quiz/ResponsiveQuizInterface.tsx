@@ -63,7 +63,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="h-screen bg-white flex flex-col overflow-hidden">
         {/* Sticky Top Navigation */}
         <TopNavigation
           mode="QUIZ"
@@ -74,15 +74,15 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           isMobile={true}
         />
 
-        {/* Main Content - Horizontal Split Layout */}
-        <div className="flex-1 flex flex-col pb-16">
+        {/* Main Content - Vertical Split (50/50) */}
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Question Section - Top Half */}
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 bg-white border-b border-gray-200">
             <QuizQuestionSection question={question} isMobile={true} />
           </div>
 
           {/* Answer Section - Bottom Half */}
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 bg-white">
             <QuizAnswerSection
               question={question}
               selectedAnswer={selectedAnswer}
@@ -98,7 +98,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         </div>
 
         {/* Sticky Bottom Navigation */}
-        <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
+        <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between">
           <div className="text-sm text-gray-600">
             Question {currentQuestionIndex + 1} of {totalQuestions}
           </div>

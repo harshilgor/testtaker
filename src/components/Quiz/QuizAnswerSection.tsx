@@ -26,7 +26,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`${isMobile ? 'h-full p-4 bg-white overflow-y-auto' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
+    <div className={`${isMobile ? 'h-full p-4 overflow-y-auto' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
       <div className="h-full flex flex-col">
         {/* Desktop header - only show on desktop */}
         {!isMobile && (
