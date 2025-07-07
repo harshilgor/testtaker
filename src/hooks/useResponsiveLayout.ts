@@ -6,10 +6,16 @@ export const useResponsiveLayout = () => {
 
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      console.log('useResponsiveLayout - window.innerWidth:', window.innerWidth);
+      console.log('useResponsiveLayout - setting isMobile to:', mobile);
+      setIsMobile(mobile);
     };
 
+    // Check on mount
     checkScreenSize();
+    
+    // Add event listener
     window.addEventListener('resize', checkScreenSize);
 
     return () => window.removeEventListener('resize', checkScreenSize);

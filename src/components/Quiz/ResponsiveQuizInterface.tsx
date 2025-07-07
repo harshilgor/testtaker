@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
@@ -57,32 +58,41 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
 }) => {
   const { isMobile } = useResponsiveLayout();
 
+  // Debug logging
+  console.log('Quiz Mode - isMobile:', isMobile);
+  console.log('Quiz Mode - window.innerWidth:', window.innerWidth);
+  console.log('Quiz Mode - Rendering mobile layout:', isMobile);
+
   const topicsDisplay = isMobile 
     ? `Topics: ${topics[0]}${topics.length > 1 ? '...' : ''}`
     : `Topics: ${topics.join(', ')}`;
 
+  // Mobile Layout
   if (isMobile) {
+    console.log('Quiz Mode - Using MOBILE layout');
     return (
       <div className="h-screen bg-white flex flex-col overflow-hidden">
         {/* Sticky Top Navigation */}
-        <TopNavigation
-          mode="QUIZ"
-          modeColor="bg-blue-600"
-          title={topicsDisplay}
-          timeElapsed={timeElapsed}
-          onExit={onExitQuiz}
-          isMobile={true}
-        />
+        <div className="flex-shrink-0">
+          <TopNavigation
+            mode="QUIZ"
+            modeColor="bg-blue-600"
+            title={topicsDisplay}
+            timeElapsed={timeElapsed}
+            onExit={onExitQuiz}
+            isMobile={true}
+          />
+        </div>
 
         {/* Main Content - Vertical Split (50/50) */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Question Section - Top Half */}
-          <div className="flex-1 min-h-0 bg-white border-b border-gray-200">
+          <div className="flex-1 bg-white border-b border-gray-200 overflow-hidden">
             <QuizQuestionSection question={question} isMobile={true} />
           </div>
 
           {/* Answer Section - Bottom Half */}
-          <div className="flex-1 min-h-0 bg-white">
+          <div className="flex-1 bg-white overflow-hidden">
             <QuizAnswerSection
               question={question}
               selectedAnswer={selectedAnswer}
@@ -98,33 +108,37 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         </div>
 
         {/* Sticky Bottom Navigation */}
-        <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Question {currentQuestionIndex + 1} of {totalQuestions}
-          </div>
-          <div className="flex space-x-3">
-            {onPrevious && currentQuestionIndex > 0 && (
+        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Question {currentQuestionIndex + 1} of {totalQuestions}
+            </div>
+            <div className="flex space-x-3">
+              {onPrevious && currentQuestionIndex > 0 && (
+                <button
+                  onClick={onPrevious}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 min-h-[44px]"
+                  disabled={loading}
+                >
+                  Previous
+                </button>
+              )}
               <button
-                onClick={onPrevious}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 min-h-[44px]"
+                onClick={onNext}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
                 disabled={loading}
               >
-                Previous
+                {currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
               </button>
-            )}
-            <button
-              onClick={onNext}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
-              disabled={loading}
-            >
-              {currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
-            </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // Desktop Layout
+  console.log('Quiz Mode - Using DESKTOP layout');
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <TopNavigation

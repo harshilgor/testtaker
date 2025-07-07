@@ -11,15 +11,31 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
   question,
   isMobile
 }) => {
+  console.log('QuizQuestionSection - isMobile:', isMobile);
+  
   const imageUrl = question.hasImage && question.imageUrl ? question.imageUrl : undefined;
 
+  if (isMobile) {
+    return (
+      <div className="h-full p-4 overflow-y-auto bg-white">
+        <QuestionDisplay
+          question={question.question}
+          imageUrl={imageUrl}
+          hasImage={question.hasImage}
+          isMobile={true}
+          className="h-full"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={`${isMobile ? 'h-full p-4 overflow-y-auto' : 'w-1/2 h-full p-8 overflow-y-auto border-r border-gray-200'}`}>
+    <div className="w-1/2 h-full p-8 overflow-y-auto border-r border-gray-200">
       <QuestionDisplay
         question={question.question}
         imageUrl={imageUrl}
         hasImage={question.hasImage}
-        isMobile={isMobile}
+        isMobile={false}
         className="h-full"
       />
     </div>
