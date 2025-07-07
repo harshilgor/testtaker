@@ -26,28 +26,45 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`${isMobile ? 'h-full p-4 bg-gray-50' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
+    <div className={`${isMobile ? 'h-full p-4 bg-white' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
       <div className="h-full flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900`}>
-            Answer Options
-          </h3>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <Checkbox
-                id="mark-review"
-                checked={isFlagged}
-                onCheckedChange={onToggleFlag}
-              />
-              <label htmlFor="mark-review" className="text-xs text-gray-600 cursor-pointer">
-                Mark for Review
-              </label>
+        {/* Remove the "Answer Options" header for mobile to match Marathon Mode */}
+        {!isMobile && (
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base md:text-lg font-medium text-gray-900">
+              Answer Options
+            </h3>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
+                <Checkbox
+                  id="mark-review"
+                  checked={isFlagged}
+                  onCheckedChange={onToggleFlag}
+                />
+                <label htmlFor="mark-review" className="text-xs text-gray-600 cursor-pointer">
+                  Mark for Review
+                </label>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Mobile layout matching Marathon Mode */}
+        {isMobile && (
+          <div className="flex items-center space-x-2 mb-4">
+            <Checkbox
+              id="mark-review"
+              checked={isFlagged}
+              onCheckedChange={onToggleFlag}
+            />
+            <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
+              Mark for Review
+            </label>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto">
-          <p className={`${isMobile ? 'text-xs' : 'text-xs md:text-sm'} text-gray-600 mb-3`}>
+          <p className={`${isMobile ? 'text-sm' : 'text-xs md:text-sm'} text-gray-600 mb-3`}>
             Choose the best answer.
           </p>
           <div className="space-y-2">

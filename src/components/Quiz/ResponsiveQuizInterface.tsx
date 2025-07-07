@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
@@ -75,27 +74,30 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           isMobile={true}
         />
 
-        {/* Main Content - Question Section */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <QuizQuestionSection question={question} isMobile={true} />
+        {/* Main Content - Split vertically like Marathon Mode */}
+        <div className="flex-1 flex flex-col pb-16">
+          {/* Question Section - Top Half */}
+          <div className="flex-1 overflow-y-auto">
+            <QuizQuestionSection question={question} isMobile={true} />
+          </div>
+
+          {/* Answer Section - Bottom Half */}
+          <div className="flex-1 overflow-y-auto">
+            <QuizAnswerSection
+              question={question}
+              selectedAnswer={selectedAnswer}
+              onAnswerSelect={onAnswerSelect}
+              isFlagged={isFlagged}
+              onToggleFlag={onToggleFlag}
+              feedbackPreference={feedbackPreference}
+              showFeedback={showFeedback}
+              isCorrect={isCorrect}
+              isMobile={true}
+            />
+          </div>
         </div>
 
-        {/* Answer Section - Sticky at bottom above nav */}
-        <div className="bg-white border-t border-gray-200 max-h-[50vh] overflow-y-auto">
-          <QuizAnswerSection
-            question={question}
-            selectedAnswer={selectedAnswer}
-            onAnswerSelect={onAnswerSelect}
-            isFlagged={isFlagged}
-            onToggleFlag={onToggleFlag}
-            feedbackPreference={feedbackPreference}
-            showFeedback={showFeedback}
-            isCorrect={isCorrect}
-            isMobile={true}
-          />
-        </div>
-
-        {/* Sticky Bottom Navigation */}
+        {/* Sticky Bottom Navigation - Same as Marathon Mode */}
         <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
           <div className="text-sm text-gray-600">
             Question {currentQuestionIndex + 1} of {totalQuestions}
