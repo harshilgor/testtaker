@@ -74,15 +74,15 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           isMobile={true}
         />
 
-        {/* Main Content - Split vertically like Marathon Mode */}
+        {/* Main Content - Horizontal Split Layout */}
         <div className="flex-1 flex flex-col pb-16">
           {/* Question Section - Top Half */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0">
             <QuizQuestionSection question={question} isMobile={true} />
           </div>
 
           {/* Answer Section - Bottom Half */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0">
             <QuizAnswerSection
               question={question}
               selectedAnswer={selectedAnswer}
@@ -97,7 +97,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           </div>
         </div>
 
-        {/* Sticky Bottom Navigation - Same as Marathon Mode */}
+        {/* Sticky Bottom Navigation */}
         <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
           <div className="text-sm text-gray-600">
             Question {currentQuestionIndex + 1} of {totalQuestions}

@@ -26,9 +26,9 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`${isMobile ? 'h-full p-4 bg-white' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
+    <div className={`${isMobile ? 'h-full p-4 bg-white overflow-y-auto' : 'w-1/2 h-full p-6 bg-white overflow-y-auto'}`}>
       <div className="h-full flex flex-col">
-        {/* Remove the "Answer Options" header for mobile to match Marathon Mode */}
+        {/* Desktop header - only show on desktop */}
         {!isMobile && (
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base md:text-lg font-medium text-gray-900">
@@ -49,7 +49,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           </div>
         )}
 
-        {/* Mobile layout matching Marathon Mode */}
+        {/* Mobile flag checkbox - only show on mobile */}
         {isMobile && (
           <div className="flex items-center space-x-2 mb-4">
             <Checkbox
