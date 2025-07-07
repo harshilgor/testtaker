@@ -96,6 +96,21 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     console.log('Question flagged');
   };
 
+  // Optimized end marathon handler that shows summary immediately
+  const handleEndMarathonOptimized = () => {
+    console.log('Marathon: End marathon clicked - showing summary immediately');
+    // Stop timer immediately
+    stopTimer();
+    // Show summary instantly without waiting for backend operations
+    setShowSummary(true);
+    // Perform cleanup operations in background
+    setTimeout(() => {
+      if (session) {
+        endSession();
+      }
+    }, 100);
+  };
+
   console.log('Marathon: Rendering state', {
     hasSettings: !!settings,
     hasSession: !!session,
@@ -147,7 +162,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
       <MarathonCompletionState
         sessionStats={sessionStats}
         onBack={onBack}
-        onEndMarathon={confirmEndMarathon}
+        onEndMarathon={handleEndMarathonOptimized}
       />
     );
   }
@@ -171,14 +186,14 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
         }}
         onNext={handleNext}
         onFlag={handleFlag}
-        onEndMarathon={handleEndMarathon}
+        onEndMarathon={handleEndMarathonOptimized}
         questionsSolved={session?.correctAnswers || 0}
       />
 
       <MarathonEndConfirmation
         isOpen={showEndConfirmation}
         onContinue={() => setShowEndConfirmation(false)}
-        onConfirmEnd={confirmEndMarathon}
+        onConfirmEnd={handleEndMarathonOptimized}
       />
     </>
   );

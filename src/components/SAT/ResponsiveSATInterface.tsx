@@ -120,7 +120,7 @@ const ResponsiveSATInterface: React.FC<ResponsiveSATInterfaceProps> = ({
         
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {question.passage ? 'Question' : 'Question'}
+            Question
           </h3>
           <p className="text-lg leading-relaxed text-gray-900">
             {question.content}
@@ -131,9 +131,9 @@ const ResponsiveSATInterface: React.FC<ResponsiveSATInterfaceProps> = ({
   );
 
   const renderAnswerSection = () => (
-    <div className={`${isMobile ? 'bg-gray-50 border-t border-gray-200' : 'w-1/2 bg-white'} ${isMobile ? 'sticky bottom-16' : ''} p-4 md:p-6 ${isMobile ? 'max-h-[50vh] overflow-y-auto' : 'overflow-y-auto'}`}>
+    <div className={`${isMobile ? 'bg-white border-t border-gray-200' : 'w-1/2 bg-white'} p-4 md:p-6 ${isMobile ? 'max-h-[50vh] overflow-y-auto' : 'overflow-y-auto'}`}>
       <div className="max-w-2xl mx-auto">
-        {!question.passage && (
+        {!question.passage && !isMobile && (
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Question</h3>
             <p className="text-lg leading-relaxed text-gray-900">
@@ -221,18 +221,7 @@ const ResponsiveSATInterface: React.FC<ResponsiveSATInterfaceProps> = ({
   const renderBottomNavigation = () => (
     <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
       <div className="text-sm text-gray-600">
-        {userDisplayName}
-      </div>
-      
-      <div className="flex items-center">
-        <Button
-          onClick={onShowNavigator}
-          variant="ghost"
-          className="bg-gray-800 text-white hover:bg-gray-700 px-4 py-2 rounded flex items-center space-x-2 min-h-[44px]"
-        >
-          <span>Question {currentQuestionIndex + 1} of {totalQuestions}</span>
-          <ChevronDown className="h-4 w-4" />
-        </Button>
+        Question {currentQuestionIndex + 1} of {totalQuestions}
       </div>
       
       <div className="flex space-x-3">
@@ -260,10 +249,16 @@ const ResponsiveSATInterface: React.FC<ResponsiveSATInterfaceProps> = ({
     return (
       <div className="min-h-screen bg-white flex flex-col">
         {renderTopNavigation()}
-        <div className="flex-1 flex flex-col pb-16">
+        
+        {/* Main Question Content */}
+        <div className="flex-1 overflow-y-auto">
           {renderQuestionSection()}
-          {renderAnswerSection()}
         </div>
+        
+        {/* Answer Section - Sticky above bottom nav */}
+        {renderAnswerSection()}
+        
+        {/* Bottom Navigation */}
         {renderBottomNavigation()}
       </div>
     );
