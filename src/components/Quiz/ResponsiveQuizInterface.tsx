@@ -67,6 +67,18 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
     ? `Topics: ${topics[0]}${topics.length > 1 ? '...' : ''}`
     : `Topics: ${topics.join(', ')}`;
 
+  // Create sets for QuizAnswerSection props
+  const answeredQuestions = new Set<string>();
+  const flaggedQuestions = new Set<string>();
+  
+  if (selectedAnswer !== null) {
+    answeredQuestions.add(question.id);
+  }
+  
+  if (isFlagged) {
+    flaggedQuestions.add(question.id);
+  }
+
   // Mobile Layout
   if (isMobile) {
     console.log('Quiz Mode - Using MOBILE layout');
@@ -95,14 +107,16 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           <div className="flex-1 bg-white overflow-hidden">
             <QuizAnswerSection
               question={question}
-              selectedAnswer={selectedAnswer}
-              onAnswerSelect={onAnswerSelect}
-              isFlagged={isFlagged}
-              onToggleFlag={onToggleFlag}
+              currentAnswer={selectedAnswer}
+              answeredQuestions={answeredQuestions}
+              flaggedQuestions={flaggedQuestions}
               feedbackPreference={feedbackPreference}
-              showFeedback={showFeedback}
-              isCorrect={isCorrect}
-              isMobile={true}
+              onAnswerChange={onAnswerSelect}
+              onToggleFlag={onToggleFlag}
+              onSubmitAnswer={() => {}}
+              showRationale={showFeedback}
+              onShowRationale={() => {}}
+              isSubmitted={showFeedback}
             />
           </div>
         </div>
@@ -153,14 +167,16 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         <QuizQuestionSection question={question} isMobile={false} />
         <QuizAnswerSection
           question={question}
-          selectedAnswer={selectedAnswer}
-          onAnswerSelect={onAnswerSelect}
-          isFlagged={isFlagged}
-          onToggleFlag={onToggleFlag}
+          currentAnswer={selectedAnswer}
+          answeredQuestions={answeredQuestions}
+          flaggedQuestions={flaggedQuestions}
           feedbackPreference={feedbackPreference}
-          showFeedback={showFeedback}
-          isCorrect={isCorrect}
-          isMobile={false}
+          onAnswerChange={onAnswerSelect}
+          onToggleFlag={onToggleFlag}
+          onSubmitAnswer={() => {}}
+          showRationale={showFeedback}
+          onShowRationale={() => {}}
+          isSubmitted={showFeedback}
         />
       </div>
       <BottomNavigation
