@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, AlertCircle } from 'lucide-react';
@@ -57,11 +56,12 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     return (
       <QuizView
         questions={quizQuestions}
+        selectedTopics={selectedTopics}
+        feedbackPreference={feedbackPreference}
         onBack={() => setStartQuiz(false)}
         subject={subject}
         topics={selectedTopics}
         userName={userName}
-        feedbackPreference={feedbackPreference}
       />
     );
   }

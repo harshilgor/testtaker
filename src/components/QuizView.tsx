@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuizLayout from './Quiz/QuizLayout';
@@ -10,6 +11,7 @@ import QuizResultsView from './Quiz/QuizResultsView';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Subject } from '@/types/common';
 
 interface Question {
   id: number;
@@ -29,13 +31,19 @@ interface QuizViewProps {
   selectedTopics: string[];
   feedbackPreference: 'immediate' | 'end';
   onBack: () => void;
+  subject: Subject;
+  topics: string[];
+  userName: string;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
   questions,
   selectedTopics,
   feedbackPreference,
-  onBack
+  onBack,
+  subject,
+  topics,
+  userName
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -145,9 +153,12 @@ const QuizView: React.FC<QuizViewProps> = ({
       <QuizResultsView
         questions={questions}
         answers={answers}
-        selectedTopics={selectedTopics}
+        topics={topics}
         timeSpent={(30 * 60) - timeRemaining}
         onBack={onBack}
+        feedbackPreference={feedbackPreference}
+        userName={userName}
+        subject={subject}
       />
     );
   }
@@ -156,14 +167,16 @@ const QuizView: React.FC<QuizViewProps> = ({
     <QuizLayout
       topHeader={
         <QuizTopHeader
-          selectedTopics={selectedTopics}
-          onExit={onBack}
+          topics={topics}
+          time={timeRemaining}
+          onBack={onBack}
         />
       }
       timer={
         <QuizTimer
-          timeRemaining={timeRemaining}
-          onTimeUp={handleQuizComplete}
+          onTimeUpdate={(time) => {
+            // Timer logic handled by useEffect above
+          }}
         />
       }
       questionPanel={
