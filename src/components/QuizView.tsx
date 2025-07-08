@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuizLayout from './Quiz/QuizLayout';
@@ -154,7 +153,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         questions={questions}
         answers={answers}
         topics={topics}
-        timeSpent={(30 * 60) - timeRemaining}
         onBack={onBack}
         feedbackPreference={feedbackPreference}
         userName={userName}
