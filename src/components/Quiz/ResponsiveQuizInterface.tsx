@@ -7,12 +7,12 @@ import QuizQuestionSection from './QuizQuestionSection';
 import QuizAnswerSection from './QuizAnswerSection';
 
 interface Question {
-  id: number;
-  question: string;
+  id: string;
+  content: string;
   options: string[];
   correctAnswer: number;
   explanation: string;
-  subject: string;
+  section: 'reading-writing' | 'math';
   topic: string;
   difficulty: string;
   imageUrl?: string;
