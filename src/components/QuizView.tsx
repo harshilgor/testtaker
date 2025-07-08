@@ -33,6 +33,7 @@ interface QuizViewProps {
   onBack: () => void;
   topics: string[];
   userName: string;
+  subject: Subject;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -41,7 +42,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   feedbackPreference,
   onBack,
   topics,
-  userName
+  userName,
+  subject
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -155,6 +157,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         onBack={onBack}
         feedbackPreference={feedbackPreference}
         userName={userName}
+        subject={subject}
       />
     );
   }
