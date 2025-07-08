@@ -43,6 +43,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(questions.length).fill(null));
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
+  const [submittedQuestions, setSubmittedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [time, setTime] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
@@ -50,18 +51,33 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [loading, setLoading] = useState(false);
 
   const handleAnswerSelect = (answerIndex: number) => {
+    // Don't allow answer changes if already submitted
+    if (submittedQuestions[currentQuestionIndex]) {
+      return;
+    }
+    
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answerIndex;
     setAnswers(newAnswers);
-    
-    if (feedbackPreference === 'immediate') {
-      setShowFeedback(true);
+  };
+
+  const handleSubmitAnswer = () => {
+    if (answers[currentQuestionIndex] === null) {
+      return;
     }
+    
+    const newSubmitted = [...submittedQuestions];
+    newSubmitted[currentQuestionIndex] = true;
+    setSubmittedQuestions(newSubmitted);
+    
+    // Show feedback immediately after submission
+    setShowFeedback(true);
   };
 
   const handleGoToQuestion = (index: number) => {
     setCurrentQuestionIndex(index);
-    setShowFeedback(false);
+    // Show feedback if the question was already submitted
+    setShowFeedback(submittedQuestions[index]);
     setIsNavigationOpen(false);
   };
 
@@ -192,6 +208,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           isCorrect={isCorrect}
           onNext={handleNext}
           loading={loading}
+          isSubmitted={submittedQuestions[currentQuestionIndex]}
         />
       }
       bottomNavigation={
@@ -205,6 +222,8 @@ const QuizView: React.FC<QuizViewProps> = ({
           selectedTopics={topics}
           isNavigationOpen={isNavigationOpen}
           onToggleNavigation={() => setIsNavigationOpen(!isNavigationOpen)}
+          onSubmit={handleSubmitAnswer}
+          submittedQuestions={submittedQuestions}
         />
       }
     />

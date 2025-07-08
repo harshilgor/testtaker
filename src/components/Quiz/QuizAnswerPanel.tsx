@@ -31,6 +31,7 @@ interface QuizAnswerPanelProps {
   isCorrect: boolean;
   onNext: () => void;
   loading: boolean;
+  isSubmitted?: boolean;
 }
 
 const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
@@ -45,7 +46,8 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
   showFeedback,
   isCorrect,
   onNext,
-  loading
+  loading,
+  isSubmitted = false
 }) => {
   const { isMobile } = useResponsiveLayout();
   const hasAnswered = selectedAnswer !== null;
@@ -81,7 +83,8 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                 return (
                   <button
                     key={index}
-                    onClick={() => onAnswerSelect(index)}
+                    onClick={() => !isSubmitted && onAnswerSelect(index)}
+                    disabled={isSubmitted}
                     className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
                       isSelected
                         ? shouldShowCorrect
@@ -91,7 +94,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                           : 'border-blue-500 bg-blue-50'
                         : shouldShowCorrect && isCorrectAnswer
                           ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          : isSubmitted
+                            ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-start space-x-3">
@@ -170,7 +175,8 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
               return (
                 <button
                   key={index}
-                  onClick={() => onAnswerSelect(index)}
+                  onClick={() => !isSubmitted && onAnswerSelect(index)}
+                  disabled={isSubmitted}
                   className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                     isSelected
                       ? shouldShowCorrect
@@ -180,7 +186,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                         : 'border-blue-500 bg-blue-50'
                       : shouldShowCorrect && isCorrectAnswer
                         ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        : isSubmitted
+                          ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start space-x-3">
