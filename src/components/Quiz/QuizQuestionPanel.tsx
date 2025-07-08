@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
@@ -16,9 +17,15 @@ interface Question {
 
 interface QuizQuestionPanelProps {
   question: Question;
+  isFlagged?: boolean;
+  onToggleFlag?: () => void;
 }
 
-const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ question }) => {
+const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ 
+  question, 
+  isFlagged = false, 
+  onToggleFlag 
+}) => {
   const { isMobile } = useResponsiveLayout();
   
   console.log('QuizQuestionPanel - isMobile:', isMobile);
@@ -30,12 +37,20 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ question }) => {
           {/* Question Header */}
           <div className="mb-4">
             <h2 className="text-sm font-medium text-gray-900 mb-2">Question</h2>
-            <div className="text-sm leading-relaxed text-gray-900">
+            <div className="text-sm leading-relaxed text-gray-900 mb-3">
               {question.question}
             </div>
+            
+            {/* Flag button moved below question text */}
+            {onToggleFlag && (
+              <button
+                onClick={onToggleFlag}
+                className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
+              >
+                🚩
+              </button>
+            )}
           </div>
-
-          {/* Remove Question diagram component entirely from mobile view */}
         </div>
       </div>
     );

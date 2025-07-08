@@ -33,8 +33,8 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
           {timer}
         </div>
 
-        {/* Main Content - Vertical Resizable */}
-        <div className="flex-1 flex flex-col min-h-0 pb-20">
+        {/* Main Content - Vertical Resizable - Fixed height calculation */}
+        <div className="flex-1 flex flex-col min-h-0">
           <ResizablePanelGroup direction="vertical" className="h-full">
             {/* Question Panel - Top */}
             <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
@@ -54,8 +54,8 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
           </ResizablePanelGroup>
         </div>
 
-        {/* Sticky Bottom Navigation */}
-        <div className="flex-shrink-0">
+        {/* Sticky Bottom Navigation - Fixed positioning */}
+        <div className="flex-shrink-0 bg-white border-t border-gray-200">
           {bottomNavigation}
         </div>
       </div>

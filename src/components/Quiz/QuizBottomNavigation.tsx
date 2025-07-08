@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import QuizBottomNavigationGrid from './QuizBottomNavigationGrid';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface Question {
   id: number;
@@ -45,17 +46,20 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
   submittedQuestions,
   onNext
 }) => {
+  const { isMobile } = useResponsiveLayout();
   const hasAnswered = answers[currentQuestionIndex] !== null;
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 z-50">
+    <div className="bg-white border-t border-gray-200 px-6 py-3 z-50">
       <div className="flex justify-between items-center">
-        {/* Left side - Progress indicator - make it directly clickable (remove arrow) */}
+        {/* Left side - Progress indicator - make it directly clickable */}
         <button
           onClick={onToggleNavigation}
-          className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors"
+          className={`text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors ${
+            isMobile ? 'h-11' : ''
+          }`}
         >
           Question {currentQuestionIndex + 1} of {questions.length}
         </button>
@@ -64,7 +68,9 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
         <Button
           onClick={isSubmitted ? onNext : onSubmit}
           disabled={!hasAnswered || (isSubmitted && isLastQuestion)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+          className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 ${
+            isMobile ? 'h-11' : ''
+          }`}
         >
           {isSubmitted ? (isLastQuestion ? 'Complete Quiz' : 'Next') : 'Submit'}
         </Button>

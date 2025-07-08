@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuizLayout from './Quiz/QuizLayout';
@@ -30,7 +31,6 @@ interface QuizViewProps {
   selectedTopics: string[];
   feedbackPreference: 'immediate' | 'end';
   onBack: () => void;
-  subject: Subject;
   topics: string[];
   userName: string;
 }
@@ -40,7 +40,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   selectedTopics,
   feedbackPreference,
   onBack,
-  subject,
   topics,
   userName
 }) => {
@@ -156,7 +155,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         onBack={onBack}
         feedbackPreference={feedbackPreference}
         userName={userName}
-        subject={subject}
       />
     );
   }
@@ -180,6 +178,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       questionPanel={
         <QuizQuestionPanel
           question={currentQuestion}
+          isFlagged={flaggedQuestions[currentQuestionIndex]}
+          onToggleFlag={handleToggleFlag}
         />
       }
       answerPanel={

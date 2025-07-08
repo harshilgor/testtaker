@@ -57,16 +57,6 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
     return (
       <div className="h-full p-4 bg-white overflow-y-auto">
         <div className="h-full flex flex-col pb-4">
-          {/* Mobile flag emoji - replace "Mark for Review" with flag emoji */}
-          <div className="flex items-center space-x-2 mb-4 flex-shrink-0">
-            <button
-              onClick={onToggleFlag}
-              className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
-            >
-              🚩
-            </button>
-          </div>
-
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto">
             <p className="text-sm text-gray-600 mb-4">

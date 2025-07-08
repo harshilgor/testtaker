@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface QuizTopHeaderProps {
   topics: string[];
@@ -9,6 +10,8 @@ interface QuizTopHeaderProps {
 }
 
 const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack }) => {
+  const { isMobile } = useResponsiveLayout();
+  
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -21,9 +24,16 @@ const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack }) =
         <div className="bg-blue-600 px-3 py-1 rounded text-sm font-medium">
           QUIZ
         </div>
-        <div className="text-sm">
-          Topics: {topics.join(', ')}
-        </div>
+        {!isMobile && (
+          <div className="text-sm">
+            Topics: {topics.join(', ')}
+          </div>
+        )}
+        {isMobile && (
+          <div className="text-sm">
+            {topics.join(', ')}
+          </div>
+        )}
       </div>
       <div className="flex items-center space-x-6">
         <div className="text-sm font-medium">
