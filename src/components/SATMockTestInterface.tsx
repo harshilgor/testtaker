@@ -3,6 +3,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import SATMockTestResults from './SATMockTestResults';
 import { questionService } from '@/services/questionService';
 import { useSATTestState } from '@/hooks/useSATTestState';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import SATTestHeader from './SAT/SATTestHeader';
 import SATQuestionPanel from './SAT/SATQuestionPanel';
 import SATAnswerPanel from './SAT/SATAnswerPanel';
@@ -39,6 +40,7 @@ type TestSection = 'reading-writing' | 'math';
 type TestModule = 1 | 2;
 
 const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onPauseTest, onQuitTest }) => {
+  const { isMobile } = useResponsiveLayout();
   const {
     currentProgress,
     setCurrentProgress,
@@ -66,7 +68,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     startTime
   } = useSATTestState();
 
-  // Load questions from database
   const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
     setLoading(true);
     try {
@@ -158,7 +159,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     }
   };
 
-  // Load initial questions
   useEffect(() => {
     console.log('Loading initial questions for:', currentProgress.section, currentProgress.module);
     loadQuestionsForModule(currentProgress.section, currentProgress.module);
@@ -171,7 +171,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   console.log('Current questions array length:', currentQuestions.length);
   console.log('Current question index:', currentProgress.questionIndex);
 
-  // Timer effect
   useEffect(() => {
     if (!testCompleted && !showTransition) {
       const timer = setInterval(() => {
@@ -370,7 +369,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     }
   };
 
-  // Show transition screen
   if (showTransition) {
     return <SATTransitionScreen />;
   }
@@ -379,7 +377,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     const testAnswers = generateTestAnswers();
     const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
     
-    // Create all questions for results
     const allQuestions: Question[] = [];
     moduleResults.forEach(result => {
       const moduleQuestions = Array.from({ length: result.totalQuestions }, (_, i) => ({
@@ -420,28 +417,101 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   const currentEliminated = eliminatedAnswers[currentQuestionId] || new Set();
   const currentAnswer = selectedAnswers[currentQuestionId];
 
+  if (isMobile) {
+    return (
+      <div className="h-screen bg-white flex flex-col overflow-hidden">
+        <div className="flex-shrink-0">
+          <SATTestHeader
+            section={currentProgress.section}
+            module={currentProgress.module}
+            timeRemaining={currentProgress.timeRemaining}
+            eliminateMode={eliminateMode}
+            onEliminateModeChange={setEliminateMode}
+            onBack={onBack}
+            isMobile={true}
+          />
+        </div>
+
+        <div className="flex-1 flex flex-col min-h-0">
+          <ResizablePanelGroup direction="vertical" className="h-full">
+            <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
+              <div className="h-full bg-white border-b border-gray-200 overflow-hidden">
+                <SATQuestionPanel question={currentQuestion} isMobile={true} />
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
+              <div className="h-full bg-white overflow-hidden">
+                <SATAnswerPanel
+                  question={currentQuestion}
+                  currentAnswer={currentAnswer}
+                  markedForReview={markedForReview.has(currentQuestionId)}
+                  eliminatedAnswers={currentEliminated}
+                  eliminateMode={eliminateMode}
+                  onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
+                  onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
+                  onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+                  isMobile={true}
+                />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+
+        <div className="flex-shrink-0 bg-white border-t border-gray-200">
+          <SATBottomNavigation
+            userDisplayName={userDisplayName}
+            currentQuestionIndex={currentProgress.questionIndex}
+            totalQuestions={currentQuestions.length}
+            isLastQuestion={currentProgress.questionIndex === currentQuestions.length - 1}
+            onShowNavigator={() => setShowNavigator(true)}
+            onNextQuestion={handleNextQuestion}
+            onModuleComplete={handleModuleComplete}
+            onPauseTest={handlePauseTest}
+            onQuitTest={handleQuitTest}
+            isMobile={true}
+          />
+        </div>
+
+        <SATQuestionNavigatorModal
+          showNavigator={showNavigator}
+          currentSection={currentProgress.section}
+          currentModule={currentProgress.module}
+          currentQuestionIndex={currentProgress.questionIndex}
+          questions={currentQuestions}
+          selectedAnswers={selectedAnswers}
+          markedForReview={markedForReview}
+          onClose={() => setShowNavigator(false)}
+          onNavigateToQuestion={navigateToQuestion}
+          onPauseTest={handlePauseTest}
+          onQuitTest={handleQuitTest}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
       <SATTestHeader
         section={currentProgress.section}
         module={currentProgress.module}
         timeRemaining={currentProgress.timeRemaining}
         eliminateMode={eliminateMode}
         onEliminateModeChange={setEliminateMode}
+        onBack={onBack}
+        isMobile={false}
       />
 
-      {/* Main Content with Resizable Panels */}
       <div className="flex-1 pb-20">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Left Panel - Question Text/Passage */}
           <ResizablePanel defaultSize={50} minSize={30}>
-            <SATQuestionPanel question={currentQuestion} />
+            <SATQuestionPanel question={currentQuestion} isMobile={false} />
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
-          {/* Right Panel - Question Prompt and Options */}
           <ResizablePanel defaultSize={50} minSize={30}>
             <SATAnswerPanel
               question={currentQuestion}
@@ -452,12 +522,12 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
               onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
               onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
               onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+              isMobile={false}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
 
-      {/* Sticky Bottom Navigation */}
       <SATBottomNavigation
         userDisplayName={userDisplayName}
         currentQuestionIndex={currentProgress.questionIndex}
@@ -468,9 +538,9 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         onModuleComplete={handleModuleComplete}
         onPauseTest={handlePauseTest}
         onQuitTest={handleQuitTest}
+        isMobile={false}
       />
 
-      {/* Question Navigator Modal */}
       <SATQuestionNavigatorModal
         showNavigator={showNavigator}
         currentSection={currentProgress.section}

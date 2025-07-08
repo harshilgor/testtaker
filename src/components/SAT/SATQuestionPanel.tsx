@@ -14,12 +14,13 @@ interface Question {
 
 interface SATQuestionPanelProps {
   question: Question | null;
+  isMobile?: boolean;
 }
 
-const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question }) => {
+const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question, isMobile = false }) => {
   if (!question) {
     return (
-      <div className="h-full overflow-y-auto p-8 flex items-center justify-center">
+      <div className="h-full overflow-y-auto p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-gray-500">Loading question...</div>
@@ -28,25 +29,27 @@ const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question }) => {
     );
   }
 
+  const paddingClass = isMobile ? 'p-4' : 'p-8';
+
   return (
-    <div className="h-full overflow-y-auto p-8">
-      <div className="max-w-3xl">
+    <div className={`h-full overflow-y-auto ${paddingClass}`}>
+      <div className="max-w-3xl mx-auto">
         {question.passage && (
-          <div className="mb-8">
+          <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Passage</h3>
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-              <p className="text-gray-900 leading-relaxed whitespace-pre-wrap">
+            <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
+              <p className="text-gray-900 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
                 {question.passage}
               </p>
             </div>
           </div>
         )}
         
-        <div className="mb-8">
+        <div className="mb-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {question.passage ? 'Question' : 'Question'}
+            Question
           </h3>
-          <p className="text-lg leading-relaxed text-gray-900">
+          <p className="text-base md:text-lg leading-relaxed text-gray-900">
             {question.content}
           </p>
         </div>
