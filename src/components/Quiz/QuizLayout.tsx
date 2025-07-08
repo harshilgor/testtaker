@@ -23,7 +23,7 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
   console.log('QuizLayout - isMobile:', isMobile);
   console.log('QuizLayout - Rendering layout for:', isMobile ? 'MOBILE' : 'DESKTOP');
 
-  // Mobile Layout - Vertical Split
+  // Mobile Layout - Vertical Resizable with draggable divider
   if (isMobile) {
     return (
       <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -33,17 +33,25 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
           {timer}
         </div>
 
-        {/* Main Content - Vertical Split (50/50) */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Question Panel - Top Half */}
-          <div className="flex-1 bg-white border-b border-gray-200 overflow-hidden">
-            {questionPanel}
-          </div>
+        {/* Main Content - Vertical Resizable */}
+        <div className="flex-1 flex flex-col min-h-0 pb-20">
+          <ResizablePanelGroup direction="vertical" className="h-full">
+            {/* Question Panel - Top */}
+            <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
+              <div className="h-full bg-white border-b border-gray-200 overflow-hidden">
+                {questionPanel}
+              </div>
+            </ResizablePanel>
 
-          {/* Answer Panel - Bottom Half */}
-          <div className="flex-1 bg-white overflow-hidden">
-            {answerPanel}
-          </div>
+            <ResizableHandle withHandle />
+
+            {/* Answer Panel - Bottom */}
+            <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
+              <div className="h-full bg-white overflow-hidden">
+                {answerPanel}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
 
         {/* Sticky Bottom Navigation */}

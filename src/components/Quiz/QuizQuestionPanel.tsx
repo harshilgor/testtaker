@@ -36,7 +36,7 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ question }) => {
             </div>
           </div>
 
-          {/* Conditional Question Image - Only show if hasImage is true */}
+          {/* Only show image if explicitly has one */}
           {question.hasImage && question.imageUrl && (
             <div className="mb-4">
               <img 
@@ -64,7 +64,7 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ question }) => {
           </div>
         </div>
 
-        {/* Conditional Question Image - Only show if hasImage is true */}
+        {/* Only show image if explicitly has one */}
         {question.hasImage && question.imageUrl && (
           <div className="mb-6">
             <img 

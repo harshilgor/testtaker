@@ -57,9 +57,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
   if (isMobile) {
     return (
       <div className="h-full p-4 bg-white overflow-y-auto">
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col pb-4">
           {/* Mobile flag checkbox */}
-          <div className="flex items-center space-x-2 mb-4">
+          <div className="flex items-center space-x-2 mb-4 flex-shrink-0">
             <Checkbox
               id="mark-review"
               checked={isFlagged}
@@ -70,11 +70,12 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
             </label>
           </div>
 
+          {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto">
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-gray-600 mb-4">
               Choose the best answer.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3 mb-6">
               {question.options.map((option: string, index: number) => {
                 const isSelected = selectedAnswer === index;
                 const isCorrectAnswer = index === question.correctAnswer;
@@ -85,7 +86,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                     key={index}
                     onClick={() => !isSubmitted && onAnswerSelect(index)}
                     disabled={isSubmitted}
-                    className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
+                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
                       isSelected
                         ? shouldShowCorrect
                           ? isCorrectAnswer
@@ -100,7 +101,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                     }`}
                   >
                     <div className="flex items-start space-x-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
                         isSelected
                           ? shouldShowCorrect
                             ? isCorrectAnswer
@@ -113,7 +114,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                       }`}>
                         {String.fromCharCode(65 + index)}
                       </div>
-                      <span className="flex-1 text-sm">
+                      <span className="flex-1 text-sm leading-relaxed">
                         {option}
                       </span>
                     </div>
@@ -122,8 +123,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
               })}
             </div>
 
+            {/* Feedback Section */}
             {showFeedback && feedbackPreference === 'immediate' && (
-              <div className={`mt-4 p-3 rounded-lg ${
+              <div className={`p-4 rounded-lg mb-4 ${
                 isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
               }`}>
                 <div className="flex items-center mb-2">
@@ -131,7 +133,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                     {isCorrect ? 'Correct!' : 'Incorrect'}
                   </span>
                 </div>
-                <p className={`text-xs ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                <p className={`text-xs leading-relaxed ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                   {question.explanation}
                 </p>
               </div>
