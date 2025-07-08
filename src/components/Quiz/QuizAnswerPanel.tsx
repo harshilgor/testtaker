@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
@@ -58,16 +57,14 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
     return (
       <div className="h-full p-4 bg-white overflow-y-auto">
         <div className="h-full flex flex-col pb-4">
-          {/* Mobile flag checkbox */}
+          {/* Mobile flag emoji - replace "Mark for Review" with flag emoji */}
           <div className="flex items-center space-x-2 mb-4 flex-shrink-0">
-            <Checkbox
-              id="mark-review"
-              checked={isFlagged}
-              onCheckedChange={onToggleFlag}
-            />
-            <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
-              Mark for Review
-            </label>
+            <button
+              onClick={onToggleFlag}
+              className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
+            >
+              🚩
+            </button>
           </div>
 
           {/* Scrollable content area */}

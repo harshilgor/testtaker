@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronUp } from 'lucide-react';
 import QuizBottomNavigationGrid from './QuizBottomNavigationGrid';
 
 interface Question {
@@ -29,6 +28,7 @@ interface QuizBottomNavigationProps {
   onToggleNavigation: () => void;
   onSubmit: () => void;
   submittedQuestions: boolean[];
+  onNext: () => void;
 }
 
 const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
@@ -42,34 +42,31 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
   isNavigationOpen,
   onToggleNavigation,
   onSubmit,
-  submittedQuestions
+  submittedQuestions,
+  onNext
 }) => {
   const hasAnswered = answers[currentQuestionIndex] !== null;
   const isSubmitted = submittedQuestions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 z-50">
       <div className="flex justify-between items-center">
-        {/* Left side - Progress indicator */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded">
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </span>
-          <Button
-            variant="outline"
-            onClick={onToggleNavigation}
-            className="border-gray-300 hover:bg-gray-50 px-2 py-1"
-          >
-            <ChevronUp className={`h-4 w-4 transition-transform ${isNavigationOpen ? 'rotate-180' : ''}`} />
-          </Button>
-        </div>
+        {/* Left side - Progress indicator - make it directly clickable (remove arrow) */}
+        <button
+          onClick={onToggleNavigation}
+          className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors"
+        >
+          Question {currentQuestionIndex + 1} of {questions.length}
+        </button>
         
-        {/* Right side - Submit button */}
+        {/* Right side - Submit/Next button */}
         <Button
-          onClick={onSubmit}
-          disabled={!hasAnswered || isSubmitted}
+          onClick={isSubmitted ? onNext : onSubmit}
+          disabled={!hasAnswered || (isSubmitted && isLastQuestion)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
         >
-          {isSubmitted ? 'Submitted' : 'Submit'}
+          {isSubmitted ? (isLastQuestion ? 'Complete Quiz' : 'Next') : 'Submit'}
         </Button>
       </div>
 

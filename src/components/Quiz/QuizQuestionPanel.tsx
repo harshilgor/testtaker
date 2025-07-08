@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
@@ -36,23 +35,13 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ question }) => {
             </div>
           </div>
 
-          {/* Only show image if explicitly has one */}
-          {question.hasImage && question.imageUrl && (
-            <div className="mb-4">
-              <img 
-                src={question.imageUrl} 
-                alt="Question diagram" 
-                className="max-w-full h-auto max-h-32 rounded-lg border border-gray-200"
-                loading="lazy"
-              />
-            </div>
-          )}
+          {/* Remove Question diagram component entirely from mobile view */}
         </div>
       </div>
     );
   }
 
-  // Desktop layout
+  // Desktop layout - keep existing functionality
   return (
     <div className="h-full p-8 bg-white overflow-y-auto">
       <div className="max-w-3xl">
