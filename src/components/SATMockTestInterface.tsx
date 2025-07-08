@@ -68,6 +68,8 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     startTime
   } = useSATTestState();
 
+  const [showFeedback, setShowFeedback] = React.useState<Record<string, boolean>>({});
+
   const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
     setLoading(true);
     try {
@@ -187,12 +189,17 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   }, [testCompleted, showTransition]);
 
   const handleAnswerSelect = (questionId: string, answerIndex: number) => {
-    if (!eliminateMode) {
-      setSelectedAnswers(prev => ({
-        ...prev,
-        [questionId]: answerIndex
-      }));
-    }
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionId]: answerIndex
+    }));
+  };
+
+  const handleSubmitAnswer = (questionId: string) => {
+    setShowFeedback(prev => ({
+      ...prev,
+      [questionId]: true
+    }));
   };
 
   const handleEliminateAnswer = (questionId: string, answerIndex: number) => {
@@ -293,6 +300,14 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   };
 
   const handleNextQuestion = () => {
+    // Reset feedback for the current question when moving to next
+    if (currentQuestionId) {
+      setShowFeedback(prev => ({
+        ...prev,
+        [currentQuestionId]: false
+      }));
+    }
+
     if (currentProgress.questionIndex < currentQuestions.length - 1) {
       setCurrentProgress(prev => ({ ...prev, questionIndex: prev.questionIndex + 1 }));
     } else {
@@ -416,6 +431,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
 
   const currentEliminated = eliminatedAnswers[currentQuestionId] || new Set();
   const currentAnswer = selectedAnswers[currentQuestionId];
+  const currentShowFeedback = showFeedback[currentQuestionId] || false;
 
   if (isMobile) {
     return (
@@ -448,11 +464,10 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
                   question={currentQuestion}
                   currentAnswer={currentAnswer}
                   markedForReview={markedForReview.has(currentQuestionId)}
-                  eliminatedAnswers={currentEliminated}
-                  eliminateMode={eliminateMode}
+                  showFeedback={currentShowFeedback}
                   onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
                   onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
-                  onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+                  onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
                   isMobile={true}
                 />
               </div>
@@ -466,6 +481,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
             currentQuestionIndex={currentProgress.questionIndex}
             totalQuestions={currentQuestions.length}
             isLastQuestion={currentProgress.questionIndex === currentQuestions.length - 1}
+            showFeedback={currentShowFeedback}
             onShowNavigator={() => setShowNavigator(true)}
             onNextQuestion={handleNextQuestion}
             onModuleComplete={handleModuleComplete}
@@ -517,11 +533,10 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
               question={currentQuestion}
               currentAnswer={currentAnswer}
               markedForReview={markedForReview.has(currentQuestionId)}
-              eliminatedAnswers={currentEliminated}
-              eliminateMode={eliminateMode}
+              showFeedback={currentShowFeedback}
               onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
               onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
-              onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+              onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
               isMobile={false}
             />
           </ResizablePanel>
@@ -533,6 +548,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         currentQuestionIndex={currentProgress.questionIndex}
         totalQuestions={currentQuestions.length}
         isLastQuestion={currentProgress.questionIndex === currentQuestions.length - 1}
+        showFeedback={currentShowFeedback}
         onShowNavigator={() => setShowNavigator(true)}
         onNextQuestion={handleNextQuestion}
         onModuleComplete={handleModuleComplete}

@@ -16,6 +16,10 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
   onQuestionCountChange,
   onFeedbackPreferenceChange
 }) => {
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
     <>
       <QuizFeedbackPreference
@@ -34,6 +38,7 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
           max="100"
           value={questionCount}
           onChange={onQuestionCountChange}
+          onFocus={handleInputFocus}
           placeholder="Enter number of questions (1-100)"
           className="w-full"
         />

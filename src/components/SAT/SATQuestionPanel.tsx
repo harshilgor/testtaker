@@ -34,17 +34,6 @@ const SATQuestionPanel: React.FC<SATQuestionPanelProps> = ({ question, isMobile 
   return (
     <div className={`h-full overflow-y-auto ${paddingClass}`}>
       <div className="max-w-3xl mx-auto">
-        {question.passage && (
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Passage</h3>
-            <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-              <p className="text-gray-900 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
-                {question.passage}
-              </p>
-            </div>
-          </div>
-        )}
-        
         <div className="mb-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Question

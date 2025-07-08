@@ -2,7 +2,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Lightbulb } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -19,11 +20,10 @@ interface SATAnswerPanelProps {
   question: Question | null;
   currentAnswer: number | undefined;
   markedForReview: boolean;
-  eliminatedAnswers: Set<number>;
-  eliminateMode: boolean;
+  showFeedback: boolean;
   onAnswerSelect: (answerIndex: number) => void;
   onToggleMarkForReview: () => void;
-  onEliminateAnswer: (answerIndex: number) => void;
+  onSubmitAnswer: () => void;
   isMobile?: boolean;
 }
 
@@ -31,11 +31,10 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
   question,
   currentAnswer,
   markedForReview,
-  eliminatedAnswers,
-  eliminateMode,
+  showFeedback,
   onAnswerSelect,
   onToggleMarkForReview,
-  onEliminateAnswer,
+  onSubmitAnswer,
   isMobile = false
 }) => {
   if (!question) {
@@ -81,59 +80,91 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
 
           <div className="space-y-3">
             {question.options.map((option, index) => {
-              const isEliminated = eliminatedAnswers.has(index);
               const optionLabel = String.fromCharCode(65 + index);
               const isSelected = currentAnswer === index;
+              const isCorrect = index === question.correctAnswer;
+              const isIncorrect = showFeedback && isSelected && !isCorrect;
               
               return (
-                <div 
-                  key={index} 
-                  className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 min-h-[44px] ${
-                    isEliminated ? 'opacity-50 bg-gray-100' : 'bg-white'
-                  } ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}
-                >
-                  <div className="flex items-center space-x-3 flex-1">
-                    <input
-                      type="radio"
-                      name="answer"
-                      checked={isSelected}
-                      onChange={() => onAnswerSelect(index)}
-                      disabled={isEliminated}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <label className="cursor-pointer flex-1 flex items-center">
-                      <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
-                        {optionLabel}
-                      </span>
-                      <span className={`${isEliminated ? 'line-through text-gray-400' : 'text-gray-900'} relative text-sm md:text-base`}>
-                        {option}
-                        {isEliminated && (
-                          <div className="absolute inset-0 flex items-center">
-                            <div className="w-full h-0.5 bg-gray-400"></div>
-                          </div>
-                        )}
-                      </span>
-                    </label>
+                <div key={index} className="space-y-2">
+                  <div 
+                    className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 min-h-[44px] cursor-pointer ${
+                      showFeedback && isCorrect
+                        ? 'border-green-500 bg-green-50'
+                        : showFeedback && isIncorrect
+                        ? 'border-red-500 bg-red-50'
+                        : isSelected 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-white'
+                    }`}
+                    onClick={() => !showFeedback && onAnswerSelect(index)}
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <input
+                        type="radio"
+                        name="answer"
+                        checked={isSelected}
+                        onChange={() => !showFeedback && onAnswerSelect(index)}
+                        disabled={showFeedback}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <label className="cursor-pointer flex-1 flex items-center">
+                        <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
+                          {optionLabel}
+                        </span>
+                        <span className="text-gray-900 text-sm md:text-base">
+                          {option}
+                        </span>
+                      </label>
+                    </div>
                   </div>
-                  
-                  {eliminateMode && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEliminateAnswer(index)}
-                      className={`p-1 h-8 w-8 min-h-[44px] min-w-[44px] ${
-                        isEliminated 
-                          ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                          : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                      }`}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+
+                  {showFeedback && isSelected && (
+                    <Card className={`p-3 ml-12 text-sm ${
+                      isCorrect 
+                        ? 'bg-green-50 border-green-200 text-green-800'
+                        : 'bg-red-50 border-red-200 text-red-800'
+                    }`}>
+                      <div className="flex items-start space-x-2">
+                        <Lightbulb className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                          isCorrect ? 'text-green-600' : 'text-red-600'
+                        }`} />
+                        <div>
+                          <p className="font-medium mb-1">
+                            {isCorrect ? 'Correct!' : 'Incorrect'}
+                          </p>
+                          <p>{question.explanation}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {showFeedback && isCorrect && currentAnswer !== index && (
+                    <Card className="p-3 ml-12 text-sm bg-green-50 border-green-200 text-green-800">
+                      <div className="flex items-start space-x-2">
+                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                        <div>
+                          <p className="font-medium mb-1">Correct Answer:</p>
+                          <p>{question.explanation}</p>
+                        </div>
+                      </div>
+                    </Card>
                   )}
                 </div>
               );
             })}
           </div>
+
+          {!showFeedback && currentAnswer !== undefined && (
+            <div className="mt-6">
+              <Button
+                onClick={onSubmitAnswer}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded min-h-[44px]"
+              >
+                Submit
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

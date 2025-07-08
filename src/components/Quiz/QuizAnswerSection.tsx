@@ -1,205 +1,134 @@
-
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
+import { Lightbulb } from 'lucide-react';
+
+interface Question {
+  id: string;
+  content: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  section: 'reading-writing' | 'math';
+  topic: string;
+}
 
 interface QuizAnswerSectionProps {
-  question: any;
-  selectedAnswer: number | null;
-  onAnswerSelect: (answerIndex: number) => void;
-  isFlagged: boolean;
-  onToggleFlag: () => void;
+  question: Question;
+  currentAnswer: number | null;
+  answeredQuestions: Set<string>;
+  flaggedQuestions: Set<string>;
   feedbackPreference: 'immediate' | 'end';
-  showFeedback: boolean;
-  isCorrect: boolean;
-  isMobile: boolean;
+  onAnswerChange: (answer: number) => void;
+  onToggleFlag: () => void;
+  onSubmitAnswer: () => void;
+  showRationale: boolean;
+  onShowRationale: () => void;
+  isSubmitted: boolean;
 }
 
 const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   question,
-  selectedAnswer,
-  onAnswerSelect,
-  isFlagged,
-  onToggleFlag,
+  currentAnswer,
+  answeredQuestions,
+  flaggedQuestions,
   feedbackPreference,
-  showFeedback,
-  isCorrect,
-  isMobile
+  onAnswerChange,
+  onToggleFlag,
+  onSubmitAnswer,
+  showRationale,
+  onShowRationale,
+  isSubmitted
 }) => {
-  console.log('QuizAnswerSection - isMobile:', isMobile);
+  const handleAnswerSelect = (selectedAnswer: number) => {
+    onAnswerChange(selectedAnswer);
+    
+    if (feedbackPreference === 'immediate') {
+      // Remove the toast notification - just submit directly
+      onSubmitAnswer();
+    }
+  };
 
-  if (isMobile) {
-    return (
-      <div className="h-full p-4 overflow-y-auto bg-white">
-        <div className="h-full flex flex-col">
-          {/* Mobile flag checkbox */}
-          <div className="flex items-center space-x-2 mb-4">
-            <Checkbox
-              id="mark-review"
-              checked={isFlagged}
-              onCheckedChange={onToggleFlag}
-            />
-            <label htmlFor="mark-review" className="text-sm text-gray-600 cursor-pointer">
-              Mark for Review
-            </label>
-          </div>
+  const isAnswered = answeredQuestions.has(question.id);
+  const isFlagged = flaggedQuestions.has(question.id);
+  const isCorrect = currentAnswer !== null && currentAnswer === question.correctAnswer;
+  const isIncorrect = currentAnswer !== null && currentAnswer !== question.correctAnswer;
 
-          <div className="flex-1 overflow-y-auto">
-            <p className="text-sm text-gray-600 mb-3">
-              Choose the best answer.
-            </p>
-            <div className="space-y-2">
-              {question.options.map((option: string, index: number) => {
-                const isSelected = selectedAnswer === index;
-                const isCorrectAnswer = index === question.correctAnswer;
-                const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => onAnswerSelect(index)}
-                    className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
-                      isSelected
-                        ? shouldShowCorrect
-                          ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-red-500 bg-red-50'
-                          : 'border-blue-500 bg-blue-50'
-                        : shouldShowCorrect && isCorrectAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                        isSelected
-                          ? shouldShowCorrect
-                            ? isCorrectAnswer
-                              ? 'border-green-500 bg-green-500 text-white'
-                              : 'border-red-500 bg-red-500 text-white'
-                            : 'border-blue-500 bg-blue-500 text-white'
-                          : shouldShowCorrect && isCorrectAnswer
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-gray-300'
-                      }`}>
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      <span className="flex-1 text-sm">
-                        {option}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {showFeedback && feedbackPreference === 'immediate' && (
-              <div className={`mt-4 p-3 rounded-lg ${
-                isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-              }`}>
-                <div className="flex items-center mb-2">
-                  <span className={`font-semibold text-sm ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                    {isCorrect ? 'Correct!' : 'Incorrect'}
-                  </span>
-                </div>
-                <p className={`text-xs ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                  {question.explanation}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop layout
   return (
-    <div className="w-1/2 h-full p-6 bg-white overflow-y-auto">
-      <div className="h-full flex flex-col">
-        {/* Desktop header */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base md:text-lg font-medium text-gray-900">
-            Answer Options
-          </h3>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <Checkbox
-                id="mark-review"
-                checked={isFlagged}
-                onCheckedChange={onToggleFlag}
-              />
-              <label htmlFor="mark-review" className="text-xs text-gray-600 cursor-pointer">
-                Mark for Review
-              </label>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id={`flag-${question.id}`}
+          checked={isFlagged}
+          onCheckedChange={() => onToggleFlag()}
+        />
+        <label htmlFor={`flag-${question.id}`} className="text-sm text-gray-600 cursor-pointer">
+          Flag for Review
+        </label>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <p className="text-xs md:text-sm text-gray-600 mb-3">
-            Choose the best answer.
-          </p>
-          <div className="space-y-2">
-            {question.options.map((option: string, index: number) => {
-              const isSelected = selectedAnswer === index;
-              const isCorrectAnswer = index === question.correctAnswer;
-              const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
-              
-              return (
-                <button
-                  key={index}
-                  onClick={() => onAnswerSelect(index)}
-                  className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? shouldShowCorrect
-                        ? isCorrectAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-red-500 bg-red-50'
-                        : 'border-blue-500 bg-blue-50'
-                      : shouldShowCorrect && isCorrectAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+      <div className="space-y-3">
+        {question.options.map((option, index) => {
+          const optionLabel = String.fromCharCode(65 + index);
+          const isSelected = currentAnswer === index;
+          const isCorrectOption = index === question.correctAnswer;
+
+          return (
+            <div key={index} className="space-y-2">
+              <div
+                className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer
+                  ${isSubmitted && isCorrectOption
+                    ? 'border-green-500 bg-green-50'
+                    : isSubmitted && isSelected && !isCorrectOption
+                      ? 'border-red-500 bg-red-50'
+                      : isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-blue-300'
                   }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                      isSelected
-                        ? shouldShowCorrect
-                          ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-red-500 bg-red-500 text-white'
-                          : 'border-blue-500 bg-blue-500 text-white'
-                        : shouldShowCorrect && isCorrectAnswer
-                          ? 'border-green-500 bg-green-500 text-white'
-                          : 'border-gray-300'
-                    }`}>
-                      {String.fromCharCode(65 + index)}
-                    </div>
-                    <span className="flex-1 text-sm md:text-base">
+                onClick={() => !isSubmitted && handleAnswerSelect(index)}
+              >
+                <div className="flex items-center space-x-3 flex-1">
+                  <input
+                    type="radio"
+                    name={`answer-${question.id}`}
+                    checked={isSelected}
+                    onChange={() => {}}
+                    className="text-blue-600 focus:ring-blue-500"
+                    disabled={isSubmitted}
+                  />
+                  <label className="cursor-pointer flex-1 flex items-center">
+                    <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
+                      {optionLabel}
+                    </span>
+                    <span className="text-gray-900 text-sm md:text-base">
                       {option}
                     </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {showFeedback && feedbackPreference === 'immediate' && (
-            <div className={`mt-4 p-3 rounded-lg ${
-              isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-            }`}>
-              <div className="flex items-center mb-2">
-                <span className={`font-semibold text-base ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                  {isCorrect ? 'Correct!' : 'Incorrect'}
-                </span>
+                  </label>
+                </div>
               </div>
-              <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                {question.explanation}
-              </p>
+
+              {isSubmitted && isSelected && (
+                <Card className={`p-3 ml-12 text-sm ${isCorrectOption ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                  <div className="flex items-start space-x-2">
+                    <Lightbulb className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isCorrectOption ? 'text-green-600' : 'text-red-600'}`} />
+                    <div>
+                      <p className="font-medium mb-1">{isCorrectOption ? 'Correct!' : 'Incorrect'}</p>
+                      <p>{question.explanation}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })}
       </div>
+
+      {feedbackPreference === 'end' && !isSubmitted && (
+        <Button onClick={onSubmitAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+          Submit Answer
+        </Button>
+      )}
     </div>
   );
 };

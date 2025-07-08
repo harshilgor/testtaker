@@ -7,6 +7,7 @@ interface SATBottomNavigationProps {
   currentQuestionIndex: number;
   totalQuestions: number;
   isLastQuestion: boolean;
+  showFeedback: boolean;
   onShowNavigator: () => void;
   onNextQuestion: () => void;
   onModuleComplete: () => void;
@@ -20,6 +21,7 @@ const SATBottomNavigation: React.FC<SATBottomNavigationProps> = ({
   currentQuestionIndex,
   totalQuestions,
   isLastQuestion,
+  showFeedback,
   onShowNavigator,
   onNextQuestion,
   onModuleComplete,
@@ -32,7 +34,6 @@ const SATBottomNavigation: React.FC<SATBottomNavigationProps> = ({
   return (
     <div className={`bg-white border-t border-gray-200 ${paddingClass} flex items-center justify-between sticky bottom-0 z-40`}>
       <div className="flex items-center space-x-4">
-        {/* Question Navigator Button */}
         <Button
           onClick={onShowNavigator}
           variant="outline"
@@ -42,14 +43,16 @@ const SATBottomNavigation: React.FC<SATBottomNavigationProps> = ({
         </Button>
       </div>
       
-      <div className="flex space-x-3">
-        <Button
-          onClick={isLastQuestion ? onModuleComplete : onNextQuestion}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded min-h-[44px]"
-        >
-          {isLastQuestion ? 'Complete' : 'Next'}
-        </Button>
-      </div>
+      {showFeedback && (
+        <div className="flex space-x-3">
+          <Button
+            onClick={isLastQuestion ? onModuleComplete : onNextQuestion}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded min-h-[44px]"
+          >
+            {isLastQuestion ? 'Complete' : 'Next'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
