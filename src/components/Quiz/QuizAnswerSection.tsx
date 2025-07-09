@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, X } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -27,6 +27,7 @@ interface QuizAnswerSectionProps {
   showRationale: boolean;
   onShowRationale: () => void;
   isSubmitted: boolean;
+  eliminateMode?: boolean;
 }
 
 const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
@@ -40,8 +41,10 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   onSubmitAnswer,
   showRationale,
   onShowRationale,
-  isSubmitted
+  isSubmitted,
+  eliminateMode = false
 }) => {
+  const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
   const handleAnswerSelect = (selectedAnswer: number) => {
     onAnswerChange(selectedAnswer);
     
@@ -49,6 +52,16 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
       // Submit directly without toast notification
       onSubmitAnswer();
     }
+  };
+
+  const handleToggleEliminate = (optionIndex: number) => {
+    const newEliminated = new Set(eliminatedOptions);
+    if (newEliminated.has(optionIndex)) {
+      newEliminated.delete(optionIndex);
+    } else {
+      newEliminated.add(optionIndex);
+    }
+    setEliminatedOptions(newEliminated);
   };
 
   const isAnswered = answeredQuestions.has(question.id);
@@ -74,11 +87,12 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           const optionLabel = String.fromCharCode(65 + index);
           const isSelected = currentAnswer === index;
           const isCorrectOption = index === question.correctAnswer;
+          const isEliminated = eliminatedOptions.has(index);
 
           return (
             <div key={index} className="space-y-2">
               <div
-                className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer
+                className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer relative
                   ${isSubmitted && isCorrectOption
                     ? 'border-green-500 bg-green-50'
                     : isSubmitted && isSelected && !isCorrectOption
@@ -102,11 +116,22 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                     <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
                       {optionLabel}
                     </span>
-                    <span className="text-gray-900 text-sm md:text-base">
+                    <span className={`text-gray-900 text-sm md:text-base ${isEliminated ? 'line-through' : ''}`}>
                       {option}
                     </span>
                   </label>
                 </div>
+                {eliminateMode && !isSubmitted && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleEliminate(index);
+                    }}
+                    className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </button>
+                )}
               </div>
 
               {isSubmitted && isSelected && (

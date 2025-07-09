@@ -1,15 +1,18 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface QuizTopHeaderProps {
   topics: string[];
   time: number;
   onBack: () => void;
+  eliminateMode?: boolean;
+  onToggleEliminateMode?: (enabled: boolean) => void;
 }
 
-const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack }) => {
+const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack, eliminateMode = false, onToggleEliminateMode }) => {
   const { isMobile } = useResponsiveLayout();
   
   const formatTime = (seconds: number) => {
@@ -39,6 +42,16 @@ const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack }) =
         <div className="text-sm font-medium">
           {formatTime(time)}
         </div>
+        {onToggleEliminateMode && (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-white">Eliminate Options</span>
+            <Switch
+              checked={eliminateMode}
+              onCheckedChange={onToggleEliminateMode}
+              className="data-[state=checked]:bg-blue-600"
+            />
+          </div>
+        )}
         <Button
           onClick={onBack}
           variant="outline"

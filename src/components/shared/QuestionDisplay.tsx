@@ -8,6 +8,7 @@ interface QuestionDisplayProps {
   hasImage?: boolean;
   isMobile?: boolean;
   className?: string;
+  showImage?: boolean;
 }
 
 const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
@@ -15,7 +16,8 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   imageUrl,
   hasImage,
   isMobile,
-  className = ''
+  className = '',
+  showImage = true
 }) => {
   return (
     <div className={`max-w-3xl mx-auto ${className}`}>
@@ -26,7 +28,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         {question}
       </div>
 
-      {hasImage && imageUrl && (
+      {showImage && hasImage && imageUrl && (
         <div className="mb-4 md:mb-6">
           <img 
             src={imageUrl} 

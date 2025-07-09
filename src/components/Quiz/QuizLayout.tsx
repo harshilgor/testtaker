@@ -65,11 +65,12 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
   // Desktop Layout - Horizontal Resizable
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Header Bar */}
-      {topHeader}
-
-      {/* Timer Component */}
-      {timer}
+      {/* Top Header Bar - Sticky */}
+      <div className="sticky top-0 z-50">
+        {topHeader}
+        {/* Timer Component */}
+        {timer}
+      </div>
 
       {/* Main Content Area */}
       <div className="flex-1 pb-20">

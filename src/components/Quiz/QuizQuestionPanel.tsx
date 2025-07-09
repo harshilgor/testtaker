@@ -68,17 +68,6 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({
           </div>
         </div>
 
-        {/* Only show image if explicitly has one */}
-        {question.hasImage && question.imageUrl && (
-          <div className="mb-6">
-            <img 
-              src={question.imageUrl} 
-              alt="Question diagram" 
-              className="max-w-full h-auto rounded-lg border border-gray-200"
-              loading="lazy"
-            />
-          </div>
-        )}
       </div>
     </div>
   );

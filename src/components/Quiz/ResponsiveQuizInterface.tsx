@@ -60,6 +60,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   const { isMobile } = useResponsiveLayout();
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [eliminateMode, setEliminateMode] = useState(false);
 
   // Debug logging
   console.log('Quiz Mode - isMobile:', isMobile);
@@ -133,6 +134,21 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
             timeElapsed={timeElapsed}
             onExit={onExitQuiz}
             isMobile={true}
+            additionalContent={
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-white">Eliminate</span>
+                <button
+                  onClick={() => setEliminateMode(!eliminateMode)}
+                  className={`w-8 h-4 rounded-full transition-colors ${
+                    eliminateMode ? 'bg-blue-600' : 'bg-gray-400'
+                  }`}
+                >
+                  <div className={`w-3 h-3 bg-white rounded-full transition-transform ${
+                    eliminateMode ? 'translate-x-4' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </div>
+            }
           />
         </div>
 
@@ -157,6 +173,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
               showRationale={showFeedback}
               onShowRationale={() => {}}
               isSubmitted={showFeedback}
+              eliminateMode={eliminateMode}
             />
           </div>
         </div>
@@ -164,27 +181,21 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         {/* Sticky Bottom Navigation */}
         <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Question {currentQuestionIndex + 1} of {totalQuestions}
-            </div>
-            <div className="flex space-x-3">
-              {onPrevious && currentQuestionIndex > 0 && (
-                <button
-                  onClick={onPrevious}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 min-h-[44px]"
-                  disabled={loading}
-                >
-                  Previous
-                </button>
-              )}
-              <button
-                onClick={isLastQuestion ? handleSubmitQuiz : onNext}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
-                disabled={loading}
-              >
-                {isLastQuestion ? 'Submit Quiz' : 'Next'}
-              </button>
-            </div>
+            <button
+              className="text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors flex items-center justify-between"
+            >
+              <span>Question {currentQuestionIndex + 1} of {totalQuestions}</span>
+              <svg className="h-4 w-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            <button
+              onClick={isLastQuestion ? handleSubmitQuiz : onNext}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
+              disabled={loading}
+            >
+              {isLastQuestion ? 'Submit Quiz' : 'Next'}
+            </button>
           </div>
         </div>
       </div>
@@ -195,14 +206,31 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   console.log('Quiz Mode - Using DESKTOP layout');
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <TopNavigation
-        mode="QUIZ"
-        modeColor="bg-blue-600"
-        title={topicsDisplay}
-        timeElapsed={timeElapsed}
-        onExit={onExitQuiz}
-        isMobile={false}
-      />
+      <div className="sticky top-0 z-50">
+        <TopNavigation
+          mode="QUIZ"
+          modeColor="bg-blue-600"
+          title={topicsDisplay}
+          timeElapsed={timeElapsed}
+          onExit={onExitQuiz}
+          isMobile={false}
+          additionalContent={
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-white">Eliminate Options</span>
+              <button
+                onClick={() => setEliminateMode(!eliminateMode)}
+                className={`w-10 h-5 rounded-full transition-colors ${
+                  eliminateMode ? 'bg-blue-600' : 'bg-gray-400'
+                }`}
+              >
+                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${
+                  eliminateMode ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+          }
+        />
+      </div>
       <div className="flex-1 flex">
         <QuizQuestionSection question={question} isMobile={false} />
         <QuizAnswerSection
@@ -217,6 +245,7 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
           showRationale={showFeedback}
           onShowRationale={() => {}}
           isSubmitted={showFeedback}
+          eliminateMode={eliminateMode}
         />
       </div>
       <BottomNavigation

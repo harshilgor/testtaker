@@ -137,7 +137,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
       <div className="flex-1">
         {/* Question Info Header */}
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-gray-900">Question</h3>
+          <h3 className="text-lg font-medium text-gray-900">Answer Options</h3>
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <Checkbox

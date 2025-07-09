@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { ChevronUp } from 'lucide-react';
 import QuizBottomNavigationGrid from './QuizBottomNavigationGrid';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
@@ -57,11 +58,12 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
         {/* Left side - Progress indicator - make it directly clickable */}
         <button
           onClick={onToggleNavigation}
-          className={`text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors ${
+          className={`text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors flex items-center justify-between ${
             isMobile ? 'h-11' : ''
           }`}
         >
-          Question {currentQuestionIndex + 1} of {questions.length}
+          <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
+          <ChevronUp className="h-4 w-4 ml-2" />
         </button>
         
         {/* Right side - Submit/Next button */}

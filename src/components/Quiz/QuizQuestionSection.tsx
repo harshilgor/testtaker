@@ -24,6 +24,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
           hasImage={question.hasImage}
           isMobile={true}
           className="h-full"
+          showImage={false}
         />
       </div>
     );
@@ -37,6 +38,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
         hasImage={question.hasImage}
         isMobile={false}
         className="h-full"
+        showImage={false}
       />
     </div>
   );
