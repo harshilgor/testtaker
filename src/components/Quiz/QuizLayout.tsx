@@ -73,7 +73,7 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 pb-20">
+      <div className="flex-1">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Left Panel - Question Content */}
           <ResizablePanel defaultSize={50} minSize={30}>

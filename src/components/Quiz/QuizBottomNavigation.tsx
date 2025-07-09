@@ -80,11 +80,18 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
         <Button
           onClick={isSubmitted ? onNext : onSubmit}
           disabled={!hasAnswered || (isSubmitted && isLastQuestion)}
-          className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 ${
+          className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 flex items-center ${
             isMobile ? 'h-11' : ''
           }`}
         >
-          {isSubmitted ? (isLastQuestion ? 'Complete Quiz' : 'Next Question') : 'Submit'}
+          {isSubmitted ? (
+            <>
+              {isLastQuestion ? 'Complete Quiz' : 'Next Question'}
+              {!isLastQuestion && <ChevronUp className="h-4 w-4 ml-2 rotate-90" />}
+            </>
+          ) : (
+            'Submit'
+          )}
         </Button>
       </div>
 

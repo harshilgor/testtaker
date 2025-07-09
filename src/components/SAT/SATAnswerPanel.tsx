@@ -87,25 +87,20 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
               
               return (
                 <div key={index} className="space-y-2">
-                  <div 
+                   <div 
                     className={`flex items-center space-x-3 p-3 rounded-lg border min-h-[44px] cursor-pointer transition-colors ${
-                      showFeedback && isCorrect
-                        ? 'border-green-500 bg-green-50'
-                        : showFeedback && isIncorrect
-                        ? 'border-red-500 bg-red-50'
-                        : isSelected 
+                      isSelected 
                         ? 'border-blue-500 bg-blue-50' 
                         : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
                     }`}
-                    onClick={() => !showFeedback && onAnswerSelect(index)}
+                    onClick={() => onAnswerSelect(index)}
                   >
                     <div className="flex items-center space-x-3 flex-1">
                       <input
                         type="radio"
                         name="answer"
                         checked={isSelected}
-                        onChange={() => !showFeedback && onAnswerSelect(index)}
-                        disabled={showFeedback}
+                        onChange={() => onAnswerSelect(index)}
                         className="text-blue-600 focus:ring-blue-500 pointer-events-none"
                         tabIndex={-1}
                       />
@@ -120,43 +115,13 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
                     </div>
                   </div>
 
-                  {showFeedback && isSelected && (
-                    <Card className={`p-3 ml-12 text-sm ${
-                      isCorrect 
-                        ? 'bg-green-50 border-green-200 text-green-800'
-                        : 'bg-red-50 border-red-200 text-red-800'
-                    }`}>
-                      <div className="flex items-start space-x-2">
-                        <Lightbulb className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
-                          isCorrect ? 'text-green-600' : 'text-red-600'
-                        }`} />
-                        <div>
-                          <p className="font-medium mb-1">
-                            {isCorrect ? 'Correct!' : 'Incorrect'}
-                          </p>
-                          <p>{question.explanation}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-
-                  {showFeedback && isCorrect && currentAnswer !== index && (
-                    <Card className="p-3 ml-12 text-sm bg-green-50 border-green-200 text-green-800">
-                      <div className="flex items-start space-x-2">
-                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                        <div>
-                          <p className="font-medium mb-1">Correct Answer:</p>
-                          <p>{question.explanation}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
+                  {/* No immediate feedback in SAT Practice Test mode */}
                 </div>
               );
             })}
           </div>
 
-          {!showFeedback && currentAnswer !== undefined && (
+          {currentAnswer !== undefined && (
             <div className="mt-6">
               <Button
                 onClick={onSubmitAnswer}

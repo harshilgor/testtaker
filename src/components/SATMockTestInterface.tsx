@@ -196,10 +196,9 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
   };
 
   const handleSubmitAnswer = (questionId: string) => {
-    setShowFeedback(prev => ({
-      ...prev,
-      [questionId]: true
-    }));
+    // For SAT Practice Test, just record the answer and move to next question
+    // No immediate feedback shown
+    handleNextQuestion();
   };
 
   const handleEliminateAnswer = (questionId: string, answerIndex: number) => {
