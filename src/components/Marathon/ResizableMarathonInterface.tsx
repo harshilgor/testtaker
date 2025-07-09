@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DatabaseQuestion } from '@/services/questionService';
 import { Switch } from '@/components/ui/switch';
@@ -254,7 +253,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Sticky Top Navigation */}
+      {/* Sticky Top Navigation - Updated to match SAT Practice Test height */}
       <div className="sticky top-0 z-50">
         <TopNavigation
           mode="MARATHON"
@@ -275,7 +274,6 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
           </ResizablePanel>
           <ResizableHandle 
             withHandle 
-            className="w-2 bg-gray-200 hover:bg-gray-300 transition-colors duration-200 relative flex items-center justify-center"
           />
           <ResizablePanel defaultSize={50} minSize={25} maxSize={75}>
             {renderAnswerSection()}
@@ -283,8 +281,8 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         </ResizablePanelGroup>
       </div>
 
-      {/* Sticky Bottom Navigation */}
-      <div className="sticky bottom-0 z-50 bg-white border-t border-gray-200 px-6 py-3">
+      {/* Sticky Bottom Navigation - Updated to match SAT Practice Test height and removed Exit Marathon button */}
+      <div className="sticky bottom-0 z-50 bg-white border-t border-gray-200 px-6 py-4">
         <div className="flex justify-between items-center">
           <button
             onClick={handleQuestionNavigatorToggle}
@@ -295,13 +293,6 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
           </button>
           
           <div className="flex space-x-3">
-            <Button
-              onClick={onEndMarathon}
-              variant="outline"
-              className="px-4 py-2"
-            >
-              Exit Marathon
-            </Button>
             {bottomNavContent}
           </div>
         </div>
