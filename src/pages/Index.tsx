@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +8,7 @@ import Dashboard from '@/components/Dashboard';
 import Leaderboard from '@/components/Leaderboard';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
 import Navigation from '@/components/Navigation';
+import StreakPopup from '@/components/StreakPopup';
 
 export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard';
 
@@ -39,6 +41,10 @@ const Index = () => {
 
   const handleNavigate = (screen: Screen) => {
     setCurrentScreen(screen);
+  };
+
+  const handleNavigateToPerformance = () => {
+    setCurrentScreen('performance-dashboard');
   };
 
   if (currentScreen === 'leaderboard') {
@@ -95,6 +101,14 @@ const Index = () => {
           onQuizSelect={() => navigate('/quiz')}
         />
       </div>
+      
+      {/* Streak Popup - only shows on dashboard */}
+      {currentScreen === 'dashboard' && (
+        <StreakPopup 
+          userName={userName} 
+          onNavigateToPerformance={handleNavigateToPerformance}
+        />
+      )}
     </div>
   );
 };

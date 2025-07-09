@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
+import StreakDisplay from './StreakDisplay';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -193,6 +195,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
+
+        {/* Streak Display */}
+        <StreakDisplay userName={userName} />
 
         {/* Overall Performance Summary */}
         <Card className="mb-8">
