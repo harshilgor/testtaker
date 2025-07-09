@@ -1,13 +1,12 @@
 
 import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { X, Flag } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface Question {
   id: string;
   content: string;
-  passage?: string;
   options: string[];
   correctAnswer: number;
   explanation: string;
@@ -18,7 +17,7 @@ interface Question {
 interface SATQuestionNavigatorModalProps {
   showNavigator: boolean;
   currentSection: 'reading-writing' | 'math';
-  currentModule: 1 | 2;
+  currentModule: number;
   currentQuestionIndex: number;
   questions: Question[];
   selectedAnswers: { [key: string]: number };
@@ -42,106 +41,118 @@ const SATQuestionNavigatorModal: React.FC<SATQuestionNavigatorModalProps> = ({
   onPauseTest,
   onQuitTest
 }) => {
-  if (!showNavigator) return null;
+  const sectionTitle = currentSection === 'reading-writing' ? 'Reading and Writing' : 'Math';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">
-            Section {currentSection === 'reading-writing' ? '1' : '2'}, Module {currentModule}: {currentSection === 'reading-writing' ? 'Reading and Writing' : 'Math'} Questions
-          </h3>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        <div className="flex items-center space-x-4 mb-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-blue-600"></div>
-            <span>Current</span>
+    <Dialog open={showNavigator} onOpenChange={onClose}>
+      <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-lg font-semibold">
+              Section {currentModule === 1 ? '1' : '2'}, Module {currentModule}: {sectionTitle} Questions
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded border-2 border-gray-300"></div>
-            <span>Unanswered</span>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Legend */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-600 text-white rounded flex items-center justify-center text-sm font-medium">
+                1
+              </div>
+              <span className="text-sm text-gray-600">Current</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-200 border border-gray-300 rounded flex items-center justify-center text-sm">
+                2
+              </div>
+              <span className="text-sm text-gray-600">Unanswered</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 border border-green-300 rounded flex items-center justify-center text-sm">
+                3
+              </div>
+              <span className="text-sm text-gray-600">Answered</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-100 border-2 border-yellow-400 rounded flex items-center justify-center text-sm">
+                4
+              </div>
+              <span className="text-sm text-gray-600">For Review</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Flag className="h-4 w-4 text-red-500" />
-            <span>For Review</span>
+
+          {/* Question Grid */}
+          <div className="grid grid-cols-5 gap-3">
+            {questions.map((question, index) => {
+              const isAnswered = selectedAnswers[question.id] !== undefined;
+              const isFlagged = markedForReview.has(question.id);
+              const isCurrent = index === currentQuestionIndex;
+
+              let buttonClass = "w-10 h-10 text-sm font-medium rounded border-2 transition-colors ";
+              
+              if (isCurrent) {
+                buttonClass += "bg-blue-600 text-white border-blue-600";
+              } else if (isFlagged) {
+                buttonClass += "bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200";
+              } else if (isAnswered) {
+                buttonClass += "bg-green-100 border-green-300 text-green-800 hover:bg-green-200";
+              } else {
+                buttonClass += "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200";
+              }
+
+              return (
+                <button
+                  key={question.id}
+                  onClick={() => {
+                    onNavigateToQuestion(index);
+                    onClose();
+                  }}
+                  className={buttonClass}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
           </div>
-        </div>
-        
-        <div className="grid grid-cols-10 gap-2 mb-6">
-          {questions.map((_, index) => {
-            const questionId = questions[index].id;
-            const isAnswered = selectedAnswers[questionId] !== undefined;
-            const isMarked = markedForReview.has(questionId);
-            const isCurrent = currentQuestionIndex === index;
-            
-            return (
-              <button
-                key={index}
-                onClick={() => onNavigateToQuestion(index)}
-                className={`relative w-12 h-12 rounded border-2 text-sm font-medium transition-colors ${
-                  isCurrent
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : isAnswered
-                    ? 'bg-blue-100 border-blue-300 text-blue-800'
-                    : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3 pt-4 border-t">
+            <Button
+              onClick={onClose}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Close
+            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={onPauseTest}
+                variant="outline"
+                className="w-full"
               >
-                {index + 1}
-                {isMarked && (
-                  <Flag className="h-3 w-3 absolute -top-1 -right-1 text-red-500" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        
-        <div className="flex justify-between">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="px-6">
+                Pause Test
+              </Button>
+              <Button
+                onClick={onQuitTest}
+                variant="outline"
+                className="w-full border-red-300 text-red-600 hover:bg-red-50"
+              >
                 Exit Practice Test
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Exit Practice Test</AlertDialogTitle>
-                <AlertDialogDescription>
-                  What would you like to do with your current progress?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col space-y-2 sm:flex-col sm:space-x-0">
-                <Button onClick={onPauseTest} className="w-full">
-                  Pause Test
-                  <div className="text-xs text-gray-500 mt-1">Your progress will be saved and you can resume later</div>
-                </Button>
-                <Button onClick={onQuitTest} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                  Quit Test
-                  <div className="text-xs text-gray-200 mt-1">All current progress will be lost</div>
-                </Button>
-                <AlertDialogCancel className="w-full">Continue Test</AlertDialogCancel>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          <Button
-            onClick={onClose}
-            variant="outline"
-            className="px-6"
-          >
-            Close
-          </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

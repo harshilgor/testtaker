@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,7 +46,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
     onAnswerChange(selectedAnswer);
     
     if (feedbackPreference === 'immediate') {
-      // Remove the toast notification - just submit directly
+      // Submit directly without toast notification
       onSubmitAnswer();
     }
   };

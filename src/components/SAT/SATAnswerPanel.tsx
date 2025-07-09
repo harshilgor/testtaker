@@ -88,14 +88,14 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
               return (
                 <div key={index} className="space-y-2">
                   <div 
-                    className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-gray-50 min-h-[44px] cursor-pointer ${
+                    className={`flex items-center space-x-3 p-3 rounded-lg border min-h-[44px] cursor-pointer transition-colors ${
                       showFeedback && isCorrect
                         ? 'border-green-500 bg-green-50'
                         : showFeedback && isIncorrect
                         ? 'border-red-500 bg-red-50'
                         : isSelected 
                         ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 bg-white'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
                     }`}
                     onClick={() => !showFeedback && onAnswerSelect(index)}
                   >
@@ -106,9 +106,10 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
                         checked={isSelected}
                         onChange={() => !showFeedback && onAnswerSelect(index)}
                         disabled={showFeedback}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="text-blue-600 focus:ring-blue-500 pointer-events-none"
+                        tabIndex={-1}
                       />
-                      <label className="cursor-pointer flex-1 flex items-center">
+                      <label className="cursor-pointer flex-1 flex items-center pointer-events-none">
                         <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
                           {optionLabel}
                         </span>

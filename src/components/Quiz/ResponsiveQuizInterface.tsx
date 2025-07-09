@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
 import BottomNavigation from '../shared/BottomNavigation';
 import QuizQuestionSection from './QuizQuestionSection';
 import QuizAnswerSection from './QuizAnswerSection';
+import QuizSummary from './QuizSummary';
 
 interface Question {
   id: string;
@@ -57,6 +58,8 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   onExitQuiz
 }) => {
   const { isMobile } = useResponsiveLayout();
+  const [quizCompleted, setQuizCompleted] = useState(false);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
 
   // Debug logging
   console.log('Quiz Mode - isMobile:', isMobile);
@@ -66,6 +69,8 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   const topicsDisplay = isMobile 
     ? `Topics: ${topics[0]}${topics.length > 1 ? '...' : ''}`
     : `Topics: ${topics.join(', ')}`;
+
+  const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
 
   // Create sets for QuizAnswerSection props
   const answeredQuestions = new Set<string>();
@@ -77,6 +82,41 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   
   if (isFlagged) {
     flaggedQuestions.add(question.id);
+  }
+
+  const handleSubmitQuiz = () => {
+    // Calculate final score
+    let finalCorrectAnswers = correctAnswers;
+    if (showFeedback && isCorrect) {
+      finalCorrectAnswers++;
+    }
+    setCorrectAnswers(finalCorrectAnswers);
+    setQuizCompleted(true);
+  };
+
+  const handleRetakeQuiz = () => {
+    setQuizCompleted(false);
+    setCorrectAnswers(0);
+    // Reset quiz state and go back to first question
+    window.location.reload();
+  };
+
+  const calculatePoints = () => {
+    return correctAnswers * 10; // 10 points per correct answer
+  };
+
+  if (quizCompleted) {
+    return (
+      <QuizSummary
+        totalQuestions={totalQuestions}
+        correctAnswers={correctAnswers}
+        totalPoints={calculatePoints()}
+        onRetakeQuiz={handleRetakeQuiz}
+        onBackToHome={onExitQuiz}
+        selectedTopics={topics}
+        timeElapsed={timeElapsed}
+      />
+    );
   }
 
   // Mobile Layout
@@ -138,11 +178,11 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
                 </button>
               )}
               <button
-                onClick={onNext}
+                onClick={isLastQuestion ? handleSubmitQuiz : onNext}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
                 disabled={loading}
               >
-                {currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
+                {isLastQuestion ? 'Submit Quiz' : 'Next'}
               </button>
             </div>
           </div>
@@ -183,8 +223,8 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
         currentQuestion={currentQuestionIndex + 1}
         totalQuestions={totalQuestions}
         onPrevious={onPrevious}
-        onNext={onNext}
-        nextLabel={currentQuestionIndex === totalQuestions - 1 ? 'Submit' : 'Next'}
+        onNext={isLastQuestion ? handleSubmitQuiz : onNext}
+        nextLabel={isLastQuestion ? 'Submit Quiz' : 'Next'}
         showPrevious={!!onPrevious}
         loading={loading}
         isMobile={false}
