@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
 import { useMarathonState } from './Marathon/useMarathonState';
@@ -12,6 +12,7 @@ import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
 import MarathonSummary from './MarathonSummary';
 import MarathonTimer from './Marathon/MarathonTimer';
 import { calculatePoints } from '@/services/pointsService';
+import { DatabaseQuestion } from '@/services/questionService';
 
 interface MarathonProps {
   settings: MarathonSettings | null;
@@ -21,6 +22,11 @@ interface MarathonProps {
 
 const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) => {
   const { session, attempts, recordAttempt, endSession } = useMarathonSession(settings);
+  
+  // Track answered questions and their history
+  const [questionHistory, setQuestionHistory] = useState<DatabaseQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   
   const {
     currentQuestion,
@@ -86,24 +92,59 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     }
   }, [session, currentQuestion, loading]);
 
+  // Add question to history when a new question is loaded
+  useEffect(() => {
+    if (currentQuestion && !questionHistory.find(q => q.id === currentQuestion.id)) {
+      setQuestionHistory(prev => [...prev, currentQuestion]);
+      setCurrentQuestionIndex(questionHistory.length);
+    }
+  }, [currentQuestion, questionHistory]);
+
   const handleTimerEnd = () => {
     console.log('Marathon: Timer ended, ending marathon');
     confirmEndMarathon();
   };
 
   const handleFlag = () => {
-    // Flag functionality - could be implemented later
     console.log('Question flagged');
+  };
+
+  const handleGoToQuestion = (questionNumber: number) => {
+    const questionIndex = questionNumber - 1;
+    if (questionIndex >= 0 && questionIndex < questionHistory.length) {
+      const question = questionHistory[questionIndex];
+      setCurrentQuestion(question);
+      setCurrentQuestionIndex(questionIndex);
+      console.log('Marathon: Navigated to question', questionNumber);
+    }
+  };
+
+  const handleAnswerWithHistory = (answer: string, showAnswerUsed?: boolean) => {
+    console.log('Marathon: Answer submitted', { 
+      answer, 
+      correctAnswer: currentQuestion?.correct_answer, 
+      showAnswerUsed,
+      questionNumber: currentQuestionIndex + 1
+    });
+    
+    // Mark this question as answered
+    setAnsweredQuestions(prev => new Set([...prev, currentQuestionIndex + 1]));
+    
+    // Handle the answer normally
+    handleAnswer(answer, showAnswerUsed || false);
+  };
+
+  const handleNextWithHistory = () => {
+    console.log('Marathon: Moving to next question');
+    // Always load a new question when clicking next
+    loadNextQuestion();
   };
 
   // Optimized end marathon handler that shows summary immediately
   const handleEndMarathonOptimized = () => {
     console.log('Marathon: End marathon clicked - showing summary immediately');
-    // Stop timer immediately
     stopTimer();
-    // Show summary instantly without waiting for backend operations
     setShowSummary(true);
-    // Perform cleanup operations in background
     setTimeout(() => {
       if (session) {
         endSession();
@@ -119,7 +160,9 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     showSummary,
     sessionStatsUsed: sessionStats.used,
     sessionStatsTotal: sessionStats.total,
-    correctAnswers: session?.correctAnswers || 0
+    correctAnswers: session?.correctAnswers || 0,
+    questionHistoryLength: questionHistory.length,
+    currentQuestionIndex
   });
 
   // Render states
@@ -177,17 +220,16 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     <>
       <MarathonInterface
         question={currentQuestion}
-        currentQuestionNumber={sessionStats.used + 1}
-        totalQuestions={sessionStats.total}
+        currentQuestionNumber={currentQuestionIndex + 1}
+        totalQuestions={Math.max(questionHistory.length, currentQuestionIndex + 1)}
         timeRemaining={settings.timedMode && settings.timeGoalMinutes ? settings.timeGoalMinutes * 60 - (totalTimeSpent + timeSpent) : undefined}
-        onAnswer={(selectedAnswer: string, showAnswerUsed?: boolean) => {
-          console.log('Marathon: Answer submitted', { selectedAnswer, correctAnswer: currentQuestion.correct_answer, showAnswerUsed });
-          handleAnswer(selectedAnswer, showAnswerUsed || false);
-        }}
-        onNext={handleNext}
+        onAnswer={handleAnswerWithHistory}
+        onNext={handleNextWithHistory}
         onFlag={handleFlag}
         onEndMarathon={handleEndMarathonOptimized}
         questionsSolved={session?.correctAnswers || 0}
+        onGoToQuestion={handleGoToQuestion}
+        answeredQuestions={answeredQuestions}
       />
 
       <MarathonEndConfirmation
