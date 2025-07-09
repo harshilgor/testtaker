@@ -93,10 +93,7 @@ const QuizView: React.FC<QuizViewProps> = ({
     newSubmitted[currentQuestionIndex] = true;
     setSubmittedQuestions(newSubmitted);
     
-    toast({
-      title: "Answer submitted",
-      description: "Your answer has been recorded.",
-    });
+    // Remove toast notification - feedback shown inline via rationale
   };
 
   const handleNext = () => {

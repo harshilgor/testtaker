@@ -52,13 +52,23 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
+  const handleNavigationToggle = () => {
+    onToggleNavigation();
+    // Auto-scroll to bottom when navigation opens (for web view only)
+    if (!isMobile && !isNavigationOpen) {
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
   return (
     <div className="bg-white border-t border-gray-200 px-6 py-3 z-50">
       <div className="flex justify-between items-center">
-        {/* Left side - Progress indicator - make it directly clickable */}
+        {/* Left side - Question Navigator button */}
         <button
-          onClick={onToggleNavigation}
-          className={`text-sm font-medium bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors flex items-center justify-between ${
+          onClick={handleNavigationToggle}
+          className={`text-sm font-medium bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors flex items-center justify-between ${
             isMobile ? 'h-11' : ''
           }`}
         >
@@ -66,7 +76,7 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
           <ChevronUp className="h-4 w-4 ml-2" />
         </button>
         
-        {/* Right side - Submit/Next button */}
+        {/* Right side - Single Submit/Next button */}
         <Button
           onClick={isSubmitted ? onNext : onSubmit}
           disabled={!hasAnswered || (isSubmitted && isLastQuestion)}
@@ -74,7 +84,7 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
             isMobile ? 'h-11' : ''
           }`}
         >
-          {isSubmitted ? (isLastQuestion ? 'Complete Quiz' : 'Next') : 'Submit'}
+          {isSubmitted ? (isLastQuestion ? 'Complete Quiz' : 'Next Question') : 'Submit'}
         </Button>
       </div>
 

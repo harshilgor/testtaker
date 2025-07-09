@@ -89,8 +89,10 @@ const QuizLayout: React.FC<QuizLayoutProps> = ({
         </ResizablePanelGroup>
       </div>
 
-      {/* Bottom Navigation */}
-      {bottomNavigation}
+      {/* Bottom Navigation - Sticky */}
+      <div className="sticky bottom-0 z-50">
+        {bottomNavigation}
+      </div>
     </div>
   );
 };
