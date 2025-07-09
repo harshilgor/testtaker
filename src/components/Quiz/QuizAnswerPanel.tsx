@@ -219,17 +219,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
         )}
       </div>
 
-      {/* Next Button - Desktop only */}
-      <div className="flex justify-end">
-        <Button
-          onClick={onNext}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2"
-          disabled={loading}
-        >
-          {currentQuestionIndex === totalQuestions - 1 ? 'Submit Quiz' : 'Next'}
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
+      {/* Next button removed - using bottom navigation only */}
     </div>
   );
 };

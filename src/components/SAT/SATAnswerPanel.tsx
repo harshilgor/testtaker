@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, X } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -25,6 +25,9 @@ interface SATAnswerPanelProps {
   onToggleMarkForReview: () => void;
   onSubmitAnswer: () => void;
   isMobile?: boolean;
+  eliminateMode?: boolean;
+  eliminatedAnswers?: Set<number>;
+  onEliminateAnswer?: (answerIndex: number) => void;
 }
 
 const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
@@ -35,7 +38,10 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
   onAnswerSelect,
   onToggleMarkForReview,
   onSubmitAnswer,
-  isMobile = false
+  isMobile = false,
+  eliminateMode = false,
+  eliminatedAnswers = new Set(),
+  onEliminateAnswer
 }) => {
   if (!question) {
     return (
@@ -84,6 +90,7 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
               const isSelected = currentAnswer === index;
               const isCorrect = index === question.correctAnswer;
               const isIncorrect = showFeedback && isSelected && !isCorrect;
+              const isEliminated = eliminatedAnswers.has(index);
               
               return (
                 <div key={index} className="space-y-2">
@@ -108,11 +115,25 @@ const SATAnswerPanel: React.FC<SATAnswerPanelProps> = ({
                         <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
                           {optionLabel}
                         </span>
-                        <span className="text-gray-900 text-sm md:text-base">
+                        <span className={`text-gray-900 text-sm md:text-base ${isEliminated ? 'line-through' : ''}`}>
                           {option}
                         </span>
                       </label>
                     </div>
+                    
+                    {/* Eliminate button - only show when eliminate mode is active */}
+                    {eliminateMode && onEliminateAnswer && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEliminateAnswer(index);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        aria-label={`${isEliminated ? 'Restore' : 'Eliminate'} option ${optionLabel}`}
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </button>
+                    )}
                   </div>
 
                   {/* No immediate feedback in SAT Practice Test mode */}

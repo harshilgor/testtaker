@@ -468,6 +468,9 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
                   onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
                   onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
                   isMobile={true}
+                  eliminateMode={eliminateMode}
+                  eliminatedAnswers={currentEliminated}
+                  onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
                 />
               </div>
             </ResizablePanel>
@@ -537,6 +540,9 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
               onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
               onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
               isMobile={false}
+              eliminateMode={eliminateMode}
+              eliminatedAnswers={currentEliminated}
+              onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
