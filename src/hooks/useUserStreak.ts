@@ -18,6 +18,18 @@ export const useUserStreak = (userName: string) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return null;
 
+      // First, trigger streak update to ensure current data
+      try {
+        const { error: updateError } = await supabase.rpc('update_user_streak', {
+          target_user_id: user.user.id
+        });
+        if (updateError) {
+          console.warn('Error updating streak:', updateError);
+        }
+      } catch (error) {
+        console.warn('Error calling update_user_streak:', error);
+      }
+
       const { data, error } = await supabase
         .from('user_streaks')
         .select('current_streak, longest_streak, last_activity_date')
