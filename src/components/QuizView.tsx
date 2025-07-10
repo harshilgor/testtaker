@@ -34,6 +34,7 @@ interface QuizViewProps {
   topics: string[];
   userName: string;
   subject: Subject;
+  onBackToDashboard: () => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -43,7 +44,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   onBack,
   topics,
   userName,
-  subject
+  subject,
+  onBackToDashboard
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -92,8 +94,6 @@ const QuizView: React.FC<QuizViewProps> = ({
     const newSubmitted = [...submittedQuestions];
     newSubmitted[currentQuestionIndex] = true;
     setSubmittedQuestions(newSubmitted);
-    
-    // Remove toast notification - feedback shown inline via rationale
   };
 
   const handleNext = () => {

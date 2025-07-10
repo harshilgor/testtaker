@@ -89,9 +89,10 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
         subject={subject}
         topics={selectedTopics.map(id => topics.find(t => t.id === id)?.skill || '').filter(Boolean)}
         userName={userName}
-        onEnd={handleQuizEnd}
+        onBack={handleQuizEnd}
         onBackToDashboard={onBackToDashboard}
         feedbackPreference={feedbackPreference}
+        selectedTopics={selectedTopics}
       />
     );
   }
@@ -106,10 +107,11 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
 
   // Group topics by domain
   const groupedTopics = topics.reduce((acc, topic) => {
-    if (!acc[topic.domain]) {
-      acc[topic.domain] = [];
+    const domain = topic.domain || 'General';
+    if (!acc[domain]) {
+      acc[domain] = [];
     }
-    acc[topic.domain].push(topic);
+    acc[domain].push(topic);
     return acc;
   }, {} as Record<string, typeof topics>);
 
@@ -200,7 +202,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                             </div>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {topic.question_count} questions available
+                            {topic.question_count || topic.count} questions available
                           </p>
                         </div>
                       ))}
