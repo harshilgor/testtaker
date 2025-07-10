@@ -19,6 +19,7 @@ export const useUserStreak = (userName: string) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) {
         console.log('No authenticated user found');
+        setIsLoading(false);
         return null;
       }
 
@@ -46,31 +47,25 @@ export const useUserStreak = (userName: string) => {
         .eq('user_id', user.user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching streak:', error);
         
-        // If no streak record exists, create one by checking for any user activity
+        // If no streak record exists, the function above should have created one
+        // Let's try fetching again after a short delay
         if (error.code === 'PGRST116') {
-          console.log('No streak record found, creating initial record...');
-          try {
-            await supabase.rpc('update_user_streak', {
-              target_user_id: user.user.id
-            });
+          console.log('No streak record found, trying to fetch again...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const { data: retryData, error: retryError } = await supabase
+            .from('user_streaks')
+            .select('current_streak, longest_streak, last_activity_date')
+            .eq('user_id', user.user.id)
+            .single();
             
-            // Try fetching again after creating
-            const { data: newData, error: newError } = await supabase
-              .from('user_streaks')
-              .select('current_streak, longest_streak, last_activity_date')
-              .eq('user_id', user.user.id)
-              .single();
-              
-            if (!newError) {
-              console.log('Successfully created and fetched new streak data:', newData);
-              setIsLoading(false);
-              return newData as UserStreak;
-            }
-          } catch (createError) {
-            console.error('Error creating initial streak record:', createError);
+          if (!retryError && retryData) {
+            console.log('Successfully fetched streak data on retry:', retryData);
+            setIsLoading(false);
+            return retryData as UserStreak;
           }
         }
         
@@ -84,7 +79,7 @@ export const useUserStreak = (userName: string) => {
     },
     enabled: !!userName,
     staleTime: 30000, // 30 seconds
-    cacheTime: 60000, // 1 minute
+    gcTime: 60000, // 1 minute (replaces cacheTime)
   });
 
   // Function to manually trigger streak update
