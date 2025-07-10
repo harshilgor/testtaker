@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Flag, FlagOff, ChevronRight, Clock } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -30,7 +30,9 @@ interface QuizAnswerPanelProps {
   isCorrect: boolean;
   onNext: () => void;
   loading: boolean;
-  isSubmitted?: boolean;
+  isSubmitted: boolean;
+  isLastQuestion?: boolean;
+  onSubmitQuiz?: () => void;
 }
 
 const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
@@ -46,180 +48,132 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
   isCorrect,
   onNext,
   loading,
-  isSubmitted = false
+  isSubmitted,
+  isLastQuestion = false,
+  onSubmitQuiz
 }) => {
-  const { isMobile } = useResponsiveLayout();
-  const hasAnswered = selectedAnswer !== null;
+  const optionLabels = ['A', 'B', 'C', 'D'];
 
-  console.log('QuizAnswerPanel - isMobile:', isMobile);
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 p-6 overflow-y-auto">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Question {currentQuestionIndex + 1} of {totalQuestions}
+            </h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleFlag}
+              className={`${isFlagged ? 'text-orange-600' : 'text-gray-400'} hover:text-orange-600`}
+            >
+              {isFlagged ? <Flag className="h-4 w-4" /> : <FlagOff className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
 
-  if (isMobile) {
-    return (
-      <div className="h-full p-4 bg-white overflow-y-auto">
-        <div className="h-full flex flex-col pb-4">
-          {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto">
-            <p className="text-sm text-gray-600 mb-4">
-              Choose the best answer.
-            </p>
-            <div className="space-y-3 mb-6">
-              {question.options.map((option: string, index: number) => {
-                const isSelected = selectedAnswer === index;
-                const isCorrectAnswer = index === question.correctAnswer;
-                const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => !isSubmitted && onAnswerSelect(index)}
-                    disabled={isSubmitted}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                      isSelected
-                        ? shouldShowCorrect
-                          ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-red-500 bg-red-50'
-                          : 'border-blue-500 bg-blue-50'
-                        : shouldShowCorrect && isCorrectAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : isSubmitted
-                            ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                        isSelected
-                          ? shouldShowCorrect
-                            ? isCorrectAnswer
-                              ? 'border-green-500 bg-green-500 text-white'
-                              : 'border-red-500 bg-red-500 text-white'
-                            : 'border-blue-500 bg-blue-500 text-white'
-                          : shouldShowCorrect && isCorrectAnswer
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-gray-300'
-                      }`}>
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      <span className="flex-1 text-sm leading-relaxed">
-                        {option}
-                      </span>
+        <div className="space-y-3">
+          {question.options.map((option, index) => {
+            const isSelected = selectedAnswer === index;
+            const isCorrectOption = index === question.correctAnswer;
+            
+            let optionStyle = "border-gray-200 hover:border-gray-300";
+            
+            if (showFeedback) {
+              if (isCorrectOption) {
+                optionStyle = "border-green-500 bg-green-50";
+              } else if (isSelected && !isCorrectOption) {
+                optionStyle = "border-red-500 bg-red-50";
+              }
+            } else if (isSelected) {
+              optionStyle = "border-blue-500 bg-blue-50";
+            }
+
+            return (
+              <Card
+                key={index}
+                className={`cursor-pointer transition-all duration-200 ${optionStyle}`}
+                onClick={() => !isSubmitted && onAnswerSelect(index)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mr-3 text-sm font-medium
+                      ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}`}>
+                      {optionLabels[index]}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                    <span className="text-gray-900">{option}</span>
+                    {showFeedback && isCorrectOption && (
+                      <span className="ml-auto text-green-600 font-semibold">✓</span>
+                    )}
+                    {showFeedback && isSelected && !isCorrectOption && (
+                      <span className="ml-auto text-red-600 font-semibold">✗</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-            {/* Feedback Section */}
-            {showFeedback && feedbackPreference === 'immediate' && (
-              <div className={`p-4 rounded-lg mb-4 ${
-                isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-              }`}>
-                <div className="flex items-center mb-2">
-                  <span className={`font-semibold text-sm ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                    {isCorrect ? 'Correct!' : 'Incorrect'}
-                  </span>
-                </div>
-                <p className={`text-xs leading-relaxed ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                  {question.explanation}
-                </p>
+        {showFeedback && (
+          <Card className="mt-6 bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center mb-2">
+                <span className={`font-semibold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                  {isCorrect ? '✓ Correct!' : '✗ Incorrect'}
+                </span>
               </div>
+              <p className="text-blue-800 text-sm">{question.explanation}</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Bottom Action Area */}
+      <div className="border-t border-gray-200 p-4 bg-white">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            <Clock className="h-4 w-4 inline mr-1" />
+            Question {currentQuestionIndex + 1} of {totalQuestions}
+          </div>
+          
+          <div className="flex space-x-2">
+            {isLastQuestion && selectedAnswer !== null ? (
+              <Button
+                onClick={onSubmitQuiz}
+                disabled={loading}
+                className="bg-green-600 hover:bg-green-700 text-white px-6"
+              >
+                {loading ? 'Submitting...' : 'Submit Quiz'}
+              </Button>
+            ) : (
+              <>
+                {feedbackPreference === 'immediate' && selectedAnswer !== null && !isSubmitted && (
+                  <Button
+                    onClick={onNext}
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                  >
+                    Submit Answer
+                  </Button>
+                )}
+                
+                {!isLastQuestion && (feedbackPreference === 'end' || isSubmitted) && (
+                  <Button
+                    onClick={onNext}
+                    disabled={selectedAnswer === null}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Next Question
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
-    );
-  }
-
-  // Desktop layout
-  return (
-    <div className="h-full p-8 bg-white border-l border-gray-200 flex flex-col">
-      <div className="flex-1">
-        {/* Question Info Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-gray-900">Answer Options</h3>
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mark-review"
-                checked={isFlagged}
-                onCheckedChange={onToggleFlag}
-              />
-              <label htmlFor="mark-review" className="text-sm text-gray-600">
-                Mark for Review
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Answer Options */}
-        <div className="mb-8">
-          <p className="text-sm text-gray-600 mb-4">Choose the best answer.</p>
-          <div className="space-y-3">
-            {question.options.map((option, index) => {
-              const isSelected = selectedAnswer === index;
-              const isCorrectAnswer = index === question.correctAnswer;
-              const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
-              
-              return (
-                <button
-                  key={index}
-                  onClick={() => !isSubmitted && onAnswerSelect(index)}
-                  disabled={isSubmitted}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? shouldShowCorrect
-                        ? isCorrectAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-red-500 bg-red-50'
-                        : 'border-blue-500 bg-blue-50'
-                      : shouldShowCorrect && isCorrectAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : isSubmitted
-                          ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium ${
-                      isSelected
-                        ? shouldShowCorrect
-                          ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-red-500 bg-red-500 text-white'
-                          : 'border-blue-500 bg-blue-500 text-white'
-                        : shouldShowCorrect && isCorrectAnswer
-                          ? 'border-green-500 bg-green-500 text-white'
-                          : 'border-gray-300'
-                    }`}>
-                      {String.fromCharCode(65 + index)}
-                    </div>
-                    <span className="flex-1">{option}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Feedback Section */}
-        {showFeedback && feedbackPreference === 'immediate' && (
-          <div className={`p-4 rounded-lg mb-6 ${
-            isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className="flex items-center mb-2">
-              <span className={`font-semibold ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                {isCorrect ? 'Correct!' : 'Incorrect'}
-              </span>
-            </div>
-            <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-              {question.explanation}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Next button removed - using bottom navigation only */}
     </div>
   );
 };
