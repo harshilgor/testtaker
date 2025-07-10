@@ -24,7 +24,7 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     );
   }
 
-  if (!streakData) {
+  if (!streakData || streakData.current_streak === 0) {
     return (
       <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200">
         <CardContent className="p-6">

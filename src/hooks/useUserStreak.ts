@@ -18,6 +18,8 @@ export const useUserStreak = (userName: string) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return null;
 
+      console.log('Fetching streak data for user:', user.user.id);
+
       // First, trigger streak update to ensure current data
       try {
         const { error: updateError } = await supabase.rpc('update_user_streak', {
@@ -41,15 +43,32 @@ export const useUserStreak = (userName: string) => {
         return null;
       }
 
+      console.log('Streak data:', data);
       setIsLoading(false);
       return data as UserStreak | null;
     },
     enabled: !!userName,
   });
 
+  // Function to check if user has activity today and update streak
+  const checkTodayActivity = async () => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    try {
+      await supabase.rpc('update_user_streak', {
+        target_user_id: user.user.id
+      });
+      refetch();
+    } catch (error) {
+      console.error('Error updating streak:', error);
+    }
+  };
+
   return {
     streakData,
     isLoading,
-    refetch
+    refetch,
+    checkTodayActivity
   };
 };

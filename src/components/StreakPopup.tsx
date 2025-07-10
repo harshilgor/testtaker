@@ -12,20 +12,19 @@ interface StreakPopupProps {
 
 const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerformance }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [hasBeenShown, setHasBeenShown] = useState(false);
   const { streakData, isLoading } = useUserStreak(userName);
 
   useEffect(() => {
-    // Check if popup has been shown this session
-    const popupShown = sessionStorage.getItem('streak-popup-shown');
+    // Check if popup has been shown today
+    const today = new Date().toDateString();
+    const lastShown = localStorage.getItem('streak-popup-last-shown');
     
-    if (!popupShown && !isLoading && streakData && streakData.current_streak > 0) {
+    if (lastShown !== today && !isLoading && streakData && streakData.current_streak > 0) {
       // Show popup after a small delay
       const timer = setTimeout(() => {
         setIsVisible(true);
-        setHasBeenShown(true);
-        sessionStorage.setItem('streak-popup-shown', 'true');
-      }, 1500);
+        localStorage.setItem('streak-popup-last-shown', today);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -44,41 +43,80 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
     return null;
   }
 
+  // Generate week view based on current streak
+  const getWeekView = () => {
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const today = new Date().getDay();
+    const mondayIndex = today === 0 ? 6 : today - 1; // Convert Sunday=0 to Monday=0 system
+    
+    return days.map((day, index) => {
+      const isToday = index === mondayIndex;
+      const daysPastMonday = index;
+      const isCompleted = daysPastMonday <= mondayIndex && streakData.current_streak > (mondayIndex - daysPastMonday);
+      
+      return { day, isCompleted, isToday };
+    });
+  };
+
+  const weekView = getWeekView();
+
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
-      <Card className="w-80 bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg border-0">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Flame className="h-6 w-6 text-yellow-200 animate-pulse" />
-              <h3 className="font-bold text-lg">Streak Active!</h3>
-            </div>
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-white hover:bg-white/20"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+      <Card className="w-80 bg-white shadow-xl border border-gray-200 rounded-2xl overflow-hidden">
+        <CardContent className="p-6 relative">
+          <Button
+            onClick={handleClose}
+            variant="ghost"
+            size="sm"
+            className="absolute top-3 right-3 h-6 w-6 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+          >
+            <X className="h-4 w-4" />
+          </Button>
           
-          <div className="mb-4">
-            <p className="text-white/90 text-sm mb-2">
-              🔥 You're on a {streakData.current_streak}-day streak!
-            </p>
-            <p className="text-white/80 text-xs">
-              Keep practicing to maintain your momentum
-            </p>
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl flex items-center justify-center">
+              <Flame className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">{streakData.current_streak}</div>
+              <div className="text-sm text-gray-600">day streak</div>
+            </div>
           </div>
 
-          <Button
-            onClick={handleNavigate}
-            variant="secondary"
-            className="w-full bg-white text-orange-600 hover:bg-white/90 font-medium"
-          >
-            View Performance Dashboard
-          </Button>
+          <div className="flex justify-between items-center mb-4">
+            {weekView.map((item, index) => (
+              <div key={index} className="flex flex-col items-center space-y-1">
+                <div 
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    item.isCompleted 
+                      ? 'bg-green-500 text-white' 
+                      : item.isToday 
+                        ? 'bg-gray-300 border-2 border-gray-400' 
+                        : 'border-2 border-gray-200'
+                  }`}
+                >
+                  {item.isCompleted && (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 font-medium">{item.day}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <p className="text-gray-600 text-sm mb-3">
+              Great job! Keep practicing to maintain your streak.
+            </p>
+            <Button
+              onClick={handleNavigate}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium rounded-xl"
+            >
+              View Performance
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
