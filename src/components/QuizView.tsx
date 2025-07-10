@@ -8,7 +8,6 @@ import QuizQuestionPanel from './Quiz/QuizQuestionPanel';
 import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import QuizResultsView from './Quiz/QuizResultsView';
-import QuizSummaryModal from './Quiz/QuizSummaryModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +35,6 @@ interface QuizViewProps {
   userName: string;
   subject: Subject;
   onBackToDashboard: () => void;
-  onEnd?: () => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -47,8 +45,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   topics,
   userName,
   subject,
-  onBackToDashboard,
-  onEnd
+  onBackToDashboard
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -60,15 +57,12 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [submittedQuestions, setSubmittedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes
   const [isComplete, setIsComplete] = useState(false);
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [timeElapsed, setTimeElapsed] = useState(0);
 
   useEffect(() => {
     const timerId = setInterval(() => {
       setTimeRemaining(prevTime => prevTime > 0 ? prevTime - 1 : 0);
-      setTimeElapsed(prevTime => prevTime + 1);
     }, 1000);
 
     return () => clearInterval(timerId);
@@ -105,6 +99,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      handleQuizComplete();
     }
   };
 
@@ -126,11 +122,11 @@ const QuizView: React.FC<QuizViewProps> = ({
           total_questions: questions.length,
           correct_answers: correctAnswers,
           score_percentage: scorePercentage,
-          time_taken: timeElapsed
+          time_taken: (30 * 60) - timeRemaining
         });
       }
       
-      setShowSummaryModal(true);
+      setIsComplete(true);
     } catch (error) {
       console.error('Error saving quiz results:', error);
       toast({
@@ -148,7 +144,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const showFeedback = feedbackPreference === 'immediate' && isSubmitted;
   const isCorrect = answers[currentQuestionIndex] === currentQuestion.correctAnswer;
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   if (isComplete) {
     return (
@@ -165,78 +160,62 @@ const QuizView: React.FC<QuizViewProps> = ({
   }
 
   return (
-    <>
-      <QuizLayout
-        topHeader={
-          <QuizTopHeader
-            topics={topics}
-            time={timeRemaining}
-            onBack={onBack}
-          />
-        }
-        timer={
-          <QuizTimer
-            onTimeUpdate={(time) => {
-              // Timer logic handled by useEffect above
-            }}
-          />
-        }
-        questionPanel={
-          <QuizQuestionPanel
-            question={currentQuestion}
-            isFlagged={flaggedQuestions[currentQuestionIndex]}
-            onToggleFlag={handleToggleFlag}
-          />
-        }
-        answerPanel={
-          <QuizAnswerPanel
-            question={currentQuestion}
-            selectedAnswer={answers[currentQuestionIndex]}
-            onAnswerSelect={handleAnswerSelect}
-            isFlagged={flaggedQuestions[currentQuestionIndex]}
-            onToggleFlag={handleToggleFlag}
-            currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-            feedbackPreference={feedbackPreference}
-            showFeedback={showFeedback}
-            isCorrect={isCorrect}
-            onNext={handleNext}
-            loading={loading}
-            isSubmitted={isSubmitted}
-            isLastQuestion={isLastQuestion}
-            onSubmitQuiz={handleQuizComplete}
-          />
-        }
-        bottomNavigation={
-          <QuizBottomNavigation
-            questions={questions}
-            currentQuestionIndex={currentQuestionIndex}
-            answers={answers}
-            flaggedQuestions={flaggedQuestions}
-            onGoToQuestion={setCurrentQuestionIndex}
-            answeredCount={answeredCount}
-            selectedTopics={selectedTopics}
-            isNavigationOpen={isNavigationOpen}
-            onToggleNavigation={() => setIsNavigationOpen(!isNavigationOpen)}
-            onSubmit={handleSubmit}
-            submittedQuestions={submittedQuestions}
-            onNext={handleNext}
-          />
-        }
-      />
-      
-      <QuizSummaryModal
-        isOpen={showSummaryModal}
-        onClose={() => setShowSummaryModal(false)}
-        questions={questions}
-        answers={answers}
-        timeElapsed={timeElapsed}
-        userName={userName}
-        subject={subject}
-        topics={topics}
-        onBackToDashboard={onBackToDashboard}
-      />
-    </>
+    <QuizLayout
+      topHeader={
+        <QuizTopHeader
+          topics={topics}
+          time={timeRemaining}
+          onBack={onBack}
+        />
+      }
+      timer={
+        <QuizTimer
+          onTimeUpdate={(time) => {
+            // Timer logic handled by useEffect above
+          }}
+        />
+      }
+      questionPanel={
+        <QuizQuestionPanel
+          question={currentQuestion}
+          isFlagged={flaggedQuestions[currentQuestionIndex]}
+          onToggleFlag={handleToggleFlag}
+        />
+      }
+      answerPanel={
+        <QuizAnswerPanel
+          question={currentQuestion}
+          selectedAnswer={answers[currentQuestionIndex]}
+          onAnswerSelect={handleAnswerSelect}
+          isFlagged={flaggedQuestions[currentQuestionIndex]}
+          onToggleFlag={handleToggleFlag}
+          currentQuestionIndex={currentQuestionIndex}
+          totalQuestions={questions.length}
+          feedbackPreference={feedbackPreference}
+          showFeedback={showFeedback}
+          isCorrect={isCorrect}
+          onNext={handleNext}
+          loading={loading}
+          isSubmitted={isSubmitted}
+        />
+      }
+      bottomNavigation={
+        <QuizBottomNavigation
+          questions={questions}
+          currentQuestionIndex={currentQuestionIndex}
+          answers={answers}
+          flaggedQuestions={flaggedQuestions}
+          onGoToQuestion={setCurrentQuestionIndex}
+          answeredCount={answeredCount}
+          selectedTopics={selectedTopics}
+          isNavigationOpen={isNavigationOpen}
+          onToggleNavigation={() => setIsNavigationOpen(!isNavigationOpen)}
+          onSubmit={handleSubmit}
+          submittedQuestions={submittedQuestions}
+          onNext={handleNext}
+        />
+      }
+    />
   );
 };
 

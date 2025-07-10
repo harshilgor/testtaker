@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Flame, Award, Calendar } from 'lucide-react';
 import { useUserStreak } from '@/hooks/useUserStreak';
@@ -9,18 +9,11 @@ interface StreakDisplayProps {
 }
 
 const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
-  const { streakData, isLoading, refetch } = useUserStreak(userName);
-
-  // Refetch streak data when component mounts
-  useEffect(() => {
-    if (userName) {
-      refetch();
-    }
-  }, [userName, refetch]);
+  const { streakData, isLoading } = useUserStreak(userName);
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 mb-6">
+      <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
         <CardContent className="p-6">
           <div className="animate-pulse">
             <div className="h-6 bg-orange-200 rounded w-48 mb-2"></div>
@@ -31,9 +24,9 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     );
   }
 
-  if (!streakData || streakData.current_streak === 0) {
+  if (!streakData) {
     return (
-      <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 mb-6">
+      <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200">
         <CardContent className="p-6">
           <div className="flex items-center space-x-3">
             <div className="bg-gray-200 rounded-full p-3">

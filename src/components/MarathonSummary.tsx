@@ -7,7 +7,6 @@ import { Trophy, Target, Clock, Award, Eye, TrendingUp, TrendingDown, AlertTrian
 import { getSessionTotalPoints } from '@/services/pointsService';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useUserStreak } from '@/hooks/useUserStreak';
-import { supabase } from '@/integrations/supabase/client';
 
 interface TopicPerformance {
   topic: string;
@@ -56,74 +55,42 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   const { isMobile } = useResponsiveLayout();
   const { streakData } = useUserStreak(userName);
 
+  // Mock data for topic performance - in real app this would come from session data
   useEffect(() => {
-    const fetchSessionData = async () => {
-      if (!sessionId) {
-        setLoading(false);
-        return;
+    // Simulate topic performance data
+    const mockTopics: TopicPerformance[] = [
+      { topic: 'Algebra', attempted: 8, correct: 6, accuracy: 75, avgTime: 45 },
+      { topic: 'Geometry', attempted: 5, correct: 2, accuracy: 40, avgTime: 62 },
+      { topic: 'Statistics', attempted: 4, correct: 4, accuracy: 100, avgTime: 38 },
+      { topic: 'Functions', attempted: 6, correct: 3, accuracy: 50, avgTime: 55 },
+    ].sort((a, b) => a.accuracy - b.accuracy); // Sort by accuracy (weak first)
+    
+    setTopicPerformance(mockTopics);
+
+    // Mock question review data
+    const mockReviews: QuestionReview[] = [
+      {
+        id: '1',
+        question: 'If 2x + 3 = 11, what is the value of x?',
+        userAnswer: '4',
+        correctAnswer: '4',
+        isCorrect: true,
+        topic: 'Algebra',
+        explanation: 'Subtract 3 from both sides: 2x = 8, then divide by 2: x = 4'
+      },
+      {
+        id: '2',
+        question: 'What is the area of a circle with radius 5?',
+        userAnswer: '78.5',
+        correctAnswer: '25π',
+        isCorrect: false,
+        topic: 'Geometry',
+        explanation: 'The area of a circle is πr². With r=5, the area is π(5)² = 25π ≈ 78.54'
       }
-
-      try {
-        // Fetch question attempts for this session
-        const { data: attempts, error } = await supabase
-          .from('question_attempts_v2')
-          .select('*')
-          .eq('session_id', sessionId)
-          .eq('session_type', 'marathon');
-
-        if (error) {
-          console.error('Error fetching session attempts:', error);
-          setLoading(false);
-          return;
-        }
-
-        if (attempts && attempts.length > 0) {
-          // Calculate topic performance
-          const topicStats: { [key: string]: { attempted: number; correct: number; totalTime: number } } = {};
-          
-          attempts.forEach(attempt => {
-            if (!topicStats[attempt.topic]) {
-              topicStats[attempt.topic] = { attempted: 0, correct: 0, totalTime: 0 };
-            }
-            topicStats[attempt.topic].attempted++;
-            if (attempt.is_correct) {
-              topicStats[attempt.topic].correct++;
-            }
-            topicStats[attempt.topic].totalTime += attempt.time_spent || 0;
-          });
-
-          const topics: TopicPerformance[] = Object.entries(topicStats).map(([topic, stats]) => ({
-            topic,
-            attempted: stats.attempted,
-            correct: stats.correct,
-            accuracy: Math.round((stats.correct / stats.attempted) * 100),
-            avgTime: Math.round(stats.totalTime / stats.attempted)
-          })).sort((a, b) => a.accuracy - b.accuracy); // Sort by accuracy (weak first)
-          
-          setTopicPerformance(topics);
-
-          // Create question reviews from attempts
-          const reviews: QuestionReview[] = attempts.map((attempt, index) => ({
-            id: attempt.id,
-            question: `Question ${index + 1} - ${attempt.topic}`,
-            userAnswer: attempt.is_correct ? 'Correct' : 'Incorrect',
-            correctAnswer: 'Correct Answer',
-            isCorrect: attempt.is_correct,
-            topic: attempt.topic,
-            explanation: `This question covered ${attempt.topic} concepts.`
-          }));
-          
-          setQuestionReviews(reviews);
-        }
-      } catch (error) {
-        console.error('Error fetching session data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSessionData();
-  }, [sessionId]);
+    ];
+    
+    setQuestionReviews(mockReviews);
+  }, []);
 
   useEffect(() => {
     const fetchActualPoints = async () => {
@@ -140,6 +107,7 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
         const calculatedPoints = sessionStats.correctAnswers * 10;
         setActualPointsEarned(calculatedPoints);
       }
+      setLoading(false);
     };
 
     fetchActualPoints();
@@ -165,14 +133,14 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   };
 
   const getBadgeColor = (accuracy: number) => {
-    if (accuracy >= 70) return 'bg-green-100 text-green-800 border-green-200';
-    if (accuracy >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    if (accuracy >= 80) return 'bg-green-100 text-green-800 border-green-200';
+    if (accuracy >= 60) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-red-100 text-red-800 border-red-200';
   };
 
   const getBadgeEmoji = (accuracy: number) => {
-    if (accuracy >= 70) return '🟢';
-    if (accuracy >= 50) return '🟡';
+    if (accuracy >= 80) return '🟢';
+    if (accuracy >= 60) return '🟡';
     return '🔴';
   };
 
@@ -239,86 +207,82 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
         </Card>
 
         {/* Topic Performance */}
-        {topicPerformance.length > 0 && (
-          <Card>
-            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-              <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-4`}>Topic Performance</h2>
-              <div className="space-y-3">
-                {topicPerformance.map((topic, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <span className={`${isMobile ? 'text-lg' : 'text-xl'}`}>{getBadgeEmoji(topic.accuracy)}</span>
-                      <div>
-                        <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>{topic.topic}</h3>
-                        <p className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                          {topic.correct}/{topic.attempted} correct • {topic.accuracy}% accuracy
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full border ${getBadgeColor(topic.accuracy)} ${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>
-                      {topic.accuracy >= 70 ? 'Strong' : topic.accuracy >= 50 ? 'Moderate' : 'Weak'}
+        <Card>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-4`}>Topic Performance</h2>
+            <div className="space-y-3">
+              {topicPerformance.map((topic, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <span className={`${isMobile ? 'text-lg' : 'text-xl'}`}>{getBadgeEmoji(topic.accuracy)}</span>
+                    <div>
+                      <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>{topic.topic}</h3>
+                      <p className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                        {topic.correct}/{topic.attempted} correct • {topic.accuracy}% accuracy
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  <div className={`px-3 py-1 rounded-full border ${getBadgeColor(topic.accuracy)} ${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>
+                    {topic.accuracy >= 80 ? 'Strong' : topic.accuracy >= 60 ? 'Moderate' : 'Weak'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Highlights */}
-        {topicPerformance.length > 0 && (
-          <Card>
-            <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
-              <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-4`}>Performance Highlights</h2>
-              <div className="space-y-3">
-                {strongestTopic && (
-                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className={`text-green-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
-                        Your strongest topic was {strongestTopic.topic}
-                      </p>
-                      <p className={`text-green-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        {strongestTopic.correct}/{strongestTopic.attempted} correct ({strongestTopic.accuracy}% accuracy)
-                      </p>
-                    </div>
+        <Card>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
+            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-4`}>Performance Highlights</h2>
+            <div className="space-y-3">
+              {strongestTopic && (
+                <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className={`text-green-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
+                      Your strongest topic was {strongestTopic.topic}
+                    </p>
+                    <p className={`text-green-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      {strongestTopic.correct}/{strongestTopic.attempted} correct ({strongestTopic.accuracy}% accuracy)
+                    </p>
                   </div>
-                )}
-                
-                {weakestTopic && weakestTopic.accuracy < 70 && topicPerformance.length > 1 && (
-                  <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                    <TrendingDown className="h-5 w-5 text-red-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className={`text-red-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
-                        You struggled most in {weakestTopic.topic}
-                      </p>
-                      <p className={`text-red-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        {weakestTopic.correct}/{weakestTopic.attempted} correct ({weakestTopic.accuracy}% accuracy)
-                      </p>
-                      <Button variant="outline" size="sm" className={`mt-2 text-red-700 border-red-300 hover:bg-red-100 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        Practice this topic
-                      </Button>
-                    </div>
+                </div>
+              )}
+              
+              {weakestTopic && weakestTopic.accuracy < 70 && (
+                <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <TrendingDown className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className={`text-red-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
+                      You struggled most in {weakestTopic.topic}
+                    </p>
+                    <p className={`text-red-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      {weakestTopic.correct}/{weakestTopic.attempted} correct ({weakestTopic.accuracy}% accuracy)
+                    </p>
+                    <Button variant="outline" size="sm" className={`mt-2 text-red-700 border-red-300 hover:bg-red-100 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      Practice this topic
+                    </Button>
                   </div>
-                )}
+                </div>
+              )}
 
-                {avgTimePerQuestion < 30 && accuracy < 70 && (
-                  <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                    <div>
-                      <p className={`text-yellow-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
-                        Consider slowing down
-                      </p>
-                      <p className={`text-yellow-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        You averaged {avgTimePerQuestion}s per question. Taking more time might improve accuracy.
-                      </p>
-                    </div>
+              {avgTimePerQuestion < 30 && accuracy < 70 && (
+                <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className={`text-yellow-800 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
+                      Consider slowing down
+                    </p>
+                    <p className={`text-yellow-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      You averaged {avgTimePerQuestion}s per question. Taking more time might improve accuracy.
+                    </p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Time Analysis */}
         <Card>
@@ -375,8 +339,8 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-600">Topic:</p>
-                            <p className="text-sm text-gray-700">{review.topic}</p>
+                            <p className="text-sm font-medium text-gray-600">Correct Answer:</p>
+                            <p className="text-sm text-green-700">{review.correctAnswer}</p>
                           </div>
                         </div>
                         {review.explanation && (
