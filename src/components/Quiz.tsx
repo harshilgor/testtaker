@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, BookOpen, Calculator } from 'lucide-react';
 import { Subject } from '../types/common';
 import QuizTopicSelection from './QuizTopicSelection';
+import { useAutoTopicSelection } from '@/hooks/useAutoTopicSelection';
 
 interface QuizProps {
   userName: string;
@@ -13,6 +14,14 @@ interface QuizProps {
 
 const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const { autoSelection, clearAutoSelection } = useAutoTopicSelection();
+
+  useEffect(() => {
+    // If there's an auto selection, automatically navigate to that subject
+    if (autoSelection && !selectedSubject) {
+      setSelectedSubject(autoSelection.subject);
+    }
+  }, [autoSelection, selectedSubject]);
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -20,6 +29,7 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
 
   const handleBackToSubjects = () => {
     setSelectedSubject(null);
+    clearAutoSelection(); // Clear any pending auto selection
   };
 
   if (selectedSubject) {
@@ -29,6 +39,7 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
         userName={userName}
         onBack={handleBackToSubjects}
         onBackToDashboard={onBack}
+        autoSelection={autoSelection}
       />
     );
   }
