@@ -25,6 +25,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   
   // Track answered questions and their history
   const [questionHistory, setQuestionHistory] = useState<DatabaseQuestion[]>([]);
+  const [answerHistory, setAnswerHistory] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   
@@ -127,6 +128,13 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
       questionNumber: currentQuestionIndex + 1
     });
     
+    // Store the answer in history
+    setAnswerHistory(prev => {
+      const newHistory = [...prev];
+      newHistory[currentQuestionIndex] = answer;
+      return newHistory;
+    });
+    
     // Mark this question as answered
     setAnsweredQuestions(prev => new Set([...prev, currentQuestionIndex + 1]));
     
@@ -162,6 +170,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     sessionStatsTotal: sessionStats.total,
     correctAnswers: session?.correctAnswers || 0,
     questionHistoryLength: questionHistory.length,
+    answerHistoryLength: answerHistory.length,
     currentQuestionIndex
   });
 
@@ -172,7 +181,13 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
   }
 
   if (showSummary) {
-    console.log('Marathon: Showing summary');
+    console.log('Marathon: Showing summary with session data:', {
+      questions: questionHistory,
+      answers: answerHistory,
+      topics: [...new Set(questionHistory.map(q => q.skill || q.domain || 'General'))],
+      subjects: settings.subjects
+    });
+    
     return (
       <MarathonSummary
         sessionStats={{
@@ -182,6 +197,12 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
           showAnswerUsed: session?.showAnswerUsed || 0,
           timeSpent: totalTimeSpent + timeSpent,
           pointsEarned: sessionPoints
+        }}
+        sessionData={{
+          questions: questionHistory,
+          answers: answerHistory,
+          topics: [...new Set(questionHistory.map(q => q.skill || q.domain || 'General'))],
+          subjects: settings.subjects
         }}
         sessionId={session?.id}
         onBackToDashboard={onBack}

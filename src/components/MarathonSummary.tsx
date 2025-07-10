@@ -63,15 +63,19 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   const { isMobile } = useResponsiveLayout();
   const { streakData } = useUserStreak(userName);
 
+  console.log('MarathonSummary - sessionData:', sessionData);
+  console.log('MarathonSummary - sessionStats:', sessionStats);
+
   // Calculate real topic performance from session data
   useEffect(() => {
     if (sessionData?.questions && sessionData?.answers) {
+      console.log('Processing session data for topic performance...');
       const topicStats: { [key: string]: { attempted: number; correct: number; totalTime: number } } = {};
       
       sessionData.questions.forEach((question, index) => {
-        const topic = question.topic || question.skill || 'General';
+        const topic = question.topic || question.skill || question.domain || 'General';
         const userAnswer = sessionData.answers[index];
-        const isCorrect = userAnswer === question.correctAnswer;
+        const isCorrect = userAnswer === question.correctAnswer || userAnswer === question.correct_answer;
         
         if (!topicStats[topic]) {
           topicStats[topic] = { attempted: 0, correct: 0, totalTime: 0 };
@@ -91,6 +95,7 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
         avgTime: Math.round(stats.totalTime / stats.attempted) || 45 // fallback average
       })).sort((a, b) => a.accuracy - b.accuracy); // Sort by accuracy (weak first)
       
+      console.log('Calculated topic performance:', topics);
       setTopicPerformance(topics);
 
       // Generate question reviews from actual session data
@@ -100,12 +105,15 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
         userAnswer: sessionData.answers[index] || 'No answer',
         correctAnswer: question.correctAnswer || question.correct_answer || 'Unknown',
         isCorrect: sessionData.answers[index] === (question.correctAnswer || question.correct_answer),
-        topic: question.topic || question.skill || 'General',
+        topic: question.topic || question.skill || question.domain || 'General',
         explanation: question.explanation || question.correct_rationale || 'No explanation available',
         options: [question.option_a, question.option_b, question.option_c, question.option_d].filter(Boolean)
       }));
       
+      console.log('Generated question reviews:', reviews);
       setQuestionReviews(reviews);
+    } else {
+      console.log('No session data available for topic performance calculation');
     }
   }, [sessionData]);
 
@@ -338,7 +346,7 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
                     <DialogTitle>Question by Question Review</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
-                    {questionReviews.map((review, index) => (
+                    {questionReviews.length > 0 ? questionReviews.map((review, index) => (
                       <div key={review.id} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold text-gray-900">Question {index + 1}</h3>
@@ -386,7 +394,12 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
                           </div>
                         )}
                       </div>
-                    ))}
+                    )) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No questions available for review.</p>
+                        <p className="text-sm text-gray-400 mt-2">Session data may not have been properly captured.</p>
+                      </div>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>
