@@ -50,27 +50,29 @@ export const useUserStreak = (userName: string) => {
       if (error) {
         console.error('Error fetching streak:', error);
         
-        // If no streak record exists, the function above should have created one
-        // Let's try fetching again after a short delay
+        // If no streak record exists, create a default one
         if (error.code === 'PGRST116') {
-          console.log('No streak record found, trying to fetch again...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const { data: retryData, error: retryError } = await supabase
+          console.log('No streak record found, creating default record...');
+          const { data: insertData, error: insertError } = await supabase
             .from('user_streaks')
+            .insert({
+              user_id: user.user.id,
+              current_streak: 0,
+              longest_streak: 0,
+              last_activity_date: null
+            })
             .select('current_streak, longest_streak, last_activity_date')
-            .eq('user_id', user.user.id)
             .single();
             
-          if (!retryError && retryData) {
-            console.log('Successfully fetched streak data on retry:', retryData);
+          if (!insertError && insertData) {
+            console.log('Created default streak record:', insertData);
             setIsLoading(false);
-            return retryData as UserStreak;
+            return insertData as UserStreak;
           }
         }
         
         setIsLoading(false);
-        return null;
+        return { current_streak: 0, longest_streak: 0, last_activity_date: null };
       }
 
       console.log('Streak data fetched:', data);
@@ -78,8 +80,8 @@ export const useUserStreak = (userName: string) => {
       return data as UserStreak | null;
     },
     enabled: !!userName,
-    staleTime: 30000, // 30 seconds
-    gcTime: 60000, // 1 minute (replaces cacheTime)
+    staleTime: 5000, // 5 seconds
+    gcTime: 30000, // 30 seconds
   });
 
   // Function to manually trigger streak update

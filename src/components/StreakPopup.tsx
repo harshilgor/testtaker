@@ -12,16 +12,25 @@ interface StreakPopupProps {
 
 const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerformance }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const { streakData, isLoading } = useUserStreak(userName);
+  const { streakData, isLoading, checkTodayActivity } = useUserStreak(userName);
 
   useEffect(() => {
     // Check if popup has been shown today
     const today = new Date().toDateString();
     const lastShown = localStorage.getItem('streak-popup-last-shown');
     
+    console.log('StreakPopup - checking conditions:', { 
+      today, 
+      lastShown, 
+      isLoading, 
+      streakData,
+      hasStreak: streakData && streakData.current_streak > 0
+    });
+    
     if (lastShown !== today && !isLoading && streakData && streakData.current_streak > 0) {
       // Show popup after a small delay
       const timer = setTimeout(() => {
+        console.log('Showing streak popup');
         setIsVisible(true);
         localStorage.setItem('streak-popup-last-shown', today);
       }, 2000);
@@ -29,6 +38,13 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
       return () => clearTimeout(timer);
     }
   }, [isLoading, streakData]);
+
+  // Trigger activity check when component mounts (for testing)
+  useEffect(() => {
+    if (!isLoading) {
+      checkTodayActivity();
+    }
+  }, [isLoading, checkTodayActivity]);
 
   const handleClose = () => {
     setIsVisible(false);

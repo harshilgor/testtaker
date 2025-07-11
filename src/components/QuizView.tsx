@@ -8,6 +8,7 @@ import QuizQuestionPanel from './Quiz/QuizQuestionPanel';
 import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import QuizResultsView from './Quiz/QuizResultsView';
+import QuizSummaryPage from './QuizSummaryPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -57,8 +58,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [submittedQuestions, setSubmittedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes
   const [isComplete, setIsComplete] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [startTime] = useState(Date.now());
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -113,6 +116,7 @@ const QuizView: React.FC<QuizViewProps> = ({
       ).length;
       
       const scorePercentage = (correctAnswers / questions.length) * 100;
+      const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
       
       if (user) {
         await supabase.from('quiz_results').insert({
@@ -122,11 +126,12 @@ const QuizView: React.FC<QuizViewProps> = ({
           total_questions: questions.length,
           correct_answers: correctAnswers,
           score_percentage: scorePercentage,
-          time_taken: (30 * 60) - timeRemaining
+          time_taken: timeElapsed
         });
       }
       
       setIsComplete(true);
+      setShowSummary(true);
     } catch (error) {
       console.error('Error saving quiz results:', error);
       toast({
@@ -139,13 +144,40 @@ const QuizView: React.FC<QuizViewProps> = ({
     }
   };
 
+  const handleRetakeQuiz = () => {
+    // Reset all state
+    setCurrentQuestionIndex(0);
+    setAnswers(new Array(questions.length).fill(null));
+    setFlaggedQuestions(new Array(questions.length).fill(false));
+    setSubmittedQuestions(new Array(questions.length).fill(false));
+    setTimeRemaining(30 * 60);
+    setIsComplete(false);
+    setShowSummary(false);
+  };
+
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = answers.filter(answer => answer !== null).length;
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const showFeedback = feedbackPreference === 'immediate' && isSubmitted;
   const isCorrect = answers[currentQuestionIndex] === currentQuestion.correctAnswer;
+  const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
 
-  if (isComplete) {
+  if (showSummary) {
+    return (
+      <QuizSummaryPage
+        questions={questions}
+        answers={answers}
+        topics={topics}
+        timeElapsed={timeElapsed}
+        onRetakeQuiz={handleRetakeQuiz}
+        onBackToDashboard={onBackToDashboard}
+        userName={userName}
+        subject={subject}
+      />
+    );
+  }
+
+  if (isComplete && !showSummary) {
     return (
       <QuizResultsView
         questions={questions}
