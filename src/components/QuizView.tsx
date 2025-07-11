@@ -71,7 +71,7 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   useEffect(() => {
     if (timeRemaining === 0) {
-      handleQuizComplete();
+      handleCompleteQuiz();
     }
   }, [timeRemaining]);
 
@@ -100,12 +100,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      handleQuizComplete();
     }
   };
 
-  const handleQuizComplete = async () => {
+  const handleCompleteQuiz = async () => {
     setLoading(true);
     
     try {
@@ -128,7 +126,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         });
       }
       
-      // Show summary page immediately after completion
+      // Show summary page
       setShowSummary(true);
     } catch (error) {
       console.error('Error saving quiz results:', error);
@@ -228,6 +226,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           onSubmit={handleSubmit}
           submittedQuestions={submittedQuestions}
           onNext={handleNext}
+          onCompleteQuiz={handleCompleteQuiz}
         />
       }
     />

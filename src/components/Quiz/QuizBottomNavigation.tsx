@@ -31,6 +31,7 @@ interface QuizBottomNavigationProps {
   onSubmit: () => void;
   submittedQuestions: boolean[];
   onNext: () => void;
+  onCompleteQuiz: () => void;
 }
 
 const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
@@ -45,7 +46,8 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
   onToggleNavigation,
   onSubmit,
   submittedQuestions,
-  onNext
+  onNext,
+  onCompleteQuiz
 }) => {
   const { isMobile } = useResponsiveLayout();
   const hasAnswered = answers[currentQuestionIndex] !== null;
@@ -59,6 +61,29 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
       setTimeout(() => {
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       }, 100);
+    }
+  };
+
+  const handleButtonClick = () => {
+    if (!isSubmitted) {
+      // First click: Submit the answer
+      onSubmit();
+    } else if (isLastQuestion) {
+      // Last question, already submitted: Complete the quiz
+      onCompleteQuiz();
+    } else {
+      // Not last question, already submitted: Go to next question
+      onNext();
+    }
+  };
+
+  const getButtonText = () => {
+    if (!isSubmitted) {
+      return 'Submit';
+    } else if (isLastQuestion) {
+      return 'Complete Quiz';
+    } else {
+      return 'Next Question';
     }
   };
 
@@ -76,22 +101,16 @@ const QuizBottomNavigation: React.FC<QuizBottomNavigationProps> = ({
           <ChevronUp className="h-4 w-4 ml-2" />
         </button>
         
-        {/* Right side - Single Submit/Next button */}
+        {/* Right side - Submit/Next/Complete button */}
         <Button
-          onClick={isSubmitted ? onNext : onSubmit}
-          disabled={!hasAnswered || (isSubmitted && isLastQuestion)}
+          onClick={handleButtonClick}
+          disabled={!hasAnswered}
           className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 flex items-center ${
             isMobile ? 'h-11' : ''
           }`}
         >
-          {isSubmitted ? (
-            <>
-              {isLastQuestion ? 'Complete Quiz' : 'Next Question'}
-              {!isLastQuestion && <ChevronUp className="h-4 w-4 ml-2 rotate-90" />}
-            </>
-          ) : (
-            'Submit'
-          )}
+          {getButtonText()}
+          {isSubmitted && !isLastQuestion && <ChevronUp className="h-4 w-4 ml-2 rotate-90" />}
         </Button>
       </div>
 
