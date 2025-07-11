@@ -60,20 +60,35 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [startTime] = useState(Date.now());
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [quizCompleted, setQuizCompleted] = useState(false);
+
+  // Track elapsed time
+  useEffect(() => {
+    if (!quizCompleted) {
+      const timerId = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+
+      return () => clearInterval(timerId);
+    }
+  }, [startTime, quizCompleted]);
 
   useEffect(() => {
     const timerId = setInterval(() => {
-      setTimeRemaining(prevTime => prevTime > 0 ? prevTime - 1 : 0);
+      if (!quizCompleted) {
+        setTimeRemaining(prevTime => prevTime > 0 ? prevTime - 1 : 0);
+      }
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, []);
+  }, [quizCompleted]);
 
   useEffect(() => {
-    if (timeRemaining === 0) {
+    if (timeRemaining === 0 && !quizCompleted) {
       handleCompleteQuiz();
     }
-  }, [timeRemaining]);
+  }, [timeRemaining, quizCompleted]);
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (submittedQuestions[currentQuestionIndex]) return;
@@ -104,7 +119,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   };
 
   const handleCompleteQuiz = async () => {
+    if (quizCompleted) return;
+    
     setLoading(true);
+    setQuizCompleted(true); // Stop the timer
     
     try {
       const correctAnswers = answers.filter((answer, index) => 
@@ -112,7 +130,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       ).length;
       
       const scorePercentage = (correctAnswers / questions.length) * 100;
-      const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+      const finalElapsedTime = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(finalElapsedTime);
       
       if (user) {
         await supabase.from('quiz_results').insert({
@@ -122,7 +141,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           total_questions: questions.length,
           correct_answers: correctAnswers,
           score_percentage: scorePercentage,
-          time_taken: timeElapsed
+          time_taken: finalElapsedTime
         });
       }
       
@@ -148,6 +167,8 @@ const QuizView: React.FC<QuizViewProps> = ({
     setSubmittedQuestions(new Array(questions.length).fill(false));
     setTimeRemaining(30 * 60);
     setShowSummary(false);
+    setQuizCompleted(false);
+    setElapsedTime(0);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -155,7 +176,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const showFeedback = feedbackPreference === 'immediate' && isSubmitted;
   const isCorrect = answers[currentQuestionIndex] === currentQuestion.correctAnswer;
-  const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
 
   if (showSummary) {
     return (
@@ -163,7 +183,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         questions={questions}
         answers={answers}
         topics={topics}
-        timeElapsed={timeElapsed}
+        timeElapsed={elapsedTime}
         onRetakeQuiz={handleRetakeQuiz}
         onBackToDashboard={onBackToDashboard}
         userName={userName}

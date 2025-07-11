@@ -59,21 +59,23 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create Quiz</h1>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-3xl mx-auto items-stretch">
           {/* Math Quiz Card */}
-          <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl">
-            <CardContent className="p-8 md:p-10">
-              <div className="text-center">
+          <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl h-full">
+            <CardContent className="p-8 md:p-10 h-full flex flex-col">
+              <div className="text-center flex-1 flex flex-col">
                 <div className="bg-green-50 rounded-full p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
                   <Calculator className="h-8 w-8 text-green-600" />
                 </div>
                 <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-4">Math Quiz</h3>
-                <p className="text-gray-600 mb-8 text-sm md:text-base leading-relaxed px-2">
-                  Choose from algebra, geometry, data analysis, and advanced math topics
-                </p>
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed px-2">
+                    Choose from algebra, geometry, data analysis, and advanced math topics
+                  </p>
+                </div>
                 <Button
                   onClick={() => handleSubjectSelect('math')}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 md:py-4 font-medium rounded-xl min-h-[44px]"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 md:py-4 font-medium rounded-xl min-h-[44px] mt-8"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
                   Create Math Quiz
@@ -83,19 +85,21 @@ const Quiz: React.FC<QuizProps> = ({ userName, onBack }) => {
           </Card>
 
           {/* English Quiz Card */}
-          <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl">
-            <CardContent className="p-8 md:p-10">
-              <div className="text-center">
+          <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl h-full">
+            <CardContent className="p-8 md:p-10 h-full flex flex-col">
+              <div className="text-center flex-1 flex flex-col">
                 <div className="bg-blue-50 rounded-full p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
                   <BookOpen className="h-8 w-8 text-blue-600" />
                 </div>
                 <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-4">English Quiz</h3>
-                <p className="text-gray-600 mb-8 text-sm md:text-base leading-relaxed px-2">
-                  Focus on reading comprehension, writing, and language conventions
-                </p>
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed px-2">
+                    Focus on reading comprehension, writing, and language conventions
+                  </p>
+                </div>
                 <Button
                   onClick={() => handleSubjectSelect('english')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 md:py-4 font-medium rounded-xl min-h-[44px]"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 md:py-4 font-medium rounded-xl min-h-[44px] mt-8"
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
                   Create English Quiz

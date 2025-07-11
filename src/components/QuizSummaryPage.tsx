@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RotateCcw, Trophy, Clock, Target, BookOpen } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Trophy, Clock, Target, BookOpen, TrendingUp, TrendingDown, AlertTriangle, Award } from 'lucide-react';
 import { Subject } from '@/types/common';
 
 interface Question {
@@ -46,6 +46,9 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
   const incorrectAnswers = questions.length - correctAnswers;
   const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
   
+  // Calculate points (10 points per correct answer)
+  const pointsEarned = correctAnswers * 10;
+  
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -82,6 +85,14 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
     
     return acc;
   }, {} as Record<string, { total: number; correct: number; percentage: number }>);
+
+  const strongestTopic = Object.entries(topicPerformance).reduce((best, current) => 
+    current[1].percentage > (best?.[1]?.percentage || 0) ? current : best, null as [string, any] | null);
+    
+  const weakestTopic = Object.entries(topicPerformance).reduce((worst, current) => 
+    current[1].percentage < (worst?.[1]?.percentage || 100) ? current : worst, null as [string, any] | null);
+
+  const avgTimePerQuestion = Math.round(timeElapsed / questions.length);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -123,10 +134,14 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
                   <Target className="h-5 w-5 mr-2" />
                   <span>{correctAnswers}/{questions.length} Correct</span>
                 </div>
+                <div className="flex items-center">
+                  <Award className="h-5 w-5 mr-2" />
+                  <span>{pointsEarned} Points</span>
+                </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-4 gap-6">
               <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-green-600 mb-2">{correctAnswers}</div>
@@ -147,17 +162,24 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
                   <div className="text-blue-700 font-medium">Time Taken</div>
                 </CardContent>
               </Card>
+
+              <Card className="bg-purple-50 border-purple-200">
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">{pointsEarned}</div>
+                  <div className="text-purple-700 font-medium">Points Earned</div>
+                </CardContent>
+              </Card>
             </div>
           </CardContent>
         </Card>
 
         {/* Topic Performance */}
-        {topics.length > 1 && (
+        {topics.length > 0 && (
           <Card className="mb-8">
             <CardContent className="p-6">
               <div className="flex items-center mb-6">
                 <BookOpen className="h-6 w-6 text-gray-600 mr-3" />
-                <h2 className="text-xl font-semibold text-gray-900">Performance by Topic</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Topic Performance</h2>
               </div>
               
               <div className="space-y-4">
@@ -183,6 +205,70 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Performance Highlights */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Performance Highlights</h2>
+            <div className="space-y-3">
+              {strongestTopic && (
+                <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-green-800 font-medium">
+                      Your strongest topic was {strongestTopic[0]}
+                    </p>
+                    <p className="text-green-700 text-sm">
+                      {strongestTopic[1].correct}/{strongestTopic[1].total} correct ({strongestTopic[1].percentage}% accuracy)
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {weakestTopic && weakestTopic[1].percentage < 70 && (
+                <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <TrendingDown className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-red-800 font-medium">
+                      You struggled most in {weakestTopic[0]}
+                    </p>
+                    <p className="text-red-700 text-sm">
+                      {weakestTopic[1].correct}/{weakestTopic[1].total} correct ({weakestTopic[1].percentage}% accuracy)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {avgTimePerQuestion < 30 && scorePercentage < 70 && (
+                <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="text-yellow-800 font-medium">
+                      Consider slowing down
+                    </p>
+                    <p className="text-yellow-700 text-sm">
+                      You averaged {avgTimePerQuestion}s per question. Taking more time might improve accuracy.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {scorePercentage >= 90 && (
+                <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Trophy className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-blue-800 font-medium">
+                      Excellent performance!
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      You demonstrated mastery across all topics. Consider challenging yourself with harder questions.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Question Review */}
         <Card className="mb-8">
