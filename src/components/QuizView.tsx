@@ -7,7 +7,6 @@ import QuizTimer from './Quiz/QuizTimer';
 import QuizQuestionPanel from './Quiz/QuizQuestionPanel';
 import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
-import QuizResultsView from './Quiz/QuizResultsView';
 import QuizSummaryPage from './QuizSummaryPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,7 +56,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [submittedQuestions, setSubmittedQuestions] = useState<boolean[]>(new Array(questions.length).fill(false));
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes
-  const [isComplete, setIsComplete] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -130,7 +128,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         });
       }
       
-      setIsComplete(true);
+      // Show summary page immediately after completion
       setShowSummary(true);
     } catch (error) {
       console.error('Error saving quiz results:', error);
@@ -151,7 +149,6 @@ const QuizView: React.FC<QuizViewProps> = ({
     setFlaggedQuestions(new Array(questions.length).fill(false));
     setSubmittedQuestions(new Array(questions.length).fill(false));
     setTimeRemaining(30 * 60);
-    setIsComplete(false);
     setShowSummary(false);
   };
 
@@ -171,20 +168,6 @@ const QuizView: React.FC<QuizViewProps> = ({
         timeElapsed={timeElapsed}
         onRetakeQuiz={handleRetakeQuiz}
         onBackToDashboard={onBackToDashboard}
-        userName={userName}
-        subject={subject}
-      />
-    );
-  }
-
-  if (isComplete && !showSummary) {
-    return (
-      <QuizResultsView
-        questions={questions}
-        answers={answers}
-        topics={topics}
-        onBack={onBack}
-        feedbackPreference={feedbackPreference}
         userName={userName}
         subject={subject}
       />

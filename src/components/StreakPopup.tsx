@@ -24,22 +24,23 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
       lastShown, 
       isLoading, 
       streakData,
-      hasStreak: streakData && streakData.current_streak > 0
+      hasStreak: streakData && streakData.current_streak >= 1
     });
     
-    if (lastShown !== today && !isLoading && streakData && streakData.current_streak > 0) {
+    // Show popup if not shown today, not loading, and user has a streak of 1 or more
+    if (lastShown !== today && !isLoading && streakData && streakData.current_streak >= 1) {
       // Show popup after a small delay
       const timer = setTimeout(() => {
-        console.log('Showing streak popup');
+        console.log('Showing streak popup for streak:', streakData.current_streak);
         setIsVisible(true);
         localStorage.setItem('streak-popup-last-shown', today);
-      }, 2000);
+      }, 3000); // Show after 3 seconds
 
       return () => clearTimeout(timer);
     }
   }, [isLoading, streakData]);
 
-  // Trigger activity check when component mounts (for testing)
+  // Trigger activity check when component mounts
   useEffect(() => {
     if (!isLoading) {
       checkTodayActivity();
@@ -55,20 +56,25 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
     setIsVisible(false);
   };
 
-  if (!isVisible || !streakData || streakData.current_streak === 0) {
+  if (!isVisible || !streakData || streakData.current_streak < 1) {
     return null;
   }
 
   // Generate week view based on current streak
   const getWeekView = () => {
     const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const today = new Date().getDay();
-    const mondayIndex = today === 0 ? 6 : today - 1; // Convert Sunday=0 to Monday=0 system
+    const today = new Date();
+    const currentDay = today.getDay();
+    const mondayIndex = currentDay === 0 ? 6 : currentDay - 1; // Convert Sunday=0 to Monday=0 system
     
     return days.map((day, index) => {
       const isToday = index === mondayIndex;
       const daysPastMonday = index;
-      const isCompleted = daysPastMonday <= mondayIndex && streakData.current_streak > (mondayIndex - daysPastMonday);
+      
+      // Show completed if within current streak and not future days
+      const isCompleted = streakData.current_streak > 0 && 
+                         daysPastMonday <= mondayIndex && 
+                         streakData.current_streak >= (mondayIndex - daysPastMonday + 1);
       
       return { day, isCompleted, isToday };
     });
@@ -107,7 +113,7 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
                     item.isCompleted 
                       ? 'bg-green-500 text-white' 
                       : item.isToday 
-                        ? 'bg-gray-300 border-2 border-gray-400' 
+                        ? 'bg-orange-300 border-2 border-orange-500' 
                         : 'border-2 border-gray-200'
                   }`}
                 >
@@ -124,7 +130,10 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
 
           <div className="text-center">
             <p className="text-gray-600 text-sm mb-3">
-              Great job! Keep practicing to maintain your streak.
+              {streakData.current_streak === 1 
+                ? "Great start! You've begun your learning journey."
+                : "Fantastic! Keep up the momentum."
+              }
             </p>
             <Button
               onClick={handleNavigate}
