@@ -3,10 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Trophy, Target, Clock, Award, Eye, TrendingUp, TrendingDown, AlertTriangle, Flame } from 'lucide-react';
+import { Trophy, Target, Clock, Award, Eye, TrendingUp, TrendingDown, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { getSessionTotalPoints } from '@/services/pointsService';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useUserStreak } from '@/hooks/useUserStreak';
 
 interface TopicPerformance {
   topic: string;
@@ -61,7 +60,6 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
   const [topicPerformance, setTopicPerformance] = useState<TopicPerformance[]>([]);
   const [questionReviews, setQuestionReviews] = useState<QuestionReview[]>([]);
   const { isMobile } = useResponsiveLayout();
-  const { streakData } = useUserStreak(userName);
 
   console.log('MarathonSummary - sessionData:', sessionData);
   console.log('MarathonSummary - sessionStats:', sessionStats);
@@ -122,14 +120,19 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
       if (sessionId) {
         try {
           const points = await getSessionTotalPoints(sessionId, 'marathon');
+          console.log('Points from database:', points);
           setActualPointsEarned(points);
         } catch (error) {
           console.error('Error fetching session points:', error);
-          const calculatedPoints = sessionStats.correctAnswers * 10;
+          // Calculate points based on correct answers and difficulty
+          const calculatedPoints = sessionStats.correctAnswers * 10; // 10 points per correct answer
+          console.log('Calculated fallback points:', calculatedPoints);
           setActualPointsEarned(calculatedPoints);
         }
       } else {
-        const calculatedPoints = sessionStats.correctAnswers * 10;
+        // Calculate points based on correct answers
+        const calculatedPoints = sessionStats.correctAnswers * 10; // 10 points per correct answer
+        console.log('Calculated points (no session ID):', calculatedPoints);
         setActualPointsEarned(calculatedPoints);
       }
       setLoading(false);
@@ -176,35 +179,26 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
     <div className="min-h-screen bg-gray-50 py-3 md:py-6 px-2 md:px-4">
       <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
         
-        {/* Streak Section */}
-        {streakData && streakData.current_streak > 0 && (
-          <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
-            <CardContent className={`${isMobile ? 'p-3' : 'p-4'}`}>
-              <div className="flex items-center space-x-3">
-                <Flame className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-orange-500`} />
-                <div>
-                  <h3 className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold text-gray-900`}>
-                    🔥 {streakData.current_streak}-day streak!
-                  </h3>
-                  <p className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    Keep practicing to maintain your momentum
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Header */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} text-center`}>
-            <div className={`${isMobile ? 'mb-3' : 'mb-4'}`}>
-              <Trophy className={`${isMobile ? 'h-12 w-12' : 'h-16 w-16'} text-blue-600 mx-auto mb-2`} />
-              <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-900`}>Marathon Complete!</h1>
-              <p className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-lg'}`}>Great job, {userName}!</p>
+        {/* Updated Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Button
+            onClick={onBackToDashboard}
+            variant="ghost"
+            className="text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          
+          <div className="text-center flex-1">
+            <div className="flex items-center justify-center mb-2">
+              <Trophy className="h-8 w-8 text-yellow-500 mr-3" />
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Marathon Complete!</h1>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          
+          <div className="w-32"></div> {/* Spacer for centering */}
+        </div>
 
         {/* Session Overview */}
         <Card>
@@ -419,6 +413,9 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
               {loading ? '...' : actualPointsEarned}
             </div>
             <p className={`text-purple-700 ${isMobile ? 'text-sm' : 'text-base'}`}>Great work!</p>
+            <p className={`text-purple-600 ${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
+              {sessionStats.correctAnswers} correct answers × 10 points each
+            </p>
           </CardContent>
         </Card>
 
