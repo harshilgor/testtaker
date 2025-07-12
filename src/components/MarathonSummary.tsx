@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,7 @@ interface QuestionReview {
   topic: string;
   explanation?: string;
   options?: string[];
+  difficulty?: string;
 }
 
 interface MarathonSummaryProps {
@@ -63,6 +63,33 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
 
   console.log('MarathonSummary - sessionData:', sessionData);
   console.log('MarathonSummary - sessionStats:', sessionStats);
+
+  // Calculate points based on difficulty
+  const calculatePointsFromQuestions = (questions: any[], answers: any[]) => {
+    let totalPoints = 0;
+    questions.forEach((question, index) => {
+      const userAnswer = answers[index];
+      const isCorrect = userAnswer === question.correctAnswer || userAnswer === question.correct_answer;
+      
+      if (isCorrect) {
+        const difficulty = question.difficulty || 'medium';
+        switch (difficulty.toLowerCase()) {
+          case 'easy':
+            totalPoints += 3;
+            break;
+          case 'medium':
+            totalPoints += 6;
+            break;
+          case 'hard':
+            totalPoints += 9;
+            break;
+          default:
+            totalPoints += 6; // Default to medium
+        }
+      }
+    });
+    return totalPoints;
+  };
 
   // Calculate real topic performance from session data
   useEffect(() => {
@@ -105,7 +132,8 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
         isCorrect: sessionData.answers[index] === (question.correctAnswer || question.correct_answer),
         topic: question.topic || question.skill || question.domain || 'General',
         explanation: question.explanation || question.correct_rationale || 'No explanation available',
-        options: [question.option_a, question.option_b, question.option_c, question.option_d].filter(Boolean)
+        options: [question.option_a, question.option_b, question.option_c, question.option_d].filter(Boolean),
+        difficulty: question.difficulty || 'medium'
       }));
       
       console.log('Generated question reviews:', reviews);
@@ -124,22 +152,36 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
           setActualPointsEarned(points);
         } catch (error) {
           console.error('Error fetching session points:', error);
-          // Calculate points based on correct answers and difficulty
-          const calculatedPoints = sessionStats.correctAnswers * 10; // 10 points per correct answer
-          console.log('Calculated fallback points:', calculatedPoints);
-          setActualPointsEarned(calculatedPoints);
+          // Calculate points based on question difficulty and correct answers
+          if (sessionData?.questions && sessionData?.answers) {
+            const calculatedPoints = calculatePointsFromQuestions(sessionData.questions, sessionData.answers);
+            console.log('Calculated points from session data:', calculatedPoints);
+            setActualPointsEarned(calculatedPoints);
+          } else {
+            // Fallback: assume medium difficulty (6 points per correct answer)
+            const calculatedPoints = sessionStats.correctAnswers * 6;
+            console.log('Calculated fallback points (medium difficulty):', calculatedPoints);
+            setActualPointsEarned(calculatedPoints);
+          }
         }
       } else {
-        // Calculate points based on correct answers
-        const calculatedPoints = sessionStats.correctAnswers * 10; // 10 points per correct answer
-        console.log('Calculated points (no session ID):', calculatedPoints);
-        setActualPointsEarned(calculatedPoints);
+        // Calculate points based on question difficulty and correct answers
+        if (sessionData?.questions && sessionData?.answers) {
+          const calculatedPoints = calculatePointsFromQuestions(sessionData.questions, sessionData.answers);
+          console.log('Calculated points from session data (no session ID):', calculatedPoints);
+          setActualPointsEarned(calculatedPoints);
+        } else {
+          // Fallback: assume medium difficulty (6 points per correct answer)
+          const calculatedPoints = sessionStats.correctAnswers * 6;
+          console.log('Calculated points (no session ID, medium difficulty):', calculatedPoints);
+          setActualPointsEarned(calculatedPoints);
+        }
       }
       setLoading(false);
     };
 
     fetchActualPoints();
-  }, [sessionId, sessionStats.pointsEarned, sessionStats.correctAnswers]);
+  }, [sessionId, sessionStats.pointsEarned, sessionStats.correctAnswers, sessionData]);
 
   const accuracy = sessionStats.totalQuestions > 0 
     ? Math.round((sessionStats.correctAnswers / sessionStats.totalQuestions) * 100) 
@@ -413,9 +455,6 @@ const MarathonSummary: React.FC<MarathonSummaryProps> = ({
               {loading ? '...' : actualPointsEarned}
             </div>
             <p className={`text-purple-700 ${isMobile ? 'text-sm' : 'text-base'}`}>Great work!</p>
-            <p className={`text-purple-600 ${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
-              {sessionStats.correctAnswers} correct answers × 10 points each
-            </p>
           </CardContent>
         </Card>
 
