@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Subject } from '../types/common';
@@ -31,7 +30,7 @@ export const useQuestionTopics = (subject: Subject) => {
         // Fetch topics using correct database structure
         const { data, error: fetchError } = await supabase
           .from('question_bank')
-          .select('skill, domain')
+          .select('skill, domain, test, assessment')
           .eq('assessment', 'SAT')
           .eq('test', testFilter)
           .not('question_text', 'is', null)
@@ -42,32 +41,45 @@ export const useQuestionTopics = (subject: Subject) => {
           throw fetchError;
         }
 
-        console.log('Data sample:', data?.slice(0, 5));
+        console.log('Raw data from database:', data);
+        console.log('Total records found:', data?.length || 0);
 
-        // Count occurrences
-        const topicCounts: Record<string, { count: number; domain?: string }> = {};
+        // Debug: Log unique skills found
+        const uniqueSkills = [...new Set(data?.map(item => item.skill) || [])];
+        console.log('Unique skills found:', uniqueSkills);
+
+        // Count occurrences with case-insensitive grouping
+        const topicCounts: Record<string, { count: number; domain?: string; originalSkill: string }> = {};
         data?.forEach(item => {
           if (item.skill) {
-            if (!topicCounts[item.skill]) {
-              topicCounts[item.skill] = { count: 0, domain: item.domain };
+            // Use lowercase for grouping but keep original casing
+            const skillKey = item.skill.toLowerCase().trim();
+            if (!topicCounts[skillKey]) {
+              topicCounts[skillKey] = { 
+                count: 0, 
+                domain: item.domain,
+                originalSkill: item.skill
+              };
             }
-            topicCounts[item.skill].count++;
+            topicCounts[skillKey].count++;
           }
         });
 
+        console.log('Topic counts after processing:', topicCounts);
+
         // Convert to array format with proper structure
-        const topicsArray = Object.entries(topicCounts).map(([skill, data]) => ({
-          id: skill.toLowerCase().replace(/\s+/g, '-'),
-          skill,
-          name: skill,
-          description: `Practice ${skill} problems`,
+        const topicsArray = Object.entries(topicCounts).map(([skillKey, data]) => ({
+          id: skillKey.replace(/\s+/g, '-'),
+          skill: data.originalSkill, // Use original casing
+          name: data.originalSkill,
+          description: `Practice ${data.originalSkill} problems`,
           count: data.count,
           question_count: data.count,
           domain: data.domain
         }));
 
-        console.log('Topics processed:', topicsArray.length);
-        console.log('Sample topics:', topicsArray.slice(0, 3));
+        console.log('Final topics array:', topicsArray);
+        console.log('Analysis topic specifically:', topicsArray.find(t => t.skill.toLowerCase().includes('analysis')));
         
         setTopics(topicsArray);
       } catch (err) {
