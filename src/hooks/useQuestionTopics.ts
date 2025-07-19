@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Subject } from '../types/common';
@@ -48,6 +49,17 @@ export const useQuestionTopics = (subject: Subject) => {
         const uniqueSkills = [...new Set(data?.map(item => item.skill) || [])];
         console.log('Unique skills found:', uniqueSkills);
 
+        // Debug: Find all Analysis-related entries
+        const analysisEntries = data?.filter(item => 
+          item.skill && item.skill.toLowerCase().includes('analysis')
+        ) || [];
+        console.log('Analysis entries found:', analysisEntries);
+        console.log('Analysis entries count:', analysisEntries.length);
+        
+        // Debug: Show exact skill values for analysis
+        const analysisSkills = analysisEntries.map(item => `"${item.skill}"`);
+        console.log('Exact analysis skill values:', analysisSkills);
+
         // Count occurrences with case-insensitive grouping
         const topicCounts: Record<string, { count: number; domain?: string; originalSkill: string }> = {};
         data?.forEach(item => {
@@ -62,10 +74,21 @@ export const useQuestionTopics = (subject: Subject) => {
               };
             }
             topicCounts[skillKey].count++;
+            
+            // Debug analysis specifically
+            if (skillKey.includes('analysis')) {
+              console.log(`Adding to analysis count: "${item.skill}" -> "${skillKey}"`);
+            }
           }
         });
 
         console.log('Topic counts after processing:', topicCounts);
+        
+        // Debug: Check final analysis count
+        const analysisKey = Object.keys(topicCounts).find(key => key.includes('analysis'));
+        if (analysisKey) {
+          console.log(`Final analysis count: ${topicCounts[analysisKey].count} for key "${analysisKey}"`);
+        }
 
         // Convert to array format with proper structure
         const topicsArray = Object.entries(topicCounts).map(([skillKey, data]) => ({
