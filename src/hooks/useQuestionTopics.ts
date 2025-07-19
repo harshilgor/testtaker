@@ -45,64 +45,50 @@ export const useQuestionTopics = (subject: Subject) => {
         console.log('Raw data from database:', data);
         console.log('Total records found:', data?.length || 0);
 
-        // Debug: Log unique skills found
-        const uniqueSkills = [...new Set(data?.map(item => item.skill) || [])];
-        console.log('Unique skills found:', uniqueSkills);
+        // Debug: Log all unique skills with their exact values
+        const allSkills = data?.map(item => item.skill) || [];
+        console.log('All skills from database:', allSkills);
 
-        // Debug: Find all Analysis-related entries
-        const analysisEntries = data?.filter(item => 
-          item.skill && item.skill.toLowerCase().includes('analysis')
-        ) || [];
-        console.log('Analysis entries found:', analysisEntries);
-        console.log('Analysis entries count:', analysisEntries.length);
+        // Create a simple count map using exact skill names (preserve original casing)
+        const skillCounts: Record<string, { count: number; domain?: string; skill: string }> = {};
         
-        // Debug: Show exact skill values for analysis
-        const analysisSkills = analysisEntries.map(item => `"${item.skill}"`);
-        console.log('Exact analysis skill values:', analysisSkills);
-
-        // Count occurrences with case-insensitive grouping
-        const topicCounts: Record<string, { count: number; domain?: string; originalSkill: string }> = {};
         data?.forEach(item => {
           if (item.skill) {
-            // Use lowercase for grouping but keep original casing
-            const skillKey = item.skill.toLowerCase().trim();
-            if (!topicCounts[skillKey]) {
-              topicCounts[skillKey] = { 
+            const exactSkill = item.skill.trim(); // Only trim whitespace
+            
+            if (!skillCounts[exactSkill]) {
+              skillCounts[exactSkill] = { 
                 count: 0, 
                 domain: item.domain,
-                originalSkill: item.skill
+                skill: exactSkill
               };
             }
-            topicCounts[skillKey].count++;
+            skillCounts[exactSkill].count++;
             
-            // Debug analysis specifically
-            if (skillKey.includes('analysis')) {
-              console.log(`Adding to analysis count: "${item.skill}" -> "${skillKey}"`);
-            }
+            console.log(`Counting skill: "${exactSkill}" -> ${skillCounts[exactSkill].count}`);
           }
         });
 
-        console.log('Topic counts after processing:', topicCounts);
-        
-        // Debug: Check final analysis count
-        const analysisKey = Object.keys(topicCounts).find(key => key.includes('analysis'));
-        if (analysisKey) {
-          console.log(`Final analysis count: ${topicCounts[analysisKey].count} for key "${analysisKey}"`);
-        }
+        console.log('Final skill counts:', skillCounts);
 
         // Convert to array format with proper structure
-        const topicsArray = Object.entries(topicCounts).map(([skillKey, data]) => ({
-          id: skillKey.replace(/\s+/g, '-'),
-          skill: data.originalSkill, // Use original casing
-          name: data.originalSkill,
-          description: `Practice ${data.originalSkill} problems`,
+        const topicsArray = Object.entries(skillCounts).map(([skillName, data]) => ({
+          id: skillName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+          skill: data.skill, // Use exact original skill name
+          name: data.skill,
+          description: `Practice ${data.skill} problems`,
           count: data.count,
           question_count: data.count,
           domain: data.domain
         }));
 
         console.log('Final topics array:', topicsArray);
-        console.log('Analysis topic specifically:', topicsArray.find(t => t.skill.toLowerCase().includes('analysis')));
+        
+        // Debug: Show specific analysis topic
+        const analysisTopics = topicsArray.filter(t => 
+          t.skill.toLowerCase().includes('analysis')
+        );
+        console.log('Analysis topics found:', analysisTopics);
         
         setTopics(topicsArray);
       } catch (err) {
