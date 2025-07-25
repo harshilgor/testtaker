@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -24,6 +23,9 @@ export const useUserStreak = (userName: string) => {
       }
 
       console.log('Fetching streak data for user:', user.user.id);
+
+      // Track user login activity
+      trackUserActivity();
 
       // First, trigger streak update to ensure current data
       try {
@@ -70,11 +72,46 @@ export const useUserStreak = (userName: string) => {
     gcTime: 5000, // 5 seconds
   });
 
+  // Function to track user activity for weekly display
+  const trackUserActivity = () => {
+    const today = new Date();
+    const dateString = today.toDateString();
+    
+    // Get existing login history
+    const loginHistory = JSON.parse(localStorage.getItem('userLoginHistory') || '[]');
+    
+    // Check if today is already recorded
+    const todayExists = loginHistory.some((login: any) => 
+      new Date(login.date).toDateString() === dateString
+    );
+    
+    if (!todayExists) {
+      // Add today's login
+      loginHistory.push({
+        date: today.toISOString(),
+        timestamp: Date.now()
+      });
+      
+      // Keep only last 30 days of history
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const filteredHistory = loginHistory.filter((login: any) => 
+        new Date(login.date) >= thirtyDaysAgo
+      );
+      
+      localStorage.setItem('userLoginHistory', JSON.stringify(filteredHistory));
+      console.log('User activity tracked for:', dateString);
+    }
+  };
+
   // Function to manually trigger streak update
   const checkTodayActivity = async () => {
     console.log('Manually checking today activity...');
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) return;
+
+    trackUserActivity();
 
     try {
       await supabase.rpc('update_user_streak', {

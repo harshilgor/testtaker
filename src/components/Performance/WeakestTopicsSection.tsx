@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { BookOpen, Brain, RefreshCw } from 'lucide-react';
+import { Brain, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TopicPerformance {
@@ -157,11 +157,6 @@ const WeakestTopicsSection: React.FC<WeakestTopicsSectionProps> = ({ userName })
     navigate('/quiz');
   };
 
-  const handleLearn = (topic: string, subject: 'math' | 'english') => {
-    // For now, we'll show an alert. In the future, this would open an AI lesson
-    alert(`AI Lesson for ${topic} (${subject}) - Coming Soon! This will provide personalized explanations and examples.`);
-  };
-
   const handleRefresh = () => {
     refetch();
     analyzeWeakestTopics();
@@ -181,15 +176,6 @@ const WeakestTopicsSection: React.FC<WeakestTopicsSectionProps> = ({ userName })
         </div>
       </div>
       <div className="flex space-x-2 ml-4">
-        <Button
-          onClick={() => handleLearn(topic.topic, subject)}
-          variant="outline"
-          size="sm"
-          className="text-xs px-2 py-1 h-8"
-        >
-          <BookOpen className="h-3 w-3 mr-1" />
-          Learn
-        </Button>
         <Button
           onClick={() => handlePractice(topic.topic, subject)}
           variant="outline"

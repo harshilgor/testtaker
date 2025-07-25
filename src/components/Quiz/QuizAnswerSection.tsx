@@ -13,6 +13,7 @@ interface Question {
   explanation: string;
   section: 'reading-writing' | 'math';
   topic: string;
+  question_prompt?: string;
 }
 
 interface QuizAnswerSectionProps {
@@ -45,6 +46,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   eliminateMode = false
 }) => {
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+  
   const handleAnswerSelect = (selectedAnswer: number) => {
     onAnswerChange(selectedAnswer);
     
@@ -81,6 +83,14 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           Flag for Review
         </label>
       </div>
+
+      {/* Question Prompt */}
+      {question.question_prompt && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800 font-medium mb-2">Question Prompt:</p>
+          <p className="text-sm text-blue-700">{question.question_prompt}</p>
+        </div>
+      )}
 
       <div className="space-y-3">
         {question.options.map((option, index) => {
