@@ -34,13 +34,11 @@ const AnswerOptions: React.FC<AnswerOptionsProps> = ({
 
   const getOptionStyle = (optionValue: string) => {
     if (!correctAnswer) {
-      // Normal state - no feedback yet
       return selectedAnswer === optionValue 
         ? 'bg-blue-50 border-blue-200' 
         : 'hover:bg-gray-50 border-gray-200';
     }
 
-    // Feedback state - show correct/incorrect
     const isCorrect = optionValue === correctAnswer;
     const isSelected = optionValue === selectedAnswer;
 

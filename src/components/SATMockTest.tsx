@@ -26,20 +26,12 @@ const SATMockTest: React.FC<SATMockTestProps> = ({ userName, onBack }) => {
     setTestStarted(false);
   };
 
-  const handlePauseTest = () => {
-    // Reset to test selection
-    setTestStarted(false);
-    setSelectedTest(null);
-  };
-
   const handleQuitTest = () => {
-    // Reset everything and go back
     setTestStarted(false);
     setSelectedTest(null);
     onBack();
   };
 
-  // Show test selection if no test is selected
   if (!selectedTest) {
     return (
       <MockTestSelection
@@ -50,7 +42,6 @@ const SATMockTest: React.FC<SATMockTestProps> = ({ userName, onBack }) => {
     );
   }
 
-  // Show test introduction if test is selected but not started
   if (!testStarted) {
     return (
       <SATTestIntroduction 
@@ -60,11 +51,10 @@ const SATMockTest: React.FC<SATMockTestProps> = ({ userName, onBack }) => {
     );
   }
 
-  // Show the actual test interface
   return (
     <SATMockTestInterface 
       onBack={handleBackToSelection}
-      onPauseTest={handlePauseTest}
+      onPauseTest={handleBackToSelection}
       onQuitTest={handleQuitTest}
     />
   );

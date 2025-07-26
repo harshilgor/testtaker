@@ -25,16 +25,12 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isFlagged, setIsFlagged] = useState(false);
 
-  console.log('MarathonQuestion: Rendering', { questionId: question.id, answered, showFeedback });
-
   const handleAnswerSelect = (answer: string) => {
     if (answered) return;
-    console.log('MarathonQuestion: Answer selected', answer);
     setSelectedAnswer(answer);
   };
 
   const handleShowAnswer = () => {
-    console.log('MarathonQuestion: Show answer clicked');
     setShowAnswer(true);
     setShowFeedback(true);
     setSelectedAnswer(question.correct_answer);
@@ -44,14 +40,13 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
   const handleSubmit = () => {
     if (!selectedAnswer && !showAnswer) return;
     
-    console.log('MarathonQuestion: Submit clicked', { selectedAnswer, showAnswer });
     setAnswered(true);
     setShowFeedback(true);
     onAnswer(selectedAnswer, showAnswer);
   };
 
   const handleNext = () => {
-    console.log('MarathonQuestion: Next clicked');
+    // Reset state for next question
     setSelectedAnswer('');
     setAnswered(false);
     setShowAnswer(false);
@@ -62,16 +57,11 @@ const MarathonQuestion: React.FC<MarathonQuestionProps> = ({
 
   const getIncorrectRationale = (selectedAnswer: string) => {
     switch (selectedAnswer) {
-      case 'A':
-        return question.incorrect_rationale_a;
-      case 'B':
-        return question.incorrect_rationale_b;
-      case 'C':
-        return question.incorrect_rationale_c;
-      case 'D':
-        return question.incorrect_rationale_d;
-      default:
-        return null;
+      case 'A': return question.incorrect_rationale_a;
+      case 'B': return question.incorrect_rationale_b;
+      case 'C': return question.incorrect_rationale_c;
+      case 'D': return question.incorrect_rationale_d;
+      default: return null;
     }
   };
 

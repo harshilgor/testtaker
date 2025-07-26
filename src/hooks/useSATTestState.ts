@@ -44,7 +44,6 @@ export const useSATTestState = () => {
   const [userDisplayName, setUserDisplayName] = useState('User');
   const [startTime] = useState(Date.now());
 
-  // Load user info
   useEffect(() => {
     const loadUserInfo = async () => {
       const { data: { user } } = await supabase.auth.getUser();

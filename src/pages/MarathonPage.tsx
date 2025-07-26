@@ -15,14 +15,12 @@ const MarathonPage: React.FC = () => {
   );
   const [showSettings, setShowSettings] = useState(!marathonSettings);
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!loading && (!user || !session)) {
       navigate('/');
     }
   }, [user, session, loading, navigate]);
 
-  // Set body styles for full-screen mode but allow scrolling
   useEffect(() => {
     document.body.style.margin = '0';
     document.body.style.padding = '0';

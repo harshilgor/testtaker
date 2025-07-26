@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DatabaseQuestion } from '@/services/questionService';
 import ResizableMarathonInterface from './ResizableMarathonInterface';
 

@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { formatTimeRemaining } from '@/utils/timeUtils';
 
 interface MarathonHeaderProps {
   isMathQuestion: boolean;
@@ -17,17 +16,8 @@ const MarathonHeader: React.FC<MarathonHeaderProps> = ({
   isMathQuestion,
   timeRemaining,
   eliminateMode,
-  onEliminateModeChange,
-  currentQuestionNumber,
-  totalQuestions
+  onEliminateModeChange
 }) => {
-  const formatTimeRemaining = (seconds?: number) => {
-    if (!seconds) return '';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
