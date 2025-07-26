@@ -9,12 +9,17 @@ interface Question {
   question: string;
   options: string[];
   correctAnswer: number;
-  explanation: string;
+  explanation: string; // This is the rationale for the CORRECT answer
   subject: string;
   topic: string;
   difficulty: string;
   imageUrl?: string;
   hasImage?: boolean;
+  // Add these optional fields for incorrect answers
+  incorrect_rationale_a?: string;
+  incorrect_rationale_b?: string;
+  incorrect_rationale_c?: string;
+  incorrect_rationale_d?: string;
 }
 
 interface QuizAnswerPanelProps {
