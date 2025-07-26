@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -164,54 +165,63 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                   </button>
                 )}
               </div>
-
-              {/* Show rationales when submitted */}
-              {isSubmitted && (
-                <>
-                  {/* Show incorrect rationale for selected wrong answer */}
-                  {isSelected && !isCorrectOption && getIncorrectRationale(index) && (
-                    <Card className="p-3 ml-12 text-sm bg-red-50 border-red-200 text-red-800">
-                      <div className="flex items-start space-x-2">
-                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
-                        <div>
-                          <p className="font-medium mb-1">Why this is incorrect:</p>
-                          <p>{getIncorrectRationale(index)}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                  
-                  {/* Show correct rationale for correct answer */}
-                  {isCorrectOption && (
-                    <Card className="p-3 ml-12 text-sm bg-green-50 border-green-200 text-green-800">
-                      <div className="flex items-start space-x-2">
-                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                        <div>
-                          <p className="font-medium mb-1">Correct Answer Explanation:</p>
-                          <p>{question.explanation}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </>
-              )}
             </div>
           );
         })}
       </div>
 
-      {/* Additional feedback section for wrong answers */}
-      {isSubmitted && userSelectedWrongAnswer && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-          <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-          <div className="space-y-2 text-sm">
-            <p className="text-red-700">
-              <span className="font-medium">Your answer ({String.fromCharCode(65 + currentAnswer!)}):</span> Incorrect
-            </p>
-            <p className="text-green-700">
-              <span className="font-medium">Correct answer ({String.fromCharCode(65 + question.correctAnswer)}):</span> {question.options[question.correctAnswer]}
-            </p>
-          </div>
+      {/* Consolidated Rationale Feedback Section */}
+      {isSubmitted && (
+        <div className="mt-6 space-y-4">
+          {/* Show incorrect rationale first if user selected wrong answer */}
+          {userSelectedWrongAnswer && currentAnswer !== null && getIncorrectRationale(currentAnswer) && (
+            <Card className="p-4 bg-red-50 border-red-200">
+              <div className="flex items-start space-x-3">
+                <Lightbulb className="h-5 w-5 mt-0.5 flex-shrink-0 text-red-600" />
+                <div>
+                  <p className="font-medium text-red-800 mb-2">
+                    Why your answer ({String.fromCharCode(65 + currentAnswer)}) is incorrect:
+                  </p>
+                  <p className="text-red-700 text-sm leading-relaxed">
+                    {getIncorrectRationale(currentAnswer)}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+          
+          {/* Always show correct rationale when submitted */}
+          <Card className="p-4 bg-green-50 border-green-200">
+            <div className="flex items-start space-x-3">
+              <Lightbulb className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+              <div>
+                <p className="font-medium text-green-800 mb-2">
+                  {userSelectedWrongAnswer 
+                    ? `Why ${String.fromCharCode(65 + question.correctAnswer)} is the correct answer:` 
+                    : 'Correct Answer Explanation:'
+                  }
+                </p>
+                <p className="text-green-700 text-sm leading-relaxed">
+                  {question.explanation}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Summary section for wrong answers */}
+          {userSelectedWrongAnswer && (
+            <div className="p-4 bg-gray-50 rounded-lg border">
+              <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
+              <div className="space-y-2 text-sm">
+                <p className="text-red-700">
+                  <span className="font-medium">Your answer ({String.fromCharCode(65 + currentAnswer!)}):</span> Incorrect
+                </p>
+                <p className="text-green-700">
+                  <span className="font-medium">Correct answer ({String.fromCharCode(65 + question.correctAnswer)}):</span> {question.options[question.correctAnswer]}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
