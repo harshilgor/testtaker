@@ -13,6 +13,7 @@ interface Question {
   difficulty: string;
   imageUrl?: string;
   hasImage?: boolean;
+  question_prompt?: string;
 }
 
 interface QuizQuestionPanelProps {
@@ -29,6 +30,7 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({
   const { isMobile } = useResponsiveLayout();
   
   console.log('QuizQuestionPanel - isMobile:', isMobile);
+  console.log('QuizQuestionPanel - question_prompt:', question.question_prompt);
 
   if (isMobile) {
     return (
@@ -40,6 +42,13 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({
             <div className="text-sm leading-relaxed text-gray-900 mb-3">
               {question.question}
             </div>
+
+            {/* Question Prompt - Mobile Layout */}
+            {question.question_prompt && (
+              <div className="text-sm leading-relaxed text-gray-600 mb-3 p-3 bg-gray-50 rounded-md border-l-4 border-blue-400">
+                {question.question_prompt}
+              </div>
+            )}
             
             {/* Flag button moved below question text */}
             {onToggleFlag && (
@@ -63,9 +72,16 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({
         {/* Question Header */}
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Question</h2>
-          <div className="text-lg leading-relaxed text-gray-900">
+          <div className="text-lg leading-relaxed text-gray-900 mb-4">
             {question.question}
           </div>
+
+          {/* Question Prompt - Desktop Layout */}
+          {question.question_prompt && (
+            <div className="text-base leading-relaxed text-gray-600 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500 mb-4">
+              {question.question_prompt}
+            </div>
+          )}
         </div>
 
       </div>

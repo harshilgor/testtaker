@@ -9,6 +9,7 @@ interface QuestionDisplayProps {
   isMobile?: boolean;
   className?: string;
   showImage?: boolean;
+  questionPrompt?: string;
 }
 
 const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
@@ -17,8 +18,11 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   hasImage,
   isMobile,
   className = '',
-  showImage = true
+  showImage = true,
+  questionPrompt
 }) => {
+  console.log('QuestionDisplay - questionPrompt:', questionPrompt);
+
   return (
     <div className={`max-w-3xl mx-auto ${className}`}>
       <h2 className={`${isMobile ? 'text-sm' : 'text-base md:text-lg'} font-medium text-gray-900 mb-2 md:mb-4`}>
@@ -27,6 +31,13 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
       <div className={`${isMobile ? 'text-sm' : 'text-sm md:text-lg'} leading-relaxed text-gray-900 mb-3 md:mb-4`}>
         {question}
       </div>
+
+      {/* Question Prompt Display */}
+      {questionPrompt && (
+        <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-600 p-${isMobile ? '3' : '4'} bg-gray-50 rounded-${isMobile ? 'md' : 'lg'} border-l-4 border-blue-${isMobile ? '400' : '500'} mb-3 md:mb-4`}>
+          {questionPrompt}
+        </div>
+      )}
 
       {showImage && hasImage && imageUrl && (
         <div className="mb-4 md:mb-6">

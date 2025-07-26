@@ -12,6 +12,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
   isMobile
 }) => {
   console.log('QuizQuestionSection - isMobile:', isMobile);
+  console.log('QuizQuestionSection - question_prompt:', question.question_prompt);
   
   const imageUrl = question.hasImage && question.imageUrl ? question.imageUrl : undefined;
 
@@ -25,6 +26,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
           isMobile={true}
           className="h-full"
           showImage={false}
+          questionPrompt={question.question_prompt}
         />
       </div>
     );
@@ -39,6 +41,7 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
         isMobile={false}
         className="h-full"
         showImage={false}
+        questionPrompt={question.question_prompt}
       />
     </div>
   );
