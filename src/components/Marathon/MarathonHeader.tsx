@@ -19,29 +19,29 @@ const MarathonHeader: React.FC<MarathonHeaderProps> = ({
   onEliminateModeChange
 }) => {
   return (
-    <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <div className="bg-blue-600 rounded px-3 py-1 text-sm font-medium">
+    <div className="bg-slate-800 text-white px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+      <div className="flex items-center space-x-2 md:space-x-4">
+        <div className="bg-blue-600 rounded px-2 md:px-3 py-1 text-xs md:text-sm font-medium">
           MARATHON
         </div>
-        <span className="text-sm">
+        <span className="text-xs md:text-sm">
           {isMathQuestion ? 'Section 2, Module 1: Math' : 'Section 1, Module 1: Reading and Writing'}
         </span>
       </div>
       
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-2 md:space-x-6">
         {timeRemaining && (
-          <div className="flex items-center space-x-2 text-lg font-mono">
+          <div className="flex items-center space-x-2 text-sm md:text-lg font-mono">
             <span>{formatTimeRemaining(timeRemaining)}</span>
           </div>
         )}
         
         <div className="flex items-center space-x-2 text-sm">
-          <span>Eliminate Answers</span>
+          <span className="hidden sm:inline">Eliminate</span>
           <Switch
             checked={eliminateMode}
             onCheckedChange={onEliminateModeChange}
-            className="data-[state=checked]:bg-blue-600"
+            className="data-[state=checked]:bg-blue-600 scale-75 md:scale-100"
           />
         </div>
       </div>

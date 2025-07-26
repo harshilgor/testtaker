@@ -48,7 +48,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           onClick={onExit}
           variant="outline"
           size="sm"
-          className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800 text-xs px-2 md:px-3 py-1 min-h-[44px]"
+          className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800 text-xs px-2 md:px-3 py-1 min-h-[32px] md:min-h-[44px]"
         >
           Exit
         </Button>
