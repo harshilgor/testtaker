@@ -1,117 +1,239 @@
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Subject } from '../types/common';
 
-interface TopicData {
-  id: string;
-  skill: string;
-  name: string;
-  description: string;
-  count: number;
-  domain?: string;
-  question_count?: number;
-}
+export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [questionCount, setQuestionCount] = useState<number>(10);
+  const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
+  const [loading, setLoading] = useState(false);
 
-export const useQuestionTopics = (subject: Subject) => {
-  const [topics, setTopics] = useState<TopicData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const handleTopicToggle = (topicId: string) => {
+    setSelectedTopics(prev => 
+      prev.includes(topicId)
+        ? prev.filter(id => id !== topicId)
+        : [...prev, topicId]
+    );
+  };
 
-  useEffect(() => {
-    const fetchTopics = async () => {
-      try {
-        console.log('=== FETCHING TOPICS DEBUG ===');
-        console.log('Subject:', subject);
-        setError(null);
+  const handleQuestionCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0 && value <= 100) {
+      setQuestionCount(value);
+    }
+  };
+
+  const loadQuizQuestions = async () => {
+    console.log('=== QUIZ GENERATION DEBUG ===');
+    console.log('Subject:', subject);
+    console.log('Selected topics:', selectedTopics);
+    console.log('Available topics:', topics);
+    console.log('Question count requested:', questionCount);
+    
+    setLoading(true);
+    try {
+      // Map subject to database test field
+      const testFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+      console.log('Test filter:', testFilter);
+      
+      let query = supabase
+        .from('question_bank')
+        .select(`
+          id,
+          question_text,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          correct_answer,
+          correct_rationale,
+          incorrect_rationale_a,
+          incorrect_rationale_b,
+          incorrect_rationale_c,
+          incorrect_rationale_d,
+          assessment,
+          skill,
+          difficulty,
+          domain,
+          test,
+          question_prompt,
+          image
+        `)
+        .eq('assessment', 'SAT')
+        .eq('test', testFilter)
+        .not('question_text', 'is', null)
+        .not('option_a', 'is', null)
+        .not('option_b', 'is', null)
+        .not('option_c', 'is', null)
+        .not('option_d', 'is', null);
+
+      console.log('Base query filters - assessment: SAT, test:', testFilter);
+
+      // Handle topic filtering - if topics are selected, filter by skill
+      if (selectedTopics.length > 0 && !selectedTopics.includes('wrong-questions')) {
+        console.log('Processing selected topics for skill filtering...');
         
-        // Map subject to database test field
-        const testFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+        // Map selected topic IDs to actual skill names from the topics array
+        const selectedSkills: string[] = [];
         
-        // Fetch topics using correct database structure
-        const { data, error: fetchError } = await supabase
-          .from('question_bank')
-          .select('skill, domain, test, assessment')
-          .eq('assessment', 'SAT')
-          .eq('test', testFilter)
-          .not('question_text', 'is', null)
-          .not('skill', 'is', null);
-
-        if (fetchError) {
-          console.error('Topics error:', fetchError);
-          throw fetchError;
-        }
-
-        console.log('Raw data from database:', data);
-        console.log('Total records found:', data?.length || 0);
-
-        // Debug: Log all unique skills with their exact values
-        const allSkills = data?.map(item => item.skill) || [];
-        console.log('All skills from database:', allSkills);
-
-        // Create a simple count map using exact skill names (preserve original casing)
-        const skillCounts: Record<string, { count: number; domain?: string; skill: string }> = {};
-        
-        data?.forEach(item => {
-          if (item.skill) {
-            const exactSkill = item.skill.trim(); // Only trim whitespace
+        selectedTopics.forEach(topicId => {
+          console.log('Processing topic ID:', topicId);
+          
+          if (topicId.includes('domain-')) {
+            // This is a domain selection, get all skills for this domain
+            const domainName = topicId.replace('domain-', '');
+            console.log('Domain selection detected:', domainName);
             
-            if (!skillCounts[exactSkill]) {
-              skillCounts[exactSkill] = { 
-                count: 0, 
-                domain: item.domain,
-                skill: exactSkill
-              };
+            const domainSkills = topics
+              .filter(topic => topic.domain === domainName)
+              .map(topic => topic.skill);
+            
+            console.log('Skills found for domain', domainName, ':', domainSkills);
+            selectedSkills.push(...domainSkills);
+          } else {
+            // This is a specific skill selection
+            const topic = topics.find(t => t.id === topicId);
+            if (topic?.skill) {
+              console.log('Skill selection found:', topic.skill);
+              selectedSkills.push(topic.skill);
+            } else {
+              console.log('Topic not found or missing skill for ID:', topicId);
             }
-            skillCounts[exactSkill].count++;
-            
-            console.log(`Counting skill: "${exactSkill}" -> ${skillCounts[exactSkill].count}`);
           }
         });
-
-        console.log('Final skill counts:', skillCounts);
-
-        // Convert to array format with proper structure
-        const topicsArray = Object.entries(skillCounts).map(([skillName, data]) => ({
-          id: skillName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-          skill: data.skill, // Use exact original skill name
-          name: data.skill,
-          description: `Practice ${data.skill} problems`,
-          count: data.count,
-          question_count: data.count,
-          domain: data.domain
-        }));
-
-        console.log('Final topics array:', topicsArray);
         
-        // Debug: Show specific analysis topic
-        const analysisTopics = topicsArray.filter(t => 
-          t.skill.toLowerCase().includes('analysis')
-        );
-        console.log('Analysis topics found:', analysisTopics);
+        // Remove duplicates
+        const uniqueSkills = [...new Set(selectedSkills)];
+        console.log('Final unique skills for filtering:', uniqueSkills);
         
-        setTopics(topicsArray);
-      } catch (err) {
-        console.error('Error fetching topics:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load topics');
-        
-        // Provide fallback topics if database fails
-        const fallbackTopics = subject === 'math' ? [
-          { id: 'linear-equations', skill: 'Linear Equations', name: 'Linear Equations', description: 'Practice Linear Equations problems', count: 50, question_count: 50 },
-          { id: 'quadratic-functions', skill: 'Quadratic Functions', name: 'Quadratic Functions', description: 'Practice Quadratic Functions problems', count: 40, question_count: 40 },
-        ] : [
-          { id: 'grammar', skill: 'Grammar', name: 'Grammar', description: 'Practice Grammar problems', count: 60, question_count: 60 },
-          { id: 'reading-comprehension', skill: 'Reading Comprehension', name: 'Reading Comprehension', description: 'Practice Reading Comprehension problems', count: 45, question_count: 45 },
-        ];
-        
-        setTopics(fallbackTopics);
-      } finally {
-        setLoading(false);
+        if (uniqueSkills.length > 0) {
+          query = query.in('skill', uniqueSkills);
+          console.log('Applied skill filter with skills:', uniqueSkills);
+        } else {
+          console.log('WARNING: No valid skills found for selected topics!');
+        }
+      } else {
+        console.log('No topic filtering applied (no topics selected or wrong-questions selected)');
       }
-    };
 
-    fetchTopics();
-  }, [subject]);
+      const { data: questions, error } = await query
+        .order('id')
+        .limit(questionCount * 3); // Get more questions to ensure variety
 
-  return { topics, loading, error };
+      console.log('Query executed, error:', error);
+      console.log('Questions returned:', questions?.length || 0);
+
+      if (error) {
+        console.error('Database query error:', error);
+        alert('Error loading questions: ' + error.message);
+        return [];
+      }
+
+      if (!questions || questions.length === 0) {
+        console.log('=== NO QUESTIONS FOUND DEBUG ===');
+        
+        // Let's check what's actually in the database
+        const { data: debugQuestions, error: debugError } = await supabase
+          .from('question_bank')
+          .select('assessment, test, skill, question_prompt, count(*)')
+          .eq('assessment', 'SAT')
+          .eq('test', testFilter)
+          .not('question_text', 'is', null);
+          
+        console.log('Debug query for available questions:', debugQuestions);
+        console.log('Debug query error:', debugError);
+        
+        alert('No questions available for the selected criteria. Please try selecting different topics or check if questions exist in the database.');
+        return [];
+      }
+
+      // 🔍 DEBUG: Check question_prompt data before shuffling
+      console.log('=== QUESTION_PROMPT DEBUG ===');
+      const questionsWithPrompts = questions.filter(q => q.question_prompt && q.question_prompt.trim());
+      console.log(`Questions with question_prompt: ${questionsWithPrompts.length} out of ${questions.length}`);
+      console.log('Sample questions with prompts:', questionsWithPrompts.slice(0, 3).map(q => ({
+        id: q.id,
+        question_prompt: q.question_prompt,
+        question_text: q.question_text?.substring(0, 50) + '...'
+      })));
+
+      const shuffled = questions.sort(() => Math.random() - 0.5);
+      const selectedQuestions = shuffled.slice(0, questionCount);
+
+      console.log(`Successfully loaded ${selectedQuestions.length} questions`);
+      console.log('Sample question skills:', selectedQuestions.slice(0, 3).map(q => q.skill));
+      
+      // 🔍 DEBUG: Check selected questions for prompts
+      const selectedWithPrompts = selectedQuestions.filter(q => q.question_prompt && q.question_prompt.trim());
+      console.log(`Selected questions with prompts: ${selectedWithPrompts.length} out of ${selectedQuestions.length}`);
+      
+      const formattedQuestions = selectedQuestions.map(q => {
+        const formatted = {
+          id: q.id.toString(),
+          content: q.question_text, // 🔧 IMPORTANT: Change this to match your interface
+          question: q.question_text, // Keep both for compatibility
+          options: [q.option_a, q.option_b, q.option_c, q.option_d],
+          correctAnswer: q.correct_answer === 'A' ? 0 : 
+                        q.correct_answer === 'B' ? 1 :
+                        q.correct_answer === 'C' ? 2 : 3,
+          explanation: q.correct_rationale,
+          section: subject === 'math' ? 'math' : 'reading-writing',
+          topic: q.skill || 'general',
+          difficulty: q.difficulty || 'medium',
+          imageUrl: q.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${q.id}.png` : undefined,
+          hasImage: q.image || false,
+          // ✅ CRITICAL: Map all the rationale fields
+          question_prompt: q.question_prompt,
+          incorrect_rationale_a: q.incorrect_rationale_a,
+          incorrect_rationale_b: q.incorrect_rationale_b,
+          incorrect_rationale_c: q.incorrect_rationale_c,
+          incorrect_rationale_d: q.incorrect_rationale_d
+        };
+        
+        // 🔍 DEBUG: Log each question's prompt mapping
+        if (q.question_prompt) {
+          console.log(`Question ${q.id} - Raw prompt:`, q.question_prompt);
+          console.log(`Question ${q.id} - Formatted prompt:`, formatted.question_prompt);
+        }
+        
+        return formatted;
+      });
+
+      console.log('=== QUIZ GENERATION COMPLETE ===');
+      
+      // 🔍 FINAL DEBUG: Verify formatted questions have prompts
+      const finalWithPrompts = formattedQuestions.filter(q => q.question_prompt && q.question_prompt.trim());
+      console.log(`Final formatted questions with prompts: ${finalWithPrompts.length} out of ${formattedQuestions.length}`);
+      
+      if (finalWithPrompts.length > 0) {
+        console.log('✅ SUCCESS: Questions with prompts found:', finalWithPrompts.map(q => ({
+          id: q.id,
+          hasPrompt: !!q.question_prompt,
+          promptLength: q.question_prompt?.length || 0,
+          promptPreview: q.question_prompt?.substring(0, 100) + '...'
+        })));
+      } else {
+        console.log('❌ WARNING: No questions with prompts in final result');
+      }
+      
+      return formattedQuestions;
+    } catch (error) {
+      console.error('Error loading quiz questions:', error);
+      alert('Error loading questions: ' + (error as Error).message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    selectedTopics,
+    questionCount,
+    feedbackPreference,
+    loading,
+    setFeedbackPreference,
+    handleTopicToggle,
+    handleQuestionCountChange,
+    loadQuizQuestions
+  };
 };
