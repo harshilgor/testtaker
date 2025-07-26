@@ -131,21 +131,29 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       if (!questions || questions.length === 0) {
         console.log('=== NO QUESTIONS FOUND DEBUG ===');
-        
-        // Let's check what's actually in the database
-        const { data: debugQuestions, error: debugError } = await supabase
-          .from('question_bank')
-          .select('assessment, test, skill, count(*)')
-          .eq('assessment', 'SAT')
-          .eq('test', testFilter)
-          .not('question_text', 'is', null);
-          
-        console.log('Debug query for available questions:', debugQuestions);
-        console.log('Debug query error:', debugError);
-        
         alert('No questions available for the selected criteria. Please try selecting different topics or check if questions exist in the database.');
         return [];
       }
+
+      // 🔍 DETAILED DEBUG: Check question_prompt data
+      console.log('=== QUESTION_PROMPT ANALYSIS ===');
+      console.log('Total questions fetched:', questions.length);
+      
+      // Check each question's prompt status
+      questions.forEach((q, index) => {
+        const promptStatus = !q.question_prompt ? 'NULL/UNDEFINED' : 
+                           q.question_prompt.trim() === '' ? 'EMPTY STRING' : 
+                           'HAS DATA';
+        console.log(`Question ${q.id} (index ${index}):`, {
+          prompt_status: promptStatus,
+          prompt_length: q.question_prompt?.length || 0,
+          prompt_preview: q.question_prompt ? q.question_prompt.substring(0, 50) + '...' : 'NO PROMPT',
+          skill: q.skill
+        });
+      });
+
+      const questionsWithPrompts = questions.filter(q => q.question_prompt && q.question_prompt.trim());
+      console.log(`📊 SUMMARY: ${questionsWithPrompts.length} out of ${questions.length} questions have prompts`);
 
       const shuffled = questions.sort(() => Math.random() - 0.5);
       const selectedQuestions = shuffled.slice(0, questionCount);
@@ -153,21 +161,69 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       console.log(`Successfully loaded ${selectedQuestions.length} questions`);
       console.log('Sample question skills:', selectedQuestions.slice(0, 3).map(q => q.skill));
       
-      const formattedQuestions = selectedQuestions.map(q => ({
-        id: q.id.toString(),
-        question: q.question_text,
-        options: [q.option_a, q.option_b, q.option_c, q.option_d],
-        correctAnswer: q.correct_answer === 'A' ? 0 : 
-                      q.correct_answer === 'B' ? 1 :
-                      q.correct_answer === 'C' ? 2 : 3,
-        explanation: q.correct_rationale,
-        subject: subject,
-        topic: q.skill || 'general',
-        difficulty: q.difficulty || 'medium',
-        imageUrl: q.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${q.id}.png` : undefined,
-        hasImage: q.image || false
-      }));
+      // 🔍 DEBUG: Check selected questions for prompts
+      console.log('=== SELECTED QUESTIONS PROMPT CHECK ===');
+      selectedQuestions.forEach((q, index) => {
+        console.log(`Selected Question ${index + 1} (ID: ${q.id}):`, {
+          has_prompt: !!q.question_prompt,
+          prompt: q.question_prompt || 'NO PROMPT'
+        });
+      });
+      
+      const formattedQuestions = selectedQuestions.map((q, index) => {
+        console.log(`🔄 FORMATTING Question ${index + 1} (ID: ${q.id}):`, {
+          raw_prompt: q.question_prompt,
+          prompt_will_be_mapped: !!q.question_prompt
+        });
 
+        const formatted = {
+          id: q.id.toString(),
+          content: q.question_text,
+          question: q.question_text,
+          options: [q.option_a, q.option_b, q.option_c, q.option_d],
+          correctAnswer: q.correct_answer === 'A' ? 0 : 
+                        q.correct_answer === 'B' ? 1 :
+                        q.correct_answer === 'C' ? 2 : 3,
+          explanation: q.correct_rationale,
+          section: subject === 'math' ? 'math' : 'reading-writing',
+          topic: q.skill || 'general',
+          difficulty: q.difficulty || 'medium',
+          imageUrl: q.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${q.id}.png` : undefined,
+          hasImage: q.image || false,
+          // ✅ CRITICAL: Map all the rationale fields
+          question_prompt: q.question_prompt,
+          incorrect_rationale_a: q.incorrect_rationale_a,
+          incorrect_rationale_b: q.incorrect_rationale_b,
+          incorrect_rationale_c: q.incorrect_rationale_c,
+          incorrect_rationale_d: q.incorrect_rationale_d
+        };
+        
+        console.log(`✅ FORMATTED Question ${index + 1}:`, {
+          id: formatted.id,
+          has_prompt_in_formatted: !!formatted.question_prompt,
+          formatted_prompt: formatted.question_prompt || 'NO PROMPT MAPPED'
+        });
+        
+        return formatted;
+      });
+
+      console.log('=== FINAL VERIFICATION ===');
+      const finalWithPrompts = formattedQuestions.filter(q => q.question_prompt && q.question_prompt.trim());
+      console.log(`📋 FINAL RESULT: ${finalWithPrompts.length} out of ${formattedQuestions.length} formatted questions have prompts`);
+      
+      if (finalWithPrompts.length > 0) {
+        console.log('✅ Questions with prompts in final result:', finalWithPrompts.map(q => ({
+          id: q.id,
+          prompt: q.question_prompt
+        })));
+      } else {
+        console.log('❌ NO QUESTIONS WITH PROMPTS IN FINAL RESULT');
+        console.log('🔍 This means either:');
+        console.log('   1. Your database questions don\'t have question_prompt data');
+        console.log('   2. The selected questions happened to not have prompts');
+        console.log('   3. There\'s a mapping issue (less likely)');
+      }
+      
       console.log('=== QUIZ GENERATION COMPLETE ===');
       return formattedQuestions;
     } catch (error) {
