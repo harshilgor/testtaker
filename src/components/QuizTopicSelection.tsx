@@ -8,6 +8,14 @@ import { useQuestionTopics } from '@/hooks/useQuestionTopics';
 import { useQuizTopicSelection } from '@/hooks/useQuizTopicSelection';
 import QuizView from './QuizView';
 
+interface Topic {
+  id: string;
+  skill: string;
+  domain: string;
+  question_count: number;
+  count: number;
+}
+
 interface QuizTopicSelectionProps {
   subject: Subject;
   userName: string;
@@ -105,15 +113,15 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     );
   }
 
-  // Group topics by domain
-  const groupedTopics = topics.reduce((acc, topic) => {
+  // Group topics by domain with proper typing
+  const groupedTopics: Record<string, Topic[]> = topics.reduce((acc, topic) => {
     const domain = topic.domain || 'General';
     if (!acc[domain]) {
       acc[domain] = [];
     }
     acc[domain].push(topic);
     return acc;
-  }, {} as Record<string, typeof topics>);
+  }, {} as Record<string, Topic[]>);
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 md:py-8">
