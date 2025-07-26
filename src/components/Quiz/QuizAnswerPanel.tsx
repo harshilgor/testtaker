@@ -207,21 +207,32 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
           </div>
         </div>
 
-        {/* Feedback Section */}
-        {showFeedback && feedbackPreference === 'immediate' && (
-          <div className={`p-4 rounded-lg mb-6 ${
-            isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className="flex items-center mb-2">
-              <span className={`font-semibold ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                {isCorrect ? 'Correct!' : 'Incorrect'}
-              </span>
-            </div>
-            <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-              {question.explanation}
-            </p>
-          </div>
-        )}
+{/* === NEW FEEDBACK SECTION === */}
+{showFeedback && feedbackPreference === 'immediate' && (() => {
+  // Logic to get the right explanation
+  let rationale = question.explanation; // Default to the correct explanation
+  if (!isCorrect && selectedAnswer !== null) {
+    const optionLetter = String.fromCharCode(65 + selectedAnswer).toLowerCase();
+    const rationaleKey = `incorrect_rationale_${optionLetter}` as keyof Question;
+    // If a specific incorrect rationale exists, use it. Otherwise, fall back to the main explanation.
+    rationale = (question[rationaleKey] as string) || question.explanation;
+  }
+
+  return (
+    <div className={`p-4 rounded-lg mb-6 ${
+      isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+    }`}>
+      <div className="flex items-center mb-2">
+        <span className={`font-semibold ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+          {isCorrect ? 'Correct!' : 'Incorrect'}
+        </span>
+      </div>
+      <p className={`text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+        {rationale}
+      </p>
+    </div>
+  );
+})()}
       </div>
 
       {/* Next button removed - using bottom navigation only */}
