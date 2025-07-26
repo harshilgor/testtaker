@@ -25,6 +25,7 @@ interface QuizTopicSelectionProps {
     subject: 'math' | 'english';
     topic: string;
     questionCount: number;
+    autoStart?: boolean;
   } | null;
 }
 
@@ -50,22 +51,33 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     loadQuizQuestions
   } = useQuizTopicSelection(subject, topics);
 
-  // Handle auto-selection
+  // Handle auto-selection and auto-start
   useEffect(() => {
     if (autoSelection && autoSelection.subject === subject && topics.length > 0) {
+      console.log('Auto-selection detected:', autoSelection);
+      
       // Find the topic that matches the auto-selection
-      const matchingTopic = topics.find(topic => topic.skill === autoSelection.topic);
-      if (matchingTopic) {
-        // Auto-select the topic and start the quiz
+      const matchingTopic = topics.find(topic => 
+        topic.skill.toLowerCase() === autoSelection.topic.toLowerCase() ||
+        topic.skill.toLowerCase().includes(autoSelection.topic.toLowerCase()) ||
+        autoSelection.topic.toLowerCase().includes(topic.skill.toLowerCase())
+      );
+      
+      console.log('Matching topic found:', matchingTopic);
+      console.log('Available topics:', topics.map(t => t.skill));
+      
+      if (matchingTopic && !selectedTopics.includes(matchingTopic.id)) {
         handleTopicToggle(matchingTopic.id);
         
-        // Auto-start the quiz after a brief delay
-        setTimeout(() => {
-          handleStartQuiz(true, autoSelection.questionCount);
-        }, 500);
+        // Auto-start the quiz if requested
+        if (autoSelection.autoStart) {
+          setTimeout(() => {
+            handleStartQuiz(true, autoSelection.questionCount || 10);
+          }, 1000); // Give time for topic selection to register
+        }
       }
     }
-  }, [autoSelection, subject, topics]);
+  }, [autoSelection, subject, topics, selectedTopics]);
 
   const handleStartQuiz = async (isAutoStart = false, autoQuestionCount?: number) => {
     const questionsToUse = isAutoStart && autoQuestionCount ? autoQuestionCount : questionCount;
@@ -147,7 +159,24 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
               <div className="flex items-center text-blue-800">
                 <Settings className="h-4 w-4 mr-2" />
                 <span className="text-sm font-medium">
-                  Auto-selecting "{autoSelection.topic}" for practice session ({autoSelection.questionCount} questions)
+                  {autoSelection.autoStart ? 
+                    `Auto-starting practice for "${autoSelection.topic}" (${autoSelection.questionCount} questions)` :
+                    `Auto-selecting "${autoSelection.topic}" for practice session (${autoSelection.questionCount} questions)`
+                  }
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading indicator for auto-start */}
+        {autoSelection?.autoStart && loading && (
+          <Card className="mb-6 border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center text-green-800">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+                <span className="text-sm font-medium">
+                  Loading questions for practice session...
                 </span>
               </div>
             </CardContent>
@@ -256,21 +285,23 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
             </CardContent>
           </Card>
 
-          {/* Start Quiz Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={() => handleStartQuiz()}
-              disabled={selectedTopics.length === 0 || loading}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl min-h-[44px]"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              ) : (
-                <Play className="h-4 w-4 mr-2" />
-              )}
-              Start Quiz ({selectedTopics.length} topics, {questionCount} questions)
-            </Button>
-          </div>
+          {/* Start Quiz Button - only show if not auto-starting */}
+          {!autoSelection?.autoStart && (
+            <div className="flex justify-center">
+              <Button
+                onClick={() => handleStartQuiz()}
+                disabled={selectedTopics.length === 0 || loading}
+                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl min-h-[44px]"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                ) : (
+                  <Play className="h-4 w-4 mr-2" />
+                )}
+                Start Quiz ({selectedTopics.length} topics, {questionCount} questions)
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

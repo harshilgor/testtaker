@@ -5,6 +5,7 @@ interface AutoTopicSelection {
   subject: 'math' | 'english';
   topic: string;
   questionCount: number;
+  autoStart?: boolean;
 }
 
 export const useAutoTopicSelection = () => {
@@ -15,11 +16,13 @@ export const useAutoTopicSelection = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        console.log('Auto-selection loaded from localStorage:', parsed);
         setAutoSelection(parsed);
         // Clear after reading
         localStorage.removeItem('selectedQuizTopic');
       } catch (error) {
         console.error('Error parsing auto topic selection:', error);
+        localStorage.removeItem('selectedQuizTopic');
       }
     }
   }, []);

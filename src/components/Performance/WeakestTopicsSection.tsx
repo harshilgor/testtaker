@@ -148,11 +148,12 @@ const WeakestTopicsSection: React.FC<WeakestTopicsSectionProps> = ({ userName })
   };
 
   const handlePractice = (topic: string, subject: 'math' | 'english') => {
-    // Store the selected topic and navigate to quiz
+    // Store the selected topic with proper format for auto-selection
     localStorage.setItem('selectedQuizTopic', JSON.stringify({
       subject,
       topic,
-      questionCount: 10
+      questionCount: 10,
+      autoStart: true
     }));
     navigate('/quiz');
   };
