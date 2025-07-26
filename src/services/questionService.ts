@@ -24,6 +24,7 @@ export interface DatabaseQuestion {
   updated_at: string;
   metadata?: any;
   image?: boolean;
+  question_prompt?: string;
 }
 
 export interface QuestionFilters {
@@ -154,7 +155,8 @@ class QuestionService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {},
-        image: q.image === 'true' || q.image === 'True' || q.image === '1' || false
+        image: q.image === 'true' || q.image === 'True' || q.image === '1' || false,
+        question_prompt: q.question_prompt || ''
       }));
 
       // Cache the results
@@ -239,7 +241,8 @@ class QuestionService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       metadata: {},
-      image: data.image === 'true' || data.image === 'True' || data.image === '1' || false
+      image: data.image === 'true' || data.image === 'True' || data.image === '1' || false,
+      question_prompt: data.question_prompt || ''
     };
   }
 
@@ -300,7 +303,7 @@ class QuestionService {
       difficulty: dbQuestion.difficulty as 'easy' | 'medium' | 'hard',
       section: dbQuestion.section,
       type: dbQuestion.question_type,
-      question_prompt: dbQuestion.metadata?.question_prompt || '',
+      question_prompt: dbQuestion.question_prompt || '',
       rationales: {
         correct: dbQuestion.correct_rationale,
         incorrect: {
