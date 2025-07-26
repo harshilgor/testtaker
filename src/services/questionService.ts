@@ -168,7 +168,6 @@ class QuestionService {
       const result = shuffled.slice(0, filters.limit || 10);
 
       console.log(`Successfully loaded ${result.length} questions from question_bank`);
-      console.log('Sample question data:', result[0]); // Debug log
       return result;
     } catch (error) {
       console.error('Error in getRandomQuestions:', error);
@@ -286,7 +285,7 @@ class QuestionService {
       return 'english';
     };
 
-    const converted = {
+    return {
       id: dbQuestion.id,
       question: dbQuestion.question_text,
       options: [
@@ -305,10 +304,6 @@ class QuestionService {
       section: dbQuestion.section,
       type: dbQuestion.question_type,
       question_prompt: dbQuestion.question_prompt || '',
-      incorrect_rationale_a: dbQuestion.incorrect_rationale_a || '',
-      incorrect_rationale_b: dbQuestion.incorrect_rationale_b || '',
-      incorrect_rationale_c: dbQuestion.incorrect_rationale_c || '',
-      incorrect_rationale_d: dbQuestion.incorrect_rationale_d || '',
       rationales: {
         correct: dbQuestion.correct_rationale,
         incorrect: {
@@ -321,9 +316,6 @@ class QuestionService {
       imageUrl: dbQuestion.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
       hasImage: dbQuestion.image || false
     };
-
-    console.log('Converted question for legacy format:', converted); // Debug log
-    return converted;
   }
 
   convertToSATFormat(dbQuestion: DatabaseQuestion) {

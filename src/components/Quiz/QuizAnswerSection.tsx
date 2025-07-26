@@ -51,17 +51,6 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
 }) => {
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
   
-  console.log('QuizAnswerSection - question_prompt:', question.question_prompt);
-  console.log('QuizAnswerSection - isSubmitted:', isSubmitted);
-  console.log('QuizAnswerSection - currentAnswer:', currentAnswer);
-  console.log('QuizAnswerSection - question rationales:', {
-    a: question.incorrect_rationale_a,
-    b: question.incorrect_rationale_b,
-    c: question.incorrect_rationale_c,
-    d: question.incorrect_rationale_d,
-    explanation: question.explanation
-  });
-  
   const handleAnswerSelect = (selectedAnswer: number) => {
     onAnswerChange(selectedAnswer);
     
@@ -82,7 +71,6 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
 
   const getIncorrectRationale = (selectedAnswer: number) => {
     const optionLetter = String.fromCharCode(65 + selectedAnswer); // A, B, C, D
-    console.log('Getting incorrect rationale for option:', optionLetter);
     switch (optionLetter) {
       case 'A': return question.incorrect_rationale_a;
       case 'B': return question.incorrect_rationale_b;
@@ -130,7 +118,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           const isSelected = currentAnswer === index;
           const isCorrectOption = index === question.correctAnswer;
           const isEliminated = eliminatedOptions.has(index);
-          const isIncorrectSelected = isSelected && !isCorrectOption && isSubmitted;
+          const isIncorrectSelected = isSelected && !isCorrectOption;
 
           return (
             <div key={index} className="space-y-2">
