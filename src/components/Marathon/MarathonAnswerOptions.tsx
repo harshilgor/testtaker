@@ -26,8 +26,13 @@ const MarathonAnswerOptions: React.FC<MarathonAnswerOptionsProps> = ({
 }) => {
   const options = getAnswerOptions(question);
 
+  const handleAnswerSelect = (answer: string) => {
+    if (answered) return;
+    onAnswerSelect(answer);
+  };
+
   return (
-    <div className="space-y-3 mb-6">
+    <div className="space-y-3">
       {options.map((option) => {
         const isSelected = selectedAnswer === option.letter;
         const isEliminated = eliminatedOptions.has(option.letter);
@@ -38,7 +43,7 @@ const MarathonAnswerOptions: React.FC<MarathonAnswerOptionsProps> = ({
           <div
             key={option.letter}
             onClick={() => handleAnswerSelect(option.letter)}
-            className={`border-2 rounded-xl transition-all mx-2 relative cursor-pointer ${
+            className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-all ${
               isCorrect
                 ? 'border-green-500 bg-green-50'
                 : isIncorrect
@@ -48,52 +53,43 @@ const MarathonAnswerOptions: React.FC<MarathonAnswerOptionsProps> = ({
                 : 'border-gray-200 bg-white hover:border-blue-300'
             } ${answered ? 'cursor-default' : ''}`}
           >
-            <div className="flex items-center p-4">
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 text-sm font-semibold flex-shrink-0 ${
-                isCorrect
-                  ? 'border-green-500 bg-green-500 text-white'
-                  : isIncorrect
-                  ? 'border-red-500 bg-red-500 text-white'
-                  : isSelected
-                  ? 'border-blue-500 bg-blue-500 text-white'
-                  : 'border-gray-300 bg-white text-gray-700'
-              }`}>
-                {option.letter}
-              </div>
-              
-              <div className={`flex-1 text-gray-900 leading-relaxed text-sm md:text-base pr-2 relative ${
-                isEliminated ? 'text-gray-400' : ''
-              }`}>
-                {option.text}
-                {isEliminated && (
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full h-0.5 bg-gray-400"></div>
-                  </div>
-                )}
-              </div>
-
-              {eliminateMode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEliminateOption(option.letter);
-                  }}
-                  className="ml-2 p-1 hover:bg-gray-200 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"
-                >
-                  <X className="h-4 w-4 text-gray-600" />
-                </button>
-              )}
+            <div className="flex items-center space-x-3 flex-1">
+              <input
+                type="radio"
+                name={`answer-${question.id}`}
+                checked={isSelected}
+                onChange={() => {}}
+                className="text-blue-600 focus:ring-blue-500"
+                disabled={answered}
+              />
+              <label className="cursor-pointer flex-1 flex items-center">
+                <span className="font-medium text-gray-700 mr-3 min-w-[20px]">
+                  {option.letter}
+                </span>
+                <span className={`text-gray-900 text-sm md:text-base ${
+                  isEliminated ? 'line-through text-gray-400' : ''
+                }`}>
+                  {option.text}
+                </span>
+              </label>
             </div>
+
+            {eliminateMode && !answered && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEliminateOption(option.letter);
+                }}
+                className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </button>
+            )}
           </div>
         );
       })}
     </div>
   );
-
-  function handleAnswerSelect(answer: string) {
-    if (answered) return;
-    onAnswerSelect(answer);
-  }
 };
 
 export default MarathonAnswerOptions;

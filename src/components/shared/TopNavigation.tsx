@@ -23,21 +23,21 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   additionalContent
 }) => {
   return (
-    <div className="bg-slate-800 text-white px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-      <div className="flex items-center space-x-2 md:space-x-3">
-        <div className={`${modeColor} rounded px-2 md:px-3 py-1 text-xs md:text-sm font-medium`}>
+    <div className="bg-slate-800 text-white px-6 py-3 flex items-center justify-between h-14 border-b border-gray-200">
+      <div className="flex items-center space-x-3">
+        <div className={`${modeColor} rounded px-3 py-1 text-sm font-medium`}>
           {mode}
         </div>
         {title && (
-          <span className={`text-xs md:text-sm font-medium ${isMobile ? 'truncate max-w-32' : ''}`}>
+          <span className={`text-sm font-medium ${isMobile ? 'truncate max-w-32' : ''}`}>
             {title}
           </span>
         )}
       </div>
       
-      <div className="flex items-center space-x-2 md:space-x-4">
+      <div className="flex items-center space-x-4">
         {timeElapsed !== undefined && (
-          <div className="text-sm md:text-base font-mono">
+          <div className="text-base font-mono">
             {formatTime(timeElapsed)}
           </div>
         )}
@@ -48,9 +48,9 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           onClick={onExit}
           variant="outline"
           size="sm"
-          className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800 text-xs px-2 md:px-3 py-1 min-h-[32px] md:min-h-[44px]"
+          className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800 text-sm px-4 py-2 h-9"
         >
-          Exit
+          Exit {mode === 'QUIZ' ? 'Quiz' : 'Marathon'}
         </Button>
       </div>
     </div>

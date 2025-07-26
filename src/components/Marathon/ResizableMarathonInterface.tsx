@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DatabaseQuestion } from '@/services/questionService';
 import { Switch } from '@/components/ui/switch';
@@ -134,22 +135,44 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   };
 
   const renderQuestionSection = () => (
-    <div className="h-full overflow-y-auto p-4 md:p-8">
-      <QuestionDisplay
-        question={question.question_text}
-        imageUrl={question.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${question.id}.png` : undefined}
-        hasImage={question.image}
-        isMobile={isMobile}
-        showImage={true}
-        questionPrompt=""
-      />
+    <div className="h-full p-8 overflow-y-auto bg-white">
+      {/* Question Header - matches Quiz Mode */}
+      <h2 className="text-lg font-medium text-gray-900 mb-6">Question</h2>
+      
+      {/* Main question content */}
+      <div className="prose max-w-none">
+        <div className="text-base leading-relaxed text-gray-900 mb-6">
+          {question.question_text}
+        </div>
+        
+        {/* Question prompt in highlighted box - matches Quiz Mode styling */}
+        {question.question_prompt && (
+          <div className="border-l-4 border-blue-400 bg-blue-50 p-4 rounded-r-lg">
+            <div className="text-base leading-relaxed text-gray-900">
+              {question.question_prompt}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Question image if exists */}
+      {question.image && (
+        <div className="mt-6">
+          <img 
+            src={`https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${question.id}.png`}
+            alt="Question illustration"
+            className="max-w-full h-auto rounded-lg border"
+          />
+        </div>
+      )}
     </div>
   );
 
   const renderAnswerSection = () => (
-    <div className="h-full bg-white p-4 md:p-6 overflow-y-auto">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center space-x-2 mb-4">
+    <div className="h-full bg-white p-8 overflow-y-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-medium text-gray-900">Answer Options</h3>
+        <div className="flex items-center space-x-2">
           <Checkbox
             id="mark-review"
             checked={markedForReview}
@@ -159,50 +182,41 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
             Mark for Review
           </label>
         </div>
-
-        <div className="text-sm text-gray-600 mb-4">
-          Choose the best answer.
-        </div>
-
-        {/* Question Prompt Display */}
-        {question.question_prompt && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-            <div className="text-sm md:text-base leading-relaxed text-gray-700">
-              {question.question_prompt}
-            </div>
-          </div>
-        )}
-
-        <MarathonAnswerOptions
-          question={question}
-          selectedAnswer={selectedAnswer}
-          onAnswerSelect={handleAnswerSelect}
-          eliminateMode={eliminateMode}
-          eliminatedOptions={eliminatedOptions}
-          onEliminateOption={handleEliminateOption}
-          showFeedback={showFeedback}
-          answered={answered}
-        />
-
-        {showFeedback && (
-          <div className={`p-4 rounded-xl mb-4 mx-2 ${
-            selectedAnswer === question.correct_answer 
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className={`font-medium mb-2 text-sm ${
-              selectedAnswer === question.correct_answer 
-                ? 'text-green-800' 
-                : 'text-red-800'
-            }`}>
-              {selectedAnswer === question.correct_answer ? 'Correct!' : 'Incorrect'}
-            </div>
-            <div className="text-gray-700 text-xs">
-              <strong>Explanation:</strong> {question.correct_rationale}
-            </div>
-          </div>
-        )}
       </div>
+
+      <div className="text-sm text-gray-600 mb-6">
+        Choose the best answer.
+      </div>
+
+      <MarathonAnswerOptions
+        question={question}
+        selectedAnswer={selectedAnswer}
+        onAnswerSelect={handleAnswerSelect}
+        eliminateMode={eliminateMode}
+        eliminatedOptions={eliminatedOptions}
+        onEliminateOption={handleEliminateOption}
+        showFeedback={showFeedback}
+        answered={answered}
+      />
+
+      {showFeedback && (
+        <div className={`p-4 rounded-lg mb-6 ${
+          selectedAnswer === question.correct_answer 
+            ? 'bg-green-50 border border-green-200' 
+            : 'bg-red-50 border border-red-200'
+        }`}>
+          <div className={`font-medium mb-2 text-sm ${
+            selectedAnswer === question.correct_answer 
+              ? 'text-green-800' 
+              : 'text-red-800'
+          }`}>
+            {selectedAnswer === question.correct_answer ? 'Correct!' : 'Incorrect'}
+          </div>
+          <div className="text-gray-700 text-sm">
+            <strong>Explanation:</strong> {question.correct_rationale}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -210,7 +224,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
     <>
       <QuestionInfoTooltip question={question} />
       <div className="flex items-center space-x-2 text-sm">
-        <span className="hidden sm:inline">Eliminate</span>
+        <span className="hidden sm:inline text-white">Eliminate</span>
         <Switch
           checked={eliminateMode}
           onCheckedChange={setEliminateMode}
@@ -221,14 +235,14 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   );
 
   const bottomNavContent = showFeedback ? (
-    <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]">
+    <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm h-11">
       Next Question
     </Button>
   ) : (
     <Button
       onClick={handleSubmit}
       disabled={!selectedAnswer}
-      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm min-h-[44px]"
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm h-11 disabled:opacity-50"
     >
       Submit
     </Button>
@@ -250,7 +264,7 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
           {renderQuestionSection()}
           {renderAnswerSection()}
         </div>
-        <div className="bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky bottom-0 z-40">
+        <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between sticky bottom-0 z-40 h-16">
           <div className="text-sm text-gray-600">
             Questions Solved: {questionsSolved}
           </div>
@@ -263,8 +277,8 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Sticky Top Navigation - Updated to match SAT Practice Test height */}
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Sticky Top Navigation - matches Quiz Mode height */}
       <div className="sticky top-0 z-50">
         <TopNavigation
           mode="MARATHON"
@@ -277,24 +291,22 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal" className="min-h-full">
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75}>
-            {renderQuestionSection()}
-          </ResizablePanel>
-          <ResizableHandle 
-            withHandle 
-          />
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75}>
-            {renderAnswerSection()}
-          </ResizablePanel>
-        </ResizablePanelGroup>
+      {/* Main Content Area - two column layout matching Quiz Mode */}
+      <div className="flex-1 flex">
+        {/* Left Column - Question */}
+        <div className="w-1/2 border-r border-gray-200">
+          {renderQuestionSection()}
+        </div>
+        
+        {/* Right Column - Answer Options */}
+        <div className="w-1/2">
+          {renderAnswerSection()}
+        </div>
       </div>
 
-      {/* Sticky Bottom Navigation - Updated to match SAT Practice Test height and removed Exit Marathon button */}
-      <div className="sticky bottom-0 z-50 bg-white border-t border-gray-200 px-6 py-4">
-        <div className="flex justify-between items-center">
+      {/* Sticky Bottom Navigation - matches Quiz Mode height */}
+      <div className="sticky bottom-0 z-50 bg-white border-t border-gray-200 px-6 py-4 h-16">
+        <div className="flex justify-between items-center h-full">
           <button
             onClick={handleQuestionNavigatorToggle}
             className="text-sm font-medium bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors flex items-center justify-between"
