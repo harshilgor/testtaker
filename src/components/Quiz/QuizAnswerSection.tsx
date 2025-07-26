@@ -51,7 +51,6 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
     onAnswerChange(selectedAnswer);
     
     if (feedbackPreference === 'immediate') {
-      // Submit directly without toast notification
       onSubmitAnswer();
     }
   };
@@ -68,10 +67,6 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
 
   const isAnswered = answeredQuestions.has(question.id);
   const isFlagged = flaggedQuestions.has(question.id);
-  const isCorrect = currentAnswer !== null && currentAnswer === question.correctAnswer;
-  const isIncorrect = currentAnswer !== null && currentAnswer !== question.correctAnswer;
-
-  console.log('QuizAnswerSection - question_prompt:', question.question_prompt);
 
   return (
     <div className="space-y-6">
@@ -90,7 +85,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
       <div className="mb-4">
         <h3 className="text-lg font-medium text-gray-900 mb-3">Answer Options</h3>
         
-        {/* Question Prompt - Always display if it exists */}
+        {/* Question Prompt - Display above answer options */}
         {question.question_prompt && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r-lg">
             <p className="text-blue-800 font-medium text-sm leading-relaxed">
