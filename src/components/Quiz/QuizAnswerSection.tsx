@@ -14,6 +14,10 @@ interface Question {
   section: 'reading-writing' | 'math';
   topic: string;
   question_prompt?: string;
+  incorrect_rationale_a?: string;
+  incorrect_rationale_b?: string;
+  incorrect_rationale_c?: string;
+  incorrect_rationale_d?: string;
 }
 
 interface QuizAnswerSectionProps {
@@ -65,6 +69,17 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
     setEliminatedOptions(newEliminated);
   };
 
+  const getIncorrectRationale = (selectedAnswer: number) => {
+    const optionLetter = String.fromCharCode(65 + selectedAnswer); // A, B, C, D
+    switch (optionLetter) {
+      case 'A': return question.incorrect_rationale_a;
+      case 'B': return question.incorrect_rationale_b;
+      case 'C': return question.incorrect_rationale_c;
+      case 'D': return question.incorrect_rationale_d;
+      default: return null;
+    }
+  };
+
   const isAnswered = answeredQuestions.has(question.id);
   const isFlagged = flaggedQuestions.has(question.id);
 
@@ -103,6 +118,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           const isSelected = currentAnswer === index;
           const isCorrectOption = index === question.correctAnswer;
           const isEliminated = eliminatedOptions.has(index);
+          const isIncorrectSelected = isSelected && !isCorrectOption;
 
           return (
             <div key={index} className="space-y-2">
@@ -149,16 +165,35 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                 )}
               </div>
 
-              {isSubmitted && isSelected && (
-                <Card className={`p-3 ml-12 text-sm ${isCorrectOption ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                  <div className="flex items-start space-x-2">
-                    <Lightbulb className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isCorrectOption ? 'text-green-600' : 'text-red-600'}`} />
-                    <div>
-                      <p className="font-medium mb-1">{isCorrectOption ? 'Correct!' : 'Incorrect'}</p>
-                      <p>{question.explanation}</p>
-                    </div>
-                  </div>
-                </Card>
+              {/* Show rationales when submitted */}
+              {isSubmitted && (
+                <>
+                  {/* Show incorrect rationale for selected wrong answer */}
+                  {isIncorrectSelected && getIncorrectRationale(index) && (
+                    <Card className="p-3 ml-12 text-sm bg-red-50 border-red-200 text-red-800">
+                      <div className="flex items-start space-x-2">
+                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
+                        <div>
+                          <p className="font-medium mb-1">Why this is incorrect:</p>
+                          <p>{getIncorrectRationale(index)}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                  
+                  {/* Show correct rationale for correct answer */}
+                  {isCorrectOption && (
+                    <Card className="p-3 ml-12 text-sm bg-green-50 border-green-200 text-green-800">
+                      <div className="flex items-start space-x-2">
+                        <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                        <div>
+                          <p className="font-medium mb-1">Correct Answer Explanation:</p>
+                          <p>{question.explanation}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </>
               )}
             </div>
           );
