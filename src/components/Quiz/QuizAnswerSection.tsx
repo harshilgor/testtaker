@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -82,6 +81,8 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
 
   const isAnswered = answeredQuestions.has(question.id);
   const isFlagged = flaggedQuestions.has(question.id);
+  const isCorrectAnswer = currentAnswer === question.correctAnswer;
+  const userSelectedWrongAnswer = isSubmitted && currentAnswer !== null && !isCorrectAnswer;
 
   return (
     <div className="space-y-6">
@@ -118,7 +119,6 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           const isSelected = currentAnswer === index;
           const isCorrectOption = index === question.correctAnswer;
           const isEliminated = eliminatedOptions.has(index);
-          const isIncorrectSelected = isSelected && !isCorrectOption;
 
           return (
             <div key={index} className="space-y-2">
@@ -169,7 +169,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
               {isSubmitted && (
                 <>
                   {/* Show incorrect rationale for selected wrong answer */}
-                  {isIncorrectSelected && getIncorrectRationale(index) && (
+                  {isSelected && !isCorrectOption && getIncorrectRationale(index) && (
                     <Card className="p-3 ml-12 text-sm bg-red-50 border-red-200 text-red-800">
                       <div className="flex items-start space-x-2">
                         <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
@@ -199,6 +199,21 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
           );
         })}
       </div>
+
+      {/* Additional feedback section for wrong answers */}
+      {isSubmitted && userSelectedWrongAnswer && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+          <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
+          <div className="space-y-2 text-sm">
+            <p className="text-red-700">
+              <span className="font-medium">Your answer ({String.fromCharCode(65 + currentAnswer!)}):</span> Incorrect
+            </p>
+            <p className="text-green-700">
+              <span className="font-medium">Correct answer ({String.fromCharCode(65 + question.correctAnswer)}):</span> {question.options[question.correctAnswer]}
+            </p>
+          </div>
+        </div>
+      )}
 
       {feedbackPreference === 'end' && !isSubmitted && (
         <Button onClick={onSubmitAnswer} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
