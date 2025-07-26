@@ -23,8 +23,7 @@ const MarathonBottomNav: React.FC<MarathonBottomNavProps> = ({
   onEndMarathon
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-      <div className="text-sm text-gray-600">
+<div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-between z-10">      <div className="text-sm text-gray-600">
         Student Name
       </div>
       
