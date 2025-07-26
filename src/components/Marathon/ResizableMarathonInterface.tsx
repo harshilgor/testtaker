@@ -140,6 +140,8 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         imageUrl={question.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${question.id}.png` : undefined}
         hasImage={question.image}
         isMobile={isMobile}
+        showImage={true}
+        questionPrompt=""
       />
     </div>
   );
@@ -161,6 +163,15 @@ const ResizableMarathonInterface: React.FC<ResizableMarathonInterfaceProps> = ({
         <div className="text-sm text-gray-600 mb-4">
           Choose the best answer.
         </div>
+
+        {/* Question Prompt Display */}
+        {question.question_prompt && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+            <div className="text-sm md:text-base leading-relaxed text-gray-700">
+              {question.question_prompt}
+            </div>
+          </div>
+        )}
 
         <MarathonAnswerOptions
           question={question}
