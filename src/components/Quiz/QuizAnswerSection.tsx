@@ -71,6 +71,8 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
   const isCorrect = currentAnswer !== null && currentAnswer === question.correctAnswer;
   const isIncorrect = currentAnswer !== null && currentAnswer !== question.correctAnswer;
 
+  console.log('QuizAnswerSection - question_prompt:', question.question_prompt);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2">
@@ -84,13 +86,21 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
         </label>
       </div>
 
-      {/* Question Prompt */}
-      {question.question_prompt && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800 font-medium mb-2">Question Prompt:</p>
-          <p className="text-sm text-blue-700">{question.question_prompt}</p>
-        </div>
-      )}
+      {/* Answer Options Header */}
+      <div className="mb-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-3">Answer Options</h3>
+        
+        {/* Question Prompt - Always display if it exists */}
+        {question.question_prompt && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r-lg">
+            <p className="text-blue-800 font-medium text-sm leading-relaxed">
+              {question.question_prompt}
+            </p>
+          </div>
+        )}
+        
+        <p className="text-sm text-gray-600 mb-4">Choose the best answer.</p>
+      </div>
 
       <div className="space-y-3">
         {question.options.map((option, index) => {
