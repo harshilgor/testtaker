@@ -300,6 +300,7 @@ class QuestionService {
       difficulty: dbQuestion.difficulty as 'easy' | 'medium' | 'hard',
       section: dbQuestion.section,
       type: dbQuestion.question_type,
+      question_prompt: dbQuestion.metadata?.question_prompt || '',
       rationales: {
         correct: dbQuestion.correct_rationale,
         incorrect: {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';
@@ -18,6 +17,7 @@ interface Question {
   difficulty: string;
   imageUrl?: string;
   hasImage?: boolean;
+  question_prompt?: string;
 }
 
 interface ResponsiveQuizInterfaceProps {
