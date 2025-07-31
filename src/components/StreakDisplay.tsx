@@ -37,7 +37,7 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     const currentDay = today.getDay();
     const mondayIndex = currentDay === 0 ? 6 : currentDay - 1;
     
-    // Get user's login activity for this week
+    // Get user's login activity for this week based on actual streak data
     const weeklyActivity = getUserWeeklyActivity();
     
     return days.map((day, index) => {
@@ -50,7 +50,7 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     });
   };
 
-  // Function to check user's weekly activity
+  // Function to check user's weekly activity based on streak data and login history
   const getUserWeeklyActivity = () => {
     const activity = [false, false, false, false, false, false, false];
     const today = new Date();
@@ -64,6 +64,22 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - mondayIndex);
     
+    // If we have streak data, use it to determine activity
+    if (streakData && streakData.current_streak > 0) {
+      // Calculate how many days back the current streak goes
+      const streakDays = streakData.current_streak;
+      
+      // Mark days as active based on the current streak
+      // Starting from today and going backwards
+      for (let i = 0; i <= mondayIndex && i < streakDays; i++) {
+        const dayIndex = mondayIndex - i;
+        if (dayIndex >= 0) {
+          activity[dayIndex] = true;
+        }
+      }
+    }
+    
+    // Also check login history for additional verification
     for (let i = 0; i < 7; i++) {
       const checkDate = new Date(weekStart);
       checkDate.setDate(weekStart.getDate() + i);
@@ -74,12 +90,10 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
         new Date(login.date).toDateString() === dateString
       );
       
-      // Also check if it's within current streak
-      const isWithinStreak = streakData && streakData.current_streak > 0 && 
-                           i <= mondayIndex && 
-                           streakData.current_streak >= (mondayIndex - i + 1);
-      
-      activity[i] = hasLogin || isWithinStreak;
+      // If we have login history for this day, mark as active
+      if (hasLogin && i <= mondayIndex) {
+        activity[i] = true;
+      }
     }
     
     return activity;
