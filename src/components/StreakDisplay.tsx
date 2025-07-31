@@ -121,9 +121,18 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     const { current_streak, longest_streak } = streakData;
     const weekView = getWeekView();
     const activityDates = getActivityDates();
+    
+    // Calculate the visual streak based on login activity
+    const today = new Date();
+    const mondayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const weeklyActivity = getUserWeeklyActivity();
+    const visualStreak = calculateActualStreak(weeklyActivity, mondayIndex);
+    
+    // Use visual streak for display, database streak as fallback
+    const displayStreak = visualStreak > 0 ? visualStreak : current_streak;
 
-    // Show active streak display
-    if (current_streak > 0) {
+    // Show active streak display (show if we have visual streak or database streak)
+    if (displayStreak > 0) {
       return (
         <>
           <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 mb-4">
@@ -133,18 +142,18 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                   <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-2 flex items-center justify-center">
                     <Flame className="h-5 w-5 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <span className="text-xl mr-1">🔥</span>
-                      {current_streak}
-                      <span className="text-sm text-gray-600 ml-1">day streak</span>
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {current_streak === 1 
-                        ? "Great start! Keep going." 
-                        : "Keep up the momentum!"
-                      }
-                    </p>
+                   <div>
+                     <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                       <span className="text-xl mr-1">🔥</span>
+                       {displayStreak}
+                       <span className="text-sm text-gray-600 ml-1">day streak</span>
+                     </h3>
+                     <p className="text-sm text-gray-600">
+                       {displayStreak === 1 
+                         ? "Great start! Keep going." 
+                         : "Keep up the momentum!"
+                       }
+                     </p>
                   </div>
                 </div>
                 
@@ -200,13 +209,13 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                 ))}
               </div>
               
-              {current_streak >= 7 && (
+              {displayStreak >= 7 && (
                 <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <CalendarIcon className="h-4 w-4 text-yellow-600" />
                     <span className="text-yellow-800 font-medium text-sm">
-                      {current_streak >= 30 ? "🏆 Streak Master!" : 
-                       current_streak >= 14 ? "🎯 Streak Champion!" : 
+                      {displayStreak >= 30 ? "🏆 Streak Master!" : 
+                       displayStreak >= 14 ? "🎯 Streak Champion!" : 
                        "⭐ Week Warrior!"}
                     </span>
                   </div>
