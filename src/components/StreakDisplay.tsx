@@ -50,7 +50,7 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     });
   };
 
-  // Function to check user's weekly activity based on streak data and login history
+  // Function to check user's weekly activity based on login history only
   const getUserWeeklyActivity = () => {
     const activity = [false, false, false, false, false, false, false];
     const today = new Date();
@@ -64,22 +64,7 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - mondayIndex);
     
-    // If we have streak data, use it to determine activity
-    if (streakData && streakData.current_streak > 0) {
-      // Calculate how many days back the current streak goes
-      const streakDays = streakData.current_streak;
-      
-      // Mark days as active based on the current streak
-      // Starting from today and going backwards
-      for (let i = 0; i <= mondayIndex && i < streakDays; i++) {
-        const dayIndex = mondayIndex - i;
-        if (dayIndex >= 0) {
-          activity[dayIndex] = true;
-        }
-      }
-    }
-    
-    // Also check login history for additional verification
+    // Check each day of the week for activity
     for (let i = 0; i < 7; i++) {
       const checkDate = new Date(weekStart);
       checkDate.setDate(weekStart.getDate() + i);
@@ -90,13 +75,39 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
         new Date(login.date).toDateString() === dateString
       );
       
-      // If we have login history for this day, mark as active
+      // Mark activity for past days and today only (not future days)
       if (hasLogin && i <= mondayIndex) {
         activity[i] = true;
       }
     }
     
+    // Calculate actual consecutive streak from the activity data
+    const actualStreak = calculateActualStreak(activity, mondayIndex);
+    
+    // If the calculated streak doesn't match the database streak, log it
+    if (streakData && actualStreak !== streakData.current_streak) {
+      console.log('Streak mismatch - Visual:', actualStreak, 'Database:', streakData.current_streak);
+      console.log('Activity array:', activity);
+      console.log('Login history:', loginHistory);
+    }
+    
     return activity;
+  };
+
+  // Calculate the actual consecutive streak from activity data
+  const calculateActualStreak = (activity: boolean[], mondayIndex: number) => {
+    let streak = 0;
+    
+    // Count backwards from today to find consecutive days
+    for (let i = mondayIndex; i >= 0; i--) {
+      if (activity[i]) {
+        streak++;
+      } else {
+        break; // Stop at first gap
+      }
+    }
+    
+    return streak;
   };
 
   // Get dates where user had activity for the calendar
