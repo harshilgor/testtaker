@@ -23,15 +23,11 @@ export const useMarathonState = (session: MarathonSession | null) => {
   useEffect(() => {
     if (!session || !currentQuestion || !isTimerRunning) return;
 
-    console.log('useMarathonState: Starting timer for question', currentQuestion.id);
     const timer = setInterval(() => {
       setTimeSpent(prev => prev + 1);
     }, 1000);
 
-    return () => {
-      console.log('useMarathonState: Clearing timer');
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [session, currentQuestion, isTimerRunning]);
 
   const stopTimer = () => {
@@ -52,48 +48,36 @@ export const useMarathonState = (session: MarathonSession | null) => {
   };
 
   const loadUserPoints = async () => {
-    console.log('useMarathonState: Loading user points');
     try {
       const points = await getUserTotalPoints();
-      console.log('useMarathonState: Loaded points:', points);
       setTotalPoints(points);
     } catch (error) {
-      console.error('useMarathonState: Error loading user points:', error);
+      console.error('Error loading user points:', error);
     }
   };
 
   const loadSessionStats = async () => {
-    if (!session) {
-      console.log('useMarathonState: No session for stats loading');
-      return;
-    }
+    if (!session) return;
     
-    console.log('useMarathonState: Loading session stats for', session.id);
     try {
       const stats = await getSessionStats(session.id, 'marathon');
       const total = await getTotalQuestions();
-      console.log('useMarathonState: Session stats loaded', { used: stats.used, total });
       setSessionStats({ used: stats.used, total: total });
     } catch (error) {
-      console.error('useMarathonState: Error loading session stats:', error);
+      console.error('Error loading session stats:', error);
     }
   };
 
   const initializeSessionData = async () => {
-    if (!session) {
-      console.log('useMarathonState: No session for initialization');
-      return;
-    }
+    if (!session) return;
     
-    console.log('useMarathonState: Initializing session data for', session.id);
     setLoading(true);
     try {
       await initializeSession(session.id, 'marathon');
       await loadSessionStats();
       await loadUserPoints();
-      console.log('useMarathonState: Session initialization complete');
     } catch (error) {
-      console.error('useMarathonState: Error initializing marathon session:', error);
+      console.error('Error initializing marathon session:', error);
     } finally {
       setLoading(false);
     }

@@ -21,13 +21,11 @@ export const useMarathonNavigation = ({
 }: UseMarathonNavigationProps) => {
 
   const handleEndMarathon = useCallback(() => {
-    console.log('useMarathonNavigation: Ending marathon requested');
     stopTimer();
     setShowEndConfirmation(true);
   }, [setShowEndConfirmation, stopTimer]);
 
   const confirmEndMarathon = useCallback(async () => {
-    console.log('useMarathonNavigation: Confirming marathon end');
     try {
       const sessionData = endSession();
       
@@ -35,7 +33,6 @@ export const useMarathonNavigation = ({
         // Save marathon session to Supabase
         const { data: user } = await supabase.auth.getUser();
         if (user.user) {
-          console.log('useMarathonNavigation: Saving session to database');
           const { error } = await supabase
             .from('marathon_sessions')
             .insert({
@@ -49,9 +46,7 @@ export const useMarathonNavigation = ({
             });
 
           if (error) {
-            console.error('useMarathonNavigation: Error saving marathon session:', error);
-          } else {
-            console.log('useMarathonNavigation: Marathon session saved successfully');
+            console.error('Error saving marathon session:', error);
           }
         }
       }
@@ -60,7 +55,7 @@ export const useMarathonNavigation = ({
       await loadSessionStats();
       setShowSummary(true);
     } catch (error) {
-      console.error('useMarathonNavigation: Error ending marathon:', error);
+      console.error('Error ending marathon:', error);
       setShowSummary(true);
     }
   }, [endSession, loadUserPoints, loadSessionStats, setShowSummary]);

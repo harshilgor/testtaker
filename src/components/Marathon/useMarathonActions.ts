@@ -77,7 +77,6 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
   });
 
   const handleNext = useCallback(() => {
-    console.log('useMarathonActions: Moving to next question');
     loadNextQuestion();
   }, [loadNextQuestion]);
 

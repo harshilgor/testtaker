@@ -29,17 +29,13 @@ export const calculatePoints = (difficulty: string, isCorrect: boolean): number 
 
 export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<number> => {
   try {
-    console.log('recordQuestionAttempt: Starting with attempt:', attempt);
-    
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      console.error('recordQuestionAttempt: User not authenticated');
       throw new Error('User not authenticated');
     }
 
     const points = calculatePoints(attempt.difficulty, attempt.is_correct);
-    console.log('recordQuestionAttempt: Calculated points:', points);
 
     const insertData = {
       user_id: user.id,
@@ -54,24 +50,17 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
       time_spent: attempt.time_spent || 0
     };
 
-    console.log('recordQuestionAttempt: Inserting data:', insertData);
-
     const { data, error } = await supabase
       .from('question_attempts_v2')
       .insert(insertData)
       .select();
 
     if (error) {
-      console.error('recordQuestionAttempt: Database error:', error);
       throw error;
     }
-
-    console.log('recordQuestionAttempt: Successfully recorded:', data);
-    console.log('recordQuestionAttempt: Points earned:', points);
     
     // Trigger leaderboard refresh by updating user stats
     if (points > 0) {
-      console.log('recordQuestionAttempt: Triggering leaderboard refresh');
       await supabase.rpc('update_leaderboard_stats_v2', {
         target_user_id: user.id
       });
@@ -79,7 +68,7 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
     
     return points;
   } catch (error) {
-    console.error('recordQuestionAttempt: Error:', error);
+    console.error('Error recording question attempt:', error);
     throw error;
   }
 };
@@ -88,42 +77,29 @@ export const getUserTotalPoints = async (userId?: string): Promise<number> => {
   try {
     const targetUserId = userId || (await supabase.auth.getUser()).data.user?.id;
     
-    if (!targetUserId) {
-      console.log('getUserTotalPoints: No user ID provided');
-      return 0;
-    }
-
-    console.log('getUserTotalPoints: Calculating total points for user:', targetUserId);
+    if (!targetUserId) return 0;
 
     const { data, error } = await supabase.rpc('calculate_user_total_points', {
       target_user_id: targetUserId
     });
 
     if (error) {
-      console.error('getUserTotalPoints: Error getting user points:', error);
+      console.error('Error getting user points:', error);
       return 0;
     }
 
-    const totalPoints = data || 0;
-    console.log('getUserTotalPoints: User total points:', totalPoints);
-    return totalPoints;
+    return data || 0;
   } catch (error) {
-    console.error('getUserTotalPoints: Error:', error);
+    console.error('Error getting user points:', error);
     return 0;
   }
 };
 
-// NEW: Function to get session total points from database
 export const getSessionTotalPoints = async (sessionId: string, sessionType: string): Promise<number> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) {
-      console.log('getSessionTotalPoints: No user authenticated');
-      return 0;
-    }
-
-    console.log('getSessionTotalPoints: Getting points for session:', sessionId, sessionType);
+    if (!user) return 0;
 
     const { data, error } = await supabase
       .from('question_attempts_v2')
@@ -133,15 +109,13 @@ export const getSessionTotalPoints = async (sessionId: string, sessionType: stri
       .eq('session_type', sessionType);
 
     if (error) {
-      console.error('getSessionTotalPoints: Database error:', error);
+      console.error('Error getting session points:', error);
       return 0;
     }
 
-    const totalPoints = data?.reduce((sum, attempt) => sum + (attempt.points_earned || 0), 0) || 0;
-    console.log('getSessionTotalPoints: Session total points from database:', totalPoints);
-    return totalPoints;
+    return data?.reduce((sum, attempt) => sum + (attempt.points_earned || 0), 0) || 0;
   } catch (error) {
-    console.error('getSessionTotalPoints: Error:', error);
+    console.error('Error getting session points:', error);
     return 0;
   }
 };
