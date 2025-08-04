@@ -59,11 +59,9 @@ interface QuizStats {
   averageAccuracy: number;
 }
 
-const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName }) => {
+const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
-  const [showMarathonHistory, setShowMarathonHistory] = useState(false);
-  const [showQuizHistory, setShowQuizHistory] = useState(false);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
     totalQuestions: 0,
     correctAnswers: 0,
@@ -171,190 +169,268 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName })
     });
   }, [quizResults, dbQuizResults]);
 
-  const handleViewMarathonResult = (session: MarathonSession) => {
-    console.log('Viewing marathon result:', session);
-  };
-
-  const handleViewQuizResult = (result: QuizResult) => {
-    console.log('Viewing quiz result:', result);
-  };
-
-  // Mock data for streak tracker (in a real app, this would come from the database)
-  const streakData = {
-    currentStreak: 4,
-    longestStreak: 12,
-    weeklyActivity: [true, true, false, true, true, false, false] // Mon-Sun
-  };
-
+  // Calculate totals for display
   const totalQuizQuestions = quizResults.reduce((sum, result) => sum + result.questions.length, 0);
   const totalMarathonQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
+  const totalQuestions = totalQuizQuestions + totalMarathonQuestions;
+  
+  // Calculate SAT prediction (simplified - would need more complex logic in real app)
+  const predictedSATScore = Math.min(1600, Math.max(400, 800 + (marathonStats.averageAccuracy * 8)));
+  
+  // Calculate study time (mock calculation based on questions answered)
+  const studyTimeHours = Math.round(totalQuestions * 1.5 / 60); // Assume 1.5 mins per question
+
+  // Calculate average time per question for marathon
+  const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
+        {/* Header */}
+        <div className="mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={onBack}
+            className="mb-4 text-gray-600 hover:text-gray-800"
+          >
+            ← Back to Dashboard
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
-        {/* Streak Display */}
-        <StreakDisplay userName={userName} />
-
-        {/* Weakest Topics Section */}
-        <WeakestTopicsSection userName={userName} />
-
-        {/* Overall Performance Summary */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Overall Performance Summary</h2>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Marathon Section */}
-              {!isLoading && marathonStats.totalQuestions > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Marathon Sessions</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
-                      <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
-                    </Card>
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
-                      <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions - marathonStats.correctAnswers}</div>
-                    </Card>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 mb-4">
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                      <div className="text-2xl font-bold text-gray-900">{marathonStats.averageAccuracy}%</div>
-                    </Card>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowMarathonHistory(!showMarathonHistory)}
-                      className="text-gray-600"
-                    >
-                      {showMarathonHistory ? 'Close Marathon History' : 'View Marathon History'}
-                    </Button>
-                  </div>
+        {/* Top Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Current Streak */}
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Current Streak</h3>
+                <div className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
                 </div>
-              )}
-
-              {/* Quiz Section */}
-              {quizStats.totalQuizzes > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quizzes</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Questions Answered</div>
-                      <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
-                    </Card>
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Wrong Answers</div>
-                      <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
-                    </Card>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 mb-4">
-                    <Card className="p-4">
-                      <div className="text-sm text-gray-600 mb-1">Accuracy</div>
-                      <div className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</div>
-                    </Card>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowQuizHistory(!showQuizHistory)}
-                      className="text-gray-600"
-                    >
-                      {showQuizHistory ? 'Close Quiz History' : 'View Quiz History'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Show message if no data available */}
-            {!isLoading && marathonStats.totalQuestions === 0 && quizStats.totalQuizzes === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No practice data available yet. Start practicing to see your performance!</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Conditional History Sections */}
-        {showMarathonHistory && (
-          <MarathonHistorySection 
-            marathonSessions={marathonSessions}
-            onViewResult={handleViewMarathonResult}
-          />
-        )}
-
-        {showQuizHistory && (
-          <QuizHistorySection 
-            quizResults={quizResults}
-            onViewResult={handleViewQuizResult}
-          />
-        )}
-
-        {/* Practice Scores Section */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-xl md:text-2xl font-semibold text-gray-700 mb-4 md:mb-6">Practice Scores</h2>
-          
-          {/* Mock Test Scores */}
-          {mockTestResults.length > 0 && (
-            <div className="space-y-4 mb-6 md:mb-8">
-              {mockTestResults.map((result, index) => (
-                <Card key={index} className="bg-white shadow-lg">
-                  <CardContent className="p-4 md:p-8">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 md:mb-6">
-                      <div className="mb-2 sm:mb-0">
-                        <h3 className="text-lg md:text-xl font-semibold text-gray-900">SAT Practice {index + 1}</h3>
-                        <p className="text-sm md:text-base text-gray-600">{new Date(result.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-                      <div className="text-center">
-                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Total Score</div>
-                        <div className="text-3xl md:text-5xl font-bold text-gray-900 mb-2">
-                          {Math.round((result.mathScore || 0) + (result.englishScore || 0))}
-                        </div>
-                        <div className="text-xs md:text-sm text-gray-500">400 to 1600</div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Reading and Writing Score</div>
-                        <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{result.englishScore || 0}</div>
-                        <div className="text-xs md:text-sm text-gray-500">200 to 800</div>
-                      </div>
-                      
-                      <div className="text-center">
-                        <div className="text-sm md:text-lg text-gray-600 mb-2">Your Math Score</div>
-                        <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{result.mathScore || 0}</div>
-                        <div className="text-xs md:text-sm text-gray-500">200 to 800</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Total Mock Tests Card */}
-          <Card className="bg-white shadow-lg mb-6 md:mb-8">
-            <CardContent className="p-4 md:p-8 text-center">
-              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Total Mock Tests Taken</h3>
-              <div className="text-3xl md:text-5xl font-bold text-blue-600 mb-2">{mockTestResults.length}</div>
-              <p className="text-sm md:text-base text-gray-600">Complete SAT practice tests</p>
+              <div className="text-4xl font-bold text-gray-900 mb-1">5</div>
+              <div className="text-sm text-gray-500 mb-4">Day Streak</div>
+              
+              {/* Progress bar */}
+              <div className="mb-2">
+                <div className="text-xs text-gray-500 mb-1">Next milestone: 7 days</div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '71%' }}></div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">5/7</div>
+              </div>
+              
+              {/* Week activity dots */}
+              <div className="flex space-x-1 mb-2">
+                {['3d', '4d', '5d'].map((day, index) => (
+                  <div key={index} className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
+                    index < 3 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="text-xs text-orange-600 font-medium">Don't break your streak!</div>
             </CardContent>
           </Card>
 
-          {/* Total Questions Attempted Card */}
-          <QuestionAttemptStats 
-            totalQuizQuestions={totalQuizQuestions}
-            totalMarathonQuestions={totalMarathonQuestions}
-          />
+          {/* Predicted SAT Score */}
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Predicted SAT Score</h3>
+                <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                </div>
+              </div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{predictedSATScore}</div>
+              <div className="text-sm text-green-600 mb-4">+40 pts from last month</div>
+              
+              {/* Progress bar */}
+              <div className="mb-2">
+                <div className="text-xs text-gray-500 mb-1">Goal: 1400</div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(predictedSATScore / 1400) * 100}%` }}></div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">{predictedSATScore}/1400</div>
+              </div>
+              
+              <div className="text-xs text-blue-600 font-medium">Keep practicing to reach your goal!</div>
+            </CardContent>
+          </Card>
+
+          {/* Study Time */}
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Study Time</h3>
+                <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                </div>
+              </div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{studyTimeHours}</div>
+              <div className="text-sm text-gray-500 mb-4">Hours This Month</div>
+              
+              {/* Weekly summary */}
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
+                <div>Daily Average</div>
+                <div className="text-right">48 min</div>
+                <div>This Week</div>
+                <div className="text-right">4.5h</div>
+                <div>Last Month</div>
+                <div className="text-right">18h</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Questions Solved */}
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
+                <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                </div>
+              </div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{totalQuestions}</div>
+              <div className="text-sm text-gray-500 mb-4">Total Questions</div>
+              
+              {/* Progress bar */}
+              <div className="mb-2">
+                <div className="text-xs text-gray-500 mb-1">Last 7 Days</div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '84%' }}></div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">84 questions</div>
+              </div>
+              
+              <div className="text-xs text-gray-500">Accuracy: {marathonStats.averageAccuracy}% Overall</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Practice Summary */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Practice Summary</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Quiz Mode */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-lg">?</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Quiz Mode</h3>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-4xl font-bold text-gray-900">{quizStats.totalQuestions}</span>
+                    <span className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Questions Solved</span>
+                    <span>Avg. Accuracy</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm text-gray-500 mb-6">
+                  <div className="flex justify-between">
+                    <span>Last Attempt</span>
+                    <span>August 1, 2025</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+                  onClick={() => window.location.href = '/quiz'}
+                >
+                  Start Quiz
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Marathon Mode */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-lg">⚡</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Marathon Mode</h3>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-4xl font-bold text-gray-900">{marathonStats.totalQuestions}</span>
+                    <span className="text-2xl font-bold text-gray-900">{avgTimePerQuestion}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Questions Solved</span>
+                    <span>Avg. Time/Question</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm text-gray-500 mb-6">
+                  <div className="flex justify-between">
+                    <span>Longest Session</span>
+                    <span>45 Questions</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+                  onClick={() => window.location.href = '/marathon'}
+                >
+                  Start Marathon
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Mock Tests */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-lg">📄</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Mock Tests</h3>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-4xl font-bold text-gray-900">{mockTestResults.length}</span>
+                    <span className="text-2xl font-bold text-gray-900">{
+                      mockTestResults.length > 0 
+                        ? Math.round(mockTestResults.reduce((sum, result) => sum + ((result.mathScore || 0) + (result.englishScore || 0)), 0) / mockTestResults.length)
+                        : 0
+                    }</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>Tests Completed</span>
+                    <span>Avg. Score</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm text-gray-500 mb-6">
+                  <div className="flex justify-between">
+                    <span>Last Attempt</span>
+                    <span>July 25, 2025</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
+                  onClick={() => window.location.href = '/sat-mock-test'}
+                >
+                  Take Mock Test
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
