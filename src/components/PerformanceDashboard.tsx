@@ -304,6 +304,94 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </Card>
         </div>
 
+        {/* Weakest Topics and Recent Sessions */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Your Weakest Topics */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Your Weakest Topics Right Now</h2>
+                <WeakestTopicsSection userName={userName} />
+              </CardContent>
+            </Card>
+
+            {/* Recent Sessions */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Sessions</h2>
+                <div className="space-y-4">
+                  {/* Quiz Sessions */}
+                  {quizResults.slice(0, 2).map((quiz, index) => (
+                    <div key={`quiz-${index}`} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div>
+                          <div className="font-medium text-sm">Quiz Mode</div>
+                          <div className="text-xs text-gray-500">{new Date(quiz.date).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-600">{quiz.questions.length} Questions ({quiz.subject})</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm">{Math.round((quiz.score / quiz.questions.length) * 100)}%</div>
+                        <div className="text-xs text-gray-500">Review Mistakes</div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Marathon Sessions */}
+                  {marathonSessions.slice(0, 2).map((session, index) => (
+                    <div key={`marathon-${index}`} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <div>
+                          <div className="font-medium text-sm">Marathon Mode</div>
+                          <div className="text-xs text-gray-500">{new Date(session.created_at).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-600">{session.total_questions} Questions ({session.subjects?.join(', ') || 'Mixed Topics'})</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm">{Math.round((session.correct_answers / session.total_questions) * 100)}%</div>
+                        <div className="text-xs text-gray-500">Review Mistakes</div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Mock Test Sessions */}
+                  {mockTestResults.slice(0, 1).map((test, index) => (
+                    <div key={`mock-${index}`} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <div>
+                          <div className="font-medium text-sm">Mock Test</div>
+                          <div className="text-xs text-gray-500">{new Date(test.date).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-600">Full SAT Practice Test #{mockTestResults.length}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm">{(test.mathScore || 0) + (test.englishScore || 0)}/1600</div>
+                        <div className="text-xs text-gray-500">View Analysis</div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {quizResults.length === 0 && marathonSessions.length === 0 && mockTestResults.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="text-sm">No recent sessions found</p>
+                      <p className="text-xs">Start practicing to see your sessions here</p>
+                    </div>
+                  )}
+                  
+                  <div className="text-center pt-4">
+                    <Button variant="ghost" className="text-sm text-gray-600 hover:text-gray-800">
+                      View All Sessions
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Practice Summary */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Practice Summary</h2>
