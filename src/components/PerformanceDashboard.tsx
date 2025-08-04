@@ -188,13 +188,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={onBack}
-            className="mb-4 text-gray-600 hover:text-gray-800"
-          >
-            ← Back to Dashboard
-          </Button>
           <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
