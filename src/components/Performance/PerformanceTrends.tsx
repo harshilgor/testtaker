@@ -103,9 +103,10 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     const generateTopicProficiency = () => {
       // In a real app, calculate these based on actual quiz results
       const topics = [
-        { topic: 'Overall', score: 78 },
-        { topic: 'Math', score: 82 },
-        { topic: 'Reading & Writing', score: 75 }
+        { topic: 'Reading', score: 75 },
+        { topic: 'Writing', score: 82 },
+        { topic: 'Grammar', score: 69 },
+        { topic: 'Math', score: 78 }
       ];
       
       setTopicProficiency(topics);
