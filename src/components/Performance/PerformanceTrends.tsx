@@ -103,10 +103,9 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     const generateTopicProficiency = () => {
       // In a real app, calculate these based on actual quiz results
       const topics = [
-        { topic: 'Reading', score: 75 },
-        { topic: 'Writing', score: 82 },
-        { topic: 'Grammar', score: 68 },
-        { topic: 'Math', score: 78 }
+        { topic: 'Overall', score: 78 },
+        { topic: 'Math', score: 82 },
+        { topic: 'Reading & Writing', score: 75 }
       ];
       
       setTopicProficiency(topics);
@@ -140,6 +139,20 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
              item.verbalAccuracy
     }));
   }, [accuracyData, activeFilter]);
+
+  const yAxisDomain = useMemo(() => {
+    if (getFilteredData.length === 0) return [0, 100];
+    
+    const minValue = Math.min(...getFilteredData.map(item => item.value));
+    const maxValue = Math.max(...getFilteredData.map(item => item.value));
+    
+    // Add some padding to the range
+    const padding = (maxValue - minValue) * 0.1 || 10;
+    const min = Math.max(0, Math.floor(minValue - padding));
+    const max = Math.min(100, Math.ceil(maxValue + padding));
+    
+    return [min, max];
+  }, [getFilteredData]);
 
   const handleViewDetails = () => {
     // Navigate to detailed performance view
@@ -186,7 +199,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                     tick={{ fontSize: 10, fill: '#6B7280' }}
                   />
                   <YAxis 
-                    domain={[0, 100]}
+                    domain={yAxisDomain}
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 10, fill: '#6B7280' }}
