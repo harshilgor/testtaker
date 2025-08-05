@@ -9,6 +9,7 @@ import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
 import StreakDisplay from './StreakDisplay';
 import WeakestTopicsSection from './Performance/WeakestTopicsSection';
+import RecentSessions from './Performance/RecentSessions';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -302,6 +303,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <div className="text-xs text-gray-500">Accuracy: {marathonStats.averageAccuracy}% Overall</div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Two Column Layout - Weakest Topics & Recent Sessions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Your Weakest Topics */}
+          <div className="h-full">
+            <WeakestTopicsSection userName={userName} />
+          </div>
+          
+          {/* Recent Sessions */}
+          <div className="h-full">
+            <RecentSessions userName={userName} />
+          </div>
         </div>
 
         {/* Practice Summary */}
