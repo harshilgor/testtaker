@@ -306,14 +306,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         </div>
 
         {/* Two Column Layout - Weakest Topics & Recent Sessions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Your Weakest Topics */}
-          <div className="h-full">
+          <div className="lg:col-span-2 h-full">
             <WeakestTopicsSection userName={userName} />
           </div>
           
           {/* Recent Sessions */}
-          <div className="h-full">
+          <div className="lg:col-span-1 h-full">
             <RecentSessions userName={userName} />
           </div>
         </div>
