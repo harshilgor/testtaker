@@ -10,6 +10,7 @@ import QuizHistorySection from './Performance/QuizHistorySection';
 import StreakDisplay from './StreakDisplay';
 import WeakestTopicsSection from './Performance/WeakestTopicsSection';
 import RecentSessions from './Performance/RecentSessions';
+import PerformanceTrends from './Performance/PerformanceTrends';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -316,6 +317,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           <div className="lg:col-span-1 h-full">
             <RecentSessions userName={userName} />
           </div>
+        </div>
+
+        {/* Performance Trends */}
+        <div className="mb-8">
+          <PerformanceTrends userName={userName} />
         </div>
 
         {/* Practice Summary */}
