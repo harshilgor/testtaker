@@ -165,109 +165,111 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
         <CardTitle className="text-lg font-semibold text-gray-900">Performance Trends</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Accuracy Trend Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Accuracy Trend (Last 14 Days)</h3>
-            <div className="flex space-x-1">
-              {(['All', 'Math', 'Verbal'] as const).map((filter) => (
-                <Button
-                  key={filter}
-                  variant={activeFilter === filter ? "default" : "outline"}
-                  size="sm"
-                  className={`px-3 py-1 text-xs rounded-full ${
-                    activeFilter === filter 
-                      ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  onClick={() => setActiveFilter(filter)}
-                >
-                  {filter}
-                </Button>
-              ))}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Accuracy Trend Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-600">Accuracy Trend (Last 14 Days)</h3>
+              <div className="flex space-x-1">
+                {(['All', 'Math', 'Verbal'] as const).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={activeFilter === filter ? "default" : "outline"}
+                    size="sm"
+                    className={`px-3 py-1 text-xs rounded-full ${
+                      activeFilter === filter 
+                        ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setActiveFilter(filter)}
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="h-32">
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={getFilteredData}>
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#6B7280' }}
+                    />
+                    <YAxis 
+                      domain={yAxisDomain}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#6B7280' }}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="hsl(var(--chart-1))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--chart-1))", strokeWidth: 0, r: 3 }}
+                      activeDot={{ r: 4, stroke: "hsl(var(--chart-1))", strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </div>
-          
-          <div className="h-32">
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={getFilteredData}>
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: '#6B7280' }}
-                  />
-                  <YAxis 
-                    domain={yAxisDomain}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: '#6B7280' }}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--chart-1))", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 4, stroke: "hsl(var(--chart-1))", strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
-        </div>
 
-        {/* Topic Proficiency Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Topic Proficiency</h3>
-            <button 
-              onClick={handleViewDetails}
-              className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-            >
-              <span>View Details</span>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="h-48 flex items-center justify-center">
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={topicProficiency} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
-                  <PolarGrid 
-                    gridType="polygon"
-                    stroke="#E5E7EB"
-                    strokeWidth={1}
-                    radialLines={true}
-                  />
-                  <PolarAngleAxis 
-                    dataKey="topic"
-                    tick={{ fontSize: 12, fill: '#6B7280' }}
-                    className="text-xs"
-                  />
-                  <PolarRadiusAxis 
-                    domain={[0, 100]}
-                    angle={90}
-                    tick={false}
-                    axisLine={false}
-                    tickFormatter={() => ''}
-                  />
-                  <Radar
-                    name="Proficiency"
-                    dataKey="score"
-                    stroke="#374151"
-                    fill="#374151"
-                    fillOpacity={0.1}
-                    strokeWidth={2}
-                    dot={{ fill: '#374151', strokeWidth: 0, r: 4 }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+          {/* Topic Proficiency Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-600">Topic Proficiency</h3>
+              <button 
+                onClick={handleViewDetails}
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+              >
+                <span>View Details</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="h-48 flex items-center justify-center">
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={topicProficiency} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                    <PolarGrid 
+                      gridType="polygon"
+                      stroke="#E5E7EB"
+                      strokeWidth={1}
+                      radialLines={true}
+                    />
+                    <PolarAngleAxis 
+                      dataKey="topic"
+                      tick={{ fontSize: 12, fill: '#6B7280' }}
+                      className="text-xs"
+                    />
+                    <PolarRadiusAxis 
+                      domain={[0, 100]}
+                      angle={90}
+                      tick={false}
+                      axisLine={false}
+                      tickFormatter={() => ''}
+                    />
+                    <Radar
+                      name="Proficiency"
+                      dataKey="score"
+                      stroke="#374151"
+                      fill="#374151"
+                      fillOpacity={0.1}
+                      strokeWidth={2}
+                      dot={{ fill: '#374151', strokeWidth: 0, r: 4 }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
           </div>
         </div>
       </CardContent>
