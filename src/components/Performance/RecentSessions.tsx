@@ -97,13 +97,13 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
         
         <div className="space-y-4">
           {sessions.map((session) => (
-            <div key={session.id} className="flex items-start justify-between p-4 border rounded-lg bg-gray-50">
+            <div key={session.id} className="relative p-4 border rounded-lg bg-gray-50">
               <div className="flex items-start space-x-3">
                 <div className={`p-2 rounded-full ${getStatusColor(session.type)}`}>
                   {getSessionIcon(session.type)}
                 </div>
                 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-8">
                   <div className="flex items-center space-x-2 mb-1">
                     <h3 className="text-sm font-medium text-gray-900">{session.type}</h3>
                     {session.accuracy && (
@@ -130,25 +130,16 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
                 </div>
               </div>
               
-              <div className="ml-4">
-                {session.hasReview && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-blue-600 hover:text-blue-800 p-1 h-auto"
-                  >
-                    Review Mistakes
-                  </Button>
-                )}
-                {session.type === 'Mock Test' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-blue-600 hover:text-blue-800 p-1 h-auto"
-                  >
-                    View Analysis
-                  </Button>
-                )}
+              {/* Small review button in bottom right */}
+              <div className="absolute bottom-3 right-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full"
+                  title={session.type === 'Mock Test' ? 'View Analysis' : 'Review Mistakes'}
+                >
+                  <CheckCircle className="h-3 w-3" />
+                </Button>
               </div>
             </div>
           ))}
