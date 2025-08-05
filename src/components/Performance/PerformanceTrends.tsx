@@ -221,32 +221,36 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
             </button>
           </div>
           
-          <div className="h-40 flex items-center justify-center">
+          <div className="h-48 flex items-center justify-center">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={topicProficiency}>
+                <RadarChart data={topicProficiency} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
                   <PolarGrid 
                     gridType="polygon"
                     stroke="#E5E7EB"
                     strokeWidth={1}
+                    radialLines={true}
                   />
                   <PolarAngleAxis 
                     dataKey="topic"
-                    tick={{ fontSize: 10, fill: '#6B7280' }}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    className="text-xs"
                   />
                   <PolarRadiusAxis 
                     domain={[0, 100]}
                     angle={90}
                     tick={false}
                     axisLine={false}
+                    tickFormatter={() => ''}
                   />
                   <Radar
                     name="Proficiency"
                     dataKey="score"
-                    stroke="hsl(var(--chart-1))"
-                    fill="hsl(var(--chart-1))"
+                    stroke="#374151"
+                    fill="#374151"
                     fillOpacity={0.1}
                     strokeWidth={2}
+                    dot={{ fill: '#374151', strokeWidth: 0, r: 4 }}
                   />
                 </RadarChart>
               </ResponsiveContainer>
