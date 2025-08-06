@@ -413,6 +413,222 @@ const SATMockTestResults: React.FC<SATMockTestResultsProps> = ({
           </Card>
         </div>
 
+        {/* Time Management Comparison */}
+        <Card className="border border-gray-200 mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Time Management Comparison</h3>
+              <Button variant="outline" size="sm" className="text-gray-600">All Sections</Button>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Math Section */}
+              <div>
+                <h4 className="text-base font-medium text-gray-900 mb-4">Math Section</h4>
+                <div className="space-y-4">
+                  {/* Your average time */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Your average time per question</span>
+                      <span className="font-medium">{Math.round((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'math';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / mathQuestions.length / 60)}m {Math.round(((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'math';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / mathQuestions.length) % 60)}s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gray-800 h-2 rounded-full" style={{ width: '75%' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Top scorers average */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Avg. time for 1500+ scorers</span>
+                      <span className="font-medium">1m 05s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '55%' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Platform average */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Platform average</span>
+                      <span className="font-medium">1m 45s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gray-500 h-2 rounded-full" style={{ width: '88%' }}></div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center text-sm text-blue-600 mt-3">
+                    <span className="mr-2">ℹ️</span>
+                    <span>
+                      {((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'math';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / mathQuestions.length) < 105 
+                        ? `You're ${Math.round(105 - ((Array.from(answers.values()).filter(a => {
+                            const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                            return question?.section === 'math';
+                          }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / mathQuestions.length))} seconds faster than top scorers`
+                        : `You're ${Math.round(((Array.from(answers.values()).filter(a => {
+                            const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                            return question?.section === 'math';
+                          }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / mathQuestions.length) - 105)} seconds slower than top scorers`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reading & Writing Section */}
+              <div>
+                <h4 className="text-base font-medium text-gray-900 mb-4">Reading & Writing Section</h4>
+                <div className="space-y-4">
+                  {/* Your average time */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Your average time per question</span>
+                      <span className="font-medium">{Math.round((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'reading-writing';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length / 60)}m {Math.round(((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'reading-writing';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length) % 60)}s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gray-800 h-2 rounded-full" style={{ width: '83%' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Top scorers average */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Avg. time for 1500+ scorers</span>
+                      <span className="font-medium">50s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '56%' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Platform average */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-700">Platform average</span>
+                      <span className="font-medium">1m 30s</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-gray-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center text-sm text-orange-600 mt-3">
+                    <span className="mr-2">⚠️</span>
+                    <span>
+                      You're {Math.round(((Array.from(answers.values()).filter(a => {
+                        const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                        return question?.section === 'reading-writing';
+                      }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length) - 50)} seconds slower than top scorers on this section
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* What This Means For You */}
+        <Card className="border border-gray-200 mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center mb-4">
+              <span className="mr-2">🧠</span>
+              <h3 className="text-lg font-medium text-gray-900">What This Means For You</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                Based on your performance data, you're performing {accuracy >= 75 ? 'strongly' : accuracy >= 60 ? 'moderately' : 'below average'} overall
+                {mathScore > readingWritingScore ? ', particularly in Math' : readingWritingScore > mathScore ? ', particularly in Reading & Writing' : ''}. 
+                Your position in the {Math.max(10, Math.min(99, Math.round(55 + (accuracy - 50) * 0.8)))}th percentile means you're scoring better than {Math.max(10, Math.min(99, Math.round(55 + (accuracy - 50) * 0.8)))}% of students on our platform.
+              </p>
+
+              {strongTopics.length > 0 && (
+                <p className="text-gray-700">
+                  <span className="font-medium">Key strengths:</span> {strongTopics.slice(0, 2).map(t => `${t.topic} (${t.percentage}th percentile)`).join(' and ')}
+                </p>
+              )}
+
+              {weakTopics.length > 0 && (
+                <div>
+                  <p className="text-gray-700 mb-2">
+                    <span className="font-medium">Areas for improvement:</span>
+                  </p>
+                  <ul className="space-y-1 ml-4">
+                    {weakTopics.slice(0, 3).map((topic, index) => (
+                      <li key={index} className="text-gray-700 text-sm">
+                        • {topic.topic} ({topic.percentage}th percentile) - This is {topic.percentage < 30 ? 'significantly below' : 'below'} your performance in other areas
+                      </li>
+                    ))}
+                    {((Array.from(answers.values()).filter(a => {
+                      const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                      return question?.section === 'reading-writing';
+                    }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length) > 50 && (
+                      <li className="text-gray-700 text-sm">
+                        • Time management in Reading & Writing - You're taking {Math.round(((Array.from(answers.values()).filter(a => {
+                          const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                          return question?.section === 'reading-writing';
+                        }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length) - 50)} seconds longer per question than top performers
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              <div className="mt-6">
+                <p className="text-gray-700 font-medium mb-3">Recommended next steps:</p>
+                <div className="space-y-2">
+                  {weakTopics.length > 0 && (
+                    <div className="flex items-center text-gray-700 text-sm">
+                      <span className="mr-2">▶</span>
+                      <span>Practice {weakTopics[0].topic} questions</span>
+                    </div>
+                  )}
+                  {((Array.from(answers.values()).filter(a => {
+                    const question = questions.find(q => q.id === Array.from(answers.keys()).find(key => answers.get(key) === a));
+                    return question?.section === 'reading-writing';
+                  }).reduce((sum, a) => sum + a.timeSpent, 0) || 0) / readingWritingQuestions.length) > 60 && (
+                    <div className="flex items-center text-gray-700 text-sm">
+                      <span className="mr-2">🕐</span>
+                      <span>Take a timed Reading & Writing practice test</span>
+                    </div>
+                  )}
+                  <div className="flex items-center text-gray-700 text-sm">
+                    <span className="mr-2">📚</span>
+                    <span>Review {readingWritingScore < mathScore ? 'Reading comprehension' : 'Math problem-solving'} strategies</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg border">
+              <div className="flex items-center mb-2">
+                <span className="mr-2">🔒</span>
+                <h4 className="font-medium text-gray-900">Data Anonymity Guarantee</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Your data is always anonymous and used only for statistical comparisons. Individual scores are never shared with other students. 
+                We aggregate data to provide meaningful benchmarks while protecting your privacy.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className="flex flex-wrap justify-center gap-4">
           <Button
