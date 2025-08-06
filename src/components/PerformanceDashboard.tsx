@@ -180,8 +180,58 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Calculate SAT prediction (simplified - would need more complex logic in real app)
   const predictedSATScore = Math.min(1600, Math.max(400, 800 + (marathonStats.averageAccuracy * 8)));
   
-  // Calculate study time (mock calculation based on questions answered)
-  const studyTimeHours = Math.round(totalQuestions * 1.5 / 60); // Assume 1.5 mins per question
+  // Calculate real study time based on session data
+  const calculateStudyTime = () => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // Calculate from marathon sessions (assume 1.5 mins per question)
+    const marathonTimeThisMonth = marathonSessions
+      .filter(session => new Date(session.created_at) >= thisMonth)
+      .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
+
+    const marathonTimeThisWeek = marathonSessions
+      .filter(session => new Date(session.created_at) >= thisWeek)
+      .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
+
+    const marathonTimeLastMonth = marathonSessions
+      .filter(session => {
+        const sessionDate = new Date(session.created_at);
+        return sessionDate >= lastMonth && sessionDate <= lastMonthEnd;
+      })
+      .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
+
+    // Calculate from quiz sessions (assume 2 mins per question for quizzes)
+    const quizTimeThisMonth = dbQuizResults
+      .filter(result => new Date(result.created_at) >= thisMonth)
+      .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
+
+    const quizTimeThisWeek = dbQuizResults
+      .filter(result => new Date(result.created_at) >= thisWeek)
+      .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
+
+    const quizTimeLastMonth = dbQuizResults
+      .filter(result => {
+        const resultDate = new Date(result.created_at);
+        return resultDate >= lastMonth && resultDate <= lastMonthEnd;
+      })
+      .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
+
+    return {
+      thisMonthMinutes: marathonTimeThisMonth + quizTimeThisMonth,
+      thisWeekMinutes: marathonTimeThisWeek + quizTimeThisWeek,
+      lastMonthMinutes: marathonTimeLastMonth + quizTimeLastMonth,
+    };
+  };
+
+  const studyTimeData = calculateStudyTime();
+  const studyTimeHours = Math.round(studyTimeData.thisMonthMinutes / 60);
+  const dailyAverageMinutes = Math.round(studyTimeData.thisMonthMinutes / new Date().getDate());
+  const thisWeekHours = (studyTimeData.thisWeekMinutes / 60).toFixed(1);
+  const lastMonthHours = Math.round(studyTimeData.lastMonthMinutes / 60);
 
   // Calculate average time per question for marathon
   const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
@@ -269,15 +319,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <div className="text-4xl font-bold text-gray-900 mb-1">{studyTimeHours}</div>
               <div className="text-sm text-gray-500 mb-4">Hours This Month</div>
               
-              {/* Weekly summary */}
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
-                <div>Daily Average</div>
-                <div className="text-right">48 min</div>
-                <div>This Week</div>
-                <div className="text-right">4.5h</div>
-                <div>Last Month</div>
-                <div className="text-right">18h</div>
-              </div>
+               {/* Weekly summary */}
+               <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
+                 <div>Daily Average</div>
+                 <div className="text-right">{dailyAverageMinutes} min</div>
+                 <div>This Week</div>
+                 <div className="text-right">{thisWeekHours}h</div>
+                 <div>Last Month</div>
+                 <div className="text-right">{lastMonthHours}h</div>
+               </div>
             </CardContent>
           </Card>
 
