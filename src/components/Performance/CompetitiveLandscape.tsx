@@ -124,7 +124,7 @@ const CompetitiveLandscape: React.FC<CompetitiveLandscapeProps> = ({ userName })
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">Competitive Landscape</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 flex flex-col justify-between h-full">
+      <CardContent className="space-y-6">
         <div className="space-y-6">
           {/* Percentile Section */}
           <div className="text-center">
@@ -160,24 +160,24 @@ const CompetitiveLandscape: React.FC<CompetitiveLandscapeProps> = ({ userName })
               <div className="w-full bg-gray-200 rounded-full h-2 relative">
                 <div 
                   className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${percentile}%` }}
+                  style={{ width: `${Math.max(1, percentile)}%` }}
                 ></div>
                 <div 
                   className="absolute top-0 w-2 h-2 bg-white border-2 border-blue-600 rounded-full transform -translate-y-0"
-                  style={{ left: `calc(${percentile}% - 4px)` }}
+                  style={{ left: `calc(${Math.max(1, percentile)}% - 4px)` }}
                 ></div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* CTA */}
-        <div className="mt-auto pt-4">
-          <div className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
-            <span>See Detailed Breakdown</span>
-            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+          {/* CTA */}
+          <div className="mt-6 pt-4">
+            <div className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+              <span>See Detailed Breakdown</span>
+              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
           </div>
         </div>
       </CardContent>
