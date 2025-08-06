@@ -12,6 +12,7 @@ import WeakestTopicsSection from './Performance/WeakestTopicsSection';
 import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
 import CompetitiveLandscape from './Performance/CompetitiveLandscape';
+import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -375,6 +376,11 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           <div className="lg:col-span-1 h-full">
             <RecentSessions userName={userName} />
           </div>
+        </div>
+
+        {/* Time & Pacing Analysis */}
+        <div className="mb-8">
+          <TimePacingAnalysis userName={userName} mockTestResults={mockTestResults} />
         </div>
 
         {/* Performance Trends Section */}
