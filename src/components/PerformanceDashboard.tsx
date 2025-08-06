@@ -11,6 +11,7 @@ import StreakDisplay from './StreakDisplay';
 import WeakestTopicsSection from './Performance/WeakestTopicsSection';
 import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
+import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -326,9 +327,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
             <PerformanceTrends userName={userName} />
           </div>
           
-          {/* Placeholder for future component */}
+          {/* Competitive Landscape */}
           <div className="lg:col-span-1 h-full">
-            {/* This space can be used for another component later */}
+            <CompetitiveLandscape userName={userName} />
           </div>
         </div>
 
