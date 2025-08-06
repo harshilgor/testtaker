@@ -260,7 +260,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <div className="text-sm text-gray-500 mb-4">Day Streak</div>
               
               {/* Week progress circles */}
-              <div className="mb-2">
+              <div className="mb-4">
                 <div className="text-xs text-gray-500 mb-2">Next milestone: 7 days</div>
                 <div className="flex justify-between items-center">
                   {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
@@ -272,18 +272,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                     </div>
                   ))}
                 </div>
-                <div className="text-xs text-gray-500 mt-2 text-center">5/7</div>
-              </div>
-              
-              {/* Week activity dots */}
-              <div className="flex space-x-1 mb-2">
-                {['3d', '4d', '5d'].map((day, index) => (
-                  <div key={index} className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
-                    index < 3 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-400'
-                  }`}>
-                    {day}
-                  </div>
-                ))}
               </div>
               
               <div className="text-xs text-orange-600 font-medium">Don't break your streak!</div>
