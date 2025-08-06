@@ -258,13 +258,20 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <div className="text-4xl font-bold text-gray-900 mb-1">5</div>
               <div className="text-sm text-gray-500 mb-4">Day Streak</div>
               
-              {/* Progress bar */}
+              {/* Week progress circles */}
               <div className="mb-2">
-                <div className="text-xs text-gray-500 mb-1">Next milestone: 7 days</div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '71%' }}></div>
+                <div className="text-xs text-gray-500 mb-2">Next milestone: 7 days</div>
+                <div className="flex justify-between items-center">
+                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <div className={`w-4 h-4 rounded-full mb-1 ${
+                        index < 5 ? 'bg-orange-500' : 'bg-gray-200'
+                      }`}></div>
+                      <div className="text-xs text-gray-400">{day}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">5/7</div>
+                <div className="text-xs text-gray-500 mt-2 text-center">5/7</div>
               </div>
               
               {/* Week activity dots */}
