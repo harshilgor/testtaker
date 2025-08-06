@@ -165,19 +165,19 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">Performance Trends</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-6">
+      <CardContent className="space-y-8">
+        <div className="grid grid-cols-2 gap-8">
           {/* Accuracy Trend Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Accuracy Trend (Last 14 Days)</h3>
-              <div className="flex space-x-1">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-medium text-gray-700">Accuracy Trend (Last 14 Days)</h3>
+              <div className="flex space-x-2">
                 {(['All', 'Math', 'Verbal'] as const).map((filter) => (
                   <Button
                     key={filter}
                     variant={activeFilter === filter ? "default" : "outline"}
                     size="sm"
-                    className={`px-3 py-1 text-xs rounded-full ${
+                    className={`px-4 py-2 text-xs rounded-full ${
                       activeFilter === filter 
                         ? 'bg-gray-900 text-white hover:bg-gray-800' 
                         : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
@@ -190,7 +190,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
               </div>
             </div>
             
-            <div className="h-32">
+            <div className="h-40">
               <ChartContainer config={chartConfig}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={getFilteredData}>
@@ -198,13 +198,13 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                       dataKey="date" 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 10, fill: '#6B7280' }}
+                      tick={{ fontSize: 11, fill: '#6B7280' }}
                     />
                     <YAxis 
                       domain={yAxisDomain}
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 10, fill: '#6B7280' }}
+                      tick={{ fontSize: 11, fill: '#6B7280' }}
                     />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Line 
@@ -222,23 +222,14 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
           </div>
 
           {/* Topic Proficiency Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Topic Proficiency</h3>
-              <button 
-                onClick={handleViewDetails}
-                className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-              >
-                <span>View Details</span>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+          <div className="space-y-6">
+            <div className="mb-6">
+              <h3 className="text-base font-medium text-gray-700">Topic Proficiency</h3>
             </div>
             
-            <div className="h-48 w-full">
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={topicProficiency} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                <RadarChart data={topicProficiency} margin={{ top: 30, right: 50, bottom: 30, left: 50 }}>
                   <PolarGrid 
                     gridType="polygon"
                     stroke="#E5E7EB"
@@ -247,7 +238,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                   />
                   <PolarAngleAxis 
                     dataKey="topic"
-                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    tick={{ fontSize: 13, fill: '#6B7280' }}
                     className="text-xs"
                   />
                   <PolarRadiusAxis 
