@@ -14,6 +14,7 @@ import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
 import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 import TimePacingAnalysis from './Performance/TimePacingAnalysis';
+import StreakNotification from './StreakNotification';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -80,6 +81,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     correctAnswers: 0,
     averageAccuracy: 0
   });
+  const [showStreakNotification, setShowStreakNotification] = useState(false);
+  const [previousQuestionsToday, setPreviousQuestionsToday] = useState(0);
 
   // Fetch marathon sessions from Supabase
   const { data: marathonSessions = [], isLoading } = useQuery({
@@ -241,6 +244,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Get streak data with auto-refresh
   const { streakData, questionsToday, refetch: refetchStreak } = useUserStreak(userName);
 
+  // Check for streak notification trigger
+  useEffect(() => {
+    // Show notification when user just completed their 5th question of the day
+    if (questionsToday >= 5 && previousQuestionsToday < 5 && previousQuestionsToday > 0) {
+      setShowStreakNotification(true);
+    }
+    setPreviousQuestionsToday(questionsToday);
+  }, [questionsToday, previousQuestionsToday]);
+
   // Refetch streak data periodically to catch new question attempts
   useEffect(() => {
     const interval = setInterval(() => {
@@ -249,6 +261,10 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
     return () => clearInterval(interval);
   }, [refetchStreak]);
+
+  const handleCloseStreakNotification = () => {
+    setShowStreakNotification(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
@@ -282,14 +298,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                 <div className="flex justify-between items-center">
                   {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
                     const dayOfWeek = new Date().getDay();
-                    const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0
+                    const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                     const currentStreak = streakData?.current_streak || 0;
                     
                     // Calculate which bubbles should be filled based on current streak
                     // Fill bubbles from the most recent days going backwards
                     const isToday = index === mondayIndex;
                     const daysFromToday = index - mondayIndex;
-                    const shouldBeFilled = isToday ? (questionsToday >= 5) : (daysFromToday >= -currentStreak && daysFromToday < 0);
+                    const shouldBeFilled = isToday ? (questionsToday >= 5) : 
+                      (daysFromToday < 0 && Math.abs(daysFromToday) <= currentStreak);
                     
                     return (
                       <div key={index} className="flex flex-col items-center">
@@ -544,6 +561,13 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </div>
         </div>
       </div>
+
+      {/* Streak Notification */}
+      <StreakNotification
+        streakCount={streakData?.current_streak || 0}
+        onClose={handleCloseStreakNotification}
+        isVisible={showStreakNotification}
+      />
     </div>
   );
 };

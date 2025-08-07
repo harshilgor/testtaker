@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -72,6 +73,9 @@ export const useUserStreak = (userName: string) => {
 
       setQuestionsToday(todayQuestionCount);
 
+      // Calculate streak manually based on daily activity
+      const calculatedStreak = await calculateStreakFromActivity(user.user.id);
+      
       // Check if user has qualifying activity today (5+ questions)
       const hasQualifyingActivity = todayQuestionCount >= 5;
 
@@ -95,36 +99,109 @@ export const useUserStreak = (userName: string) => {
         }
       }
 
-      // Fetch streak data
-      const { data, error } = await supabase
-        .from('user_streaks')
-        .select('current_streak, longest_streak, last_activity_date')
-        .eq('user_id', user.user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching streak:', error);
-        
-        // If no streak record exists, return default values
-        if (error.code === 'PGRST116') {
-          console.log('No streak record found, returning default values');
-          setIsLoading(false);
-          return { current_streak: 0, longest_streak: 0, last_activity_date: null, questionsToday: todayQuestionCount };
-        }
-        
-        setIsLoading(false);
-        return { current_streak: 0, longest_streak: 0, last_activity_date: null, questionsToday: todayQuestionCount };
-      }
-
-      console.log('Streak data fetched:', data);
+      // Return calculated streak instead of database value for accuracy
+      console.log('Calculated streak:', calculatedStreak, 'Questions today:', todayQuestionCount);
       setIsLoading(false);
-      return { ...data, questionsToday: todayQuestionCount } as UserStreak & { questionsToday: number } | null;
+      return { 
+        current_streak: calculatedStreak.current_streak, 
+        longest_streak: calculatedStreak.longest_streak, 
+        last_activity_date: null, 
+        questionsToday: todayQuestionCount 
+      };
     },
     enabled: !!userName,
     staleTime: 0, // Always fetch fresh data
     gcTime: 1000, // 1 second
     refetchInterval: 5000, // Refetch every 5 seconds to catch new question attempts
   });
+
+  // Function to calculate streak from actual daily activity
+  const calculateStreakFromActivity = async (userId: string) => {
+    const days = [];
+    const today = new Date();
+    
+    // Check last 30 days for activity
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      const dateString = checkDate.toISOString().split('T')[0];
+      
+      // Count questions for this date from all sources
+      const [quizResults, marathonAttempts, mockTests] = await Promise.all([
+        supabase
+          .from('quiz_results')
+          .select('total_questions')
+          .eq('user_id', userId)
+          .gte('created_at', `${dateString}T00:00:00Z`)
+          .lt('created_at', `${dateString}T23:59:59Z`),
+        
+        supabase
+          .from('question_attempts_v2')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('session_type', 'marathon')
+          .gte('created_at', `${dateString}T00:00:00Z`)
+          .lt('created_at', `${dateString}T23:59:59Z`),
+        
+        supabase
+          .from('mock_test_results')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('completed_at', `${dateString}T00:00:00Z`)
+          .lt('completed_at', `${dateString}T23:59:59Z`)
+      ]);
+
+      let questionCount = 0;
+      
+      if (quizResults.data) {
+        questionCount += quizResults.data.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
+      }
+      
+      if (marathonAttempts.data) {
+        questionCount += marathonAttempts.data.length;
+      }
+      
+      if (mockTests.data) {
+        questionCount += mockTests.data.length * 154;
+      }
+
+      days.push({
+        date: dateString,
+        hasActivity: questionCount >= 5,
+        questionCount
+      });
+    }
+
+    // Calculate current streak (consecutive days from today backwards)
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+
+    // Calculate current streak from today backwards
+    for (let i = 0; i < days.length; i++) {
+      if (days[i].hasActivity) {
+        if (i === 0 || (i > 0 && days[i-1].hasActivity)) {
+          currentStreak = i + 1;
+        } else {
+          break; // Streak broken
+        }
+      } else {
+        break; // No activity today, streak is 0
+      }
+    }
+
+    // Calculate longest streak in the period
+    for (let i = 0; i < days.length; i++) {
+      if (days[i].hasActivity) {
+        tempStreak++;
+        longestStreak = Math.max(longestStreak, tempStreak);
+      } else {
+        tempStreak = 0;
+      }
+    }
+
+    return { current_streak: currentStreak, longest_streak: longestStreak };
+  };
 
   // Function to track user activity for weekly display
   const trackUserActivity = () => {
