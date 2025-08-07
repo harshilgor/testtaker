@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RotateCcw, Trophy, Clock, Target, BookOpen, TrendingUp, TrendingDown, AlertTriangle, Award } from 'lucide-react';
 import { Subject } from '@/types/common';
+import CollapsibleQuestionReview from '@/components/CollapsibleQuestionReview';
 
 interface Question {
   id: number;

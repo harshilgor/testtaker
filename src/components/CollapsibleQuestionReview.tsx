@@ -5,12 +5,14 @@ import { ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Question {
-  id: string;
+  id: number;
   question: string;
   options: string[];
   correctAnswer: number;
   explanation?: string;
   topic?: string;
+  subject: string;
+  difficulty: string;
 }
 
 interface CollapsibleQuestionReviewProps {
