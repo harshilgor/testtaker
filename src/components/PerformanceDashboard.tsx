@@ -238,8 +238,17 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Calculate average time per question for marathon
   const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
 
-  // Get streak data
-  const { streakData, questionsToday } = useUserStreak(userName);
+  // Get streak data with auto-refresh
+  const { streakData, questionsToday, refetch: refetchStreak } = useUserStreak(userName);
+
+  // Refetch streak data periodically to catch new question attempts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchStreak();
+    }, 3000); // Refetch every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [refetchStreak]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
@@ -274,14 +283,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
                     const dayOfWeek = new Date().getDay();
                     const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0
-                    const isActiveDay = index <= mondayIndex;
-                    const hasActivity = questionsToday >= 5 && index === mondayIndex;
+                    const currentStreak = streakData?.current_streak || 0;
+                    
+                    // Calculate which bubbles should be filled based on current streak
+                    // Fill bubbles from the most recent days going backwards
+                    const isToday = index === mondayIndex;
+                    const daysFromToday = index - mondayIndex;
+                    const shouldBeFilled = isToday ? (questionsToday >= 5) : (daysFromToday >= -currentStreak && daysFromToday < 0);
                     
                     return (
                       <div key={index} className="flex flex-col items-center">
                         <div className={`w-4 h-4 rounded-full mb-1 ${
-                          hasActivity ? 'bg-orange-500' : 
-                          isActiveDay ? 'bg-orange-300' : 'bg-gray-200'
+                          shouldBeFilled ? 'bg-orange-500' : 
+                          index <= mondayIndex ? 'bg-gray-300' : 'bg-gray-200'
                         }`}></div>
                         <div className="text-xs text-gray-400">{day}</div>
                       </div>

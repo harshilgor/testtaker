@@ -121,8 +121,9 @@ export const useUserStreak = (userName: string) => {
       return { ...data, questionsToday: todayQuestionCount } as UserStreak & { questionsToday: number } | null;
     },
     enabled: !!userName,
-    staleTime: 1000, // 1 second
-    gcTime: 5000, // 5 seconds
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 1000, // 1 second
+    refetchInterval: 5000, // Refetch every 5 seconds to catch new question attempts
   });
 
   // Function to track user activity for weekly display
