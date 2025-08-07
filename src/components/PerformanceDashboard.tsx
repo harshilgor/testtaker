@@ -8,6 +8,7 @@ import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
 import StreakDisplay from './StreakDisplay';
+import { useUserStreak } from '@/hooks/useUserStreak';
 import WeakestTopicsSection from './Performance/WeakestTopicsSection';
 import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
@@ -237,6 +238,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Calculate average time per question for marathon
   const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
 
+  // Get streak data
+  const { streakData, questionsToday } = useUserStreak(userName);
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-6xl mx-auto">
@@ -256,25 +260,45 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   <div className="w-2 h-2 rounded-full bg-orange-500"></div>
                 </div>
               </div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">5</div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">
+                {streakData?.current_streak || 0}
+              </div>
               <div className="text-sm text-gray-500 mb-4">Day Streak</div>
               
               {/* Week progress circles */}
               <div className="mb-4">
-                <div className="text-xs text-gray-500 mb-2">Next milestone: 7 days</div>
+                <div className="text-xs text-gray-500 mb-2">
+                  Next milestone: {((streakData?.current_streak || 0) + (7 - ((streakData?.current_streak || 0) % 7)))} days
+                </div>
                 <div className="flex justify-between items-center">
-                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-                    <div key={index} className="flex flex-col items-center">
-                      <div className={`w-4 h-4 rounded-full mb-1 ${
-                        index < 5 ? 'bg-orange-500' : 'bg-gray-200'
-                      }`}></div>
-                      <div className="text-xs text-gray-400">{day}</div>
-                    </div>
-                  ))}
+                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                    const dayOfWeek = new Date().getDay();
+                    const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0
+                    const isActiveDay = index <= mondayIndex;
+                    const hasActivity = questionsToday >= 5 && index === mondayIndex;
+                    
+                    return (
+                      <div key={index} className="flex flex-col items-center">
+                        <div className={`w-4 h-4 rounded-full mb-1 ${
+                          hasActivity ? 'bg-orange-500' : 
+                          isActiveDay ? 'bg-orange-300' : 'bg-gray-200'
+                        }`}></div>
+                        <div className="text-xs text-gray-400">{day}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               
-              <div className="text-xs text-orange-600 font-medium">Don't break your streak!</div>
+              {questionsToday < 5 ? (
+                <div className="text-xs text-orange-600 font-medium">
+                  Solve {5 - questionsToday} more questions to count today's streak!
+                </div>
+              ) : (
+                <div className="text-xs text-green-600 font-medium">
+                  Great! Today's streak counted ✓
+                </div>
+              )}
             </CardContent>
           </Card>
 

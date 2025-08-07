@@ -190,10 +190,10 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
               </div>
             </div>
             
-            <div className="h-40">
+            <div className="h-40 -ml-4">
               <ChartContainer config={chartConfig}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={getFilteredData}>
+                  <LineChart data={getFilteredData} margin={{ left: -20, right: 20, top: 5, bottom: 5 }}>
                     <XAxis 
                       dataKey="date" 
                       axisLine={false}

@@ -10,6 +10,7 @@ interface UserStreak {
 
 export const useUserStreak = (userName: string) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [questionsToday, setQuestionsToday] = useState(0);
 
   const { data: streakData, refetch } = useQuery({
     queryKey: ['user-streak', userName],
@@ -24,22 +25,74 @@ export const useUserStreak = (userName: string) => {
 
       console.log('Fetching streak data for user:', user.user.id);
 
-      // Track user login activity
+      // Get today's question count from all sources
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Count questions from different sources today
+      const [quizResults, marathonAttempts, mockTests] = await Promise.all([
+        supabase
+          .from('quiz_results')
+          .select('total_questions')
+          .eq('user_id', user.user.id)
+          .gte('created_at', `${today}T00:00:00Z`)
+          .lt('created_at', `${today}T23:59:59Z`),
+        
+        supabase
+          .from('question_attempts_v2')
+          .select('id')
+          .eq('user_id', user.user.id)
+          .eq('session_type', 'marathon')
+          .gte('created_at', `${today}T00:00:00Z`)
+          .lt('created_at', `${today}T23:59:59Z`),
+        
+        supabase
+          .from('mock_test_results')
+          .select('id')
+          .eq('user_id', user.user.id)
+          .gte('completed_at', `${today}T00:00:00Z`)
+          .lt('completed_at', `${today}T23:59:59Z`)
+      ]);
+
+      let todayQuestionCount = 0;
+      
+      // Add quiz questions
+      if (quizResults.data) {
+        todayQuestionCount += quizResults.data.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
+      }
+      
+      // Add marathon questions
+      if (marathonAttempts.data) {
+        todayQuestionCount += marathonAttempts.data.length;
+      }
+      
+      // Add mock test questions (assuming 154 questions per SAT test)
+      if (mockTests.data) {
+        todayQuestionCount += mockTests.data.length * 154;
+      }
+
+      setQuestionsToday(todayQuestionCount);
+
+      // Check if user has qualifying activity today (5+ questions)
+      const hasQualifyingActivity = todayQuestionCount >= 5;
+
+      // Track user activity for weekly display
       trackUserActivity();
 
-      // First, trigger streak update to ensure current data
-      try {
-        console.log('Calling update_user_streak function...');
-        const { error: updateError } = await supabase.rpc('update_user_streak', {
-          target_user_id: user.user.id
-        });
-        if (updateError) {
-          console.warn('Error updating streak:', updateError);
-        } else {
-          console.log('Streak update function called successfully');
+      // Only trigger streak update if user has qualifying activity
+      if (hasQualifyingActivity) {
+        try {
+          console.log('Calling update_user_streak function...');
+          const { error: updateError } = await supabase.rpc('update_user_streak', {
+            target_user_id: user.user.id
+          });
+          if (updateError) {
+            console.warn('Error updating streak:', updateError);
+          } else {
+            console.log('Streak update function called successfully');
+          }
+        } catch (error) {
+          console.warn('Error calling update_user_streak:', error);
         }
-      } catch (error) {
-        console.warn('Error calling update_user_streak:', error);
       }
 
       // Fetch streak data
@@ -56,16 +109,16 @@ export const useUserStreak = (userName: string) => {
         if (error.code === 'PGRST116') {
           console.log('No streak record found, returning default values');
           setIsLoading(false);
-          return { current_streak: 0, longest_streak: 0, last_activity_date: null };
+          return { current_streak: 0, longest_streak: 0, last_activity_date: null, questionsToday: todayQuestionCount };
         }
         
         setIsLoading(false);
-        return { current_streak: 0, longest_streak: 0, last_activity_date: null };
+        return { current_streak: 0, longest_streak: 0, last_activity_date: null, questionsToday: todayQuestionCount };
       }
 
       console.log('Streak data fetched:', data);
       setIsLoading(false);
-      return data as UserStreak | null;
+      return { ...data, questionsToday: todayQuestionCount } as UserStreak & { questionsToday: number } | null;
     },
     enabled: !!userName,
     staleTime: 1000, // 1 second
@@ -128,6 +181,7 @@ export const useUserStreak = (userName: string) => {
     streakData,
     isLoading,
     refetch,
-    checkTodayActivity
+    checkTodayActivity,
+    questionsToday
   };
 };
