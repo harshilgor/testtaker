@@ -189,12 +189,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Calculate real study time based on session data
   const calculateStudyTime = () => {
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    // Calculate from marathon sessions (assume 1.5 mins per question)
+    // Calculate TODAY's study time from marathon sessions (assume 1.5 mins per question)
+    const marathonTimeToday = marathonSessions
+      .filter(session => {
+        const sessionDate = new Date(session.created_at);
+        return sessionDate >= today;
+      })
+      .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
+
+    // Calculate THIS MONTH's study time from marathon sessions
     const marathonTimeThisMonth = marathonSessions
       .filter(session => new Date(session.created_at) >= thisMonth)
       .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
@@ -203,14 +210,15 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
       .filter(session => new Date(session.created_at) >= thisWeek)
       .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
 
-    const marathonTimeLastMonth = marathonSessions
-      .filter(session => {
-        const sessionDate = new Date(session.created_at);
-        return sessionDate >= lastMonth && sessionDate <= lastMonthEnd;
+    // Calculate TODAY's study time from quiz sessions (assume 2 mins per question for quizzes)
+    const quizTimeToday = dbQuizResults
+      .filter(result => {
+        const resultDate = new Date(result.created_at);
+        return resultDate >= today;
       })
-      .reduce((sum, session) => sum + (session.total_questions || 0) * 1.5, 0);
+      .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
 
-    // Calculate from quiz sessions (assume 2 mins per question for quizzes)
+    // Calculate THIS MONTH's study time from quiz sessions
     const quizTimeThisMonth = dbQuizResults
       .filter(result => new Date(result.created_at) >= thisMonth)
       .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
@@ -219,25 +227,26 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
       .filter(result => new Date(result.created_at) >= thisWeek)
       .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
 
-    const quizTimeLastMonth = dbQuizResults
-      .filter(result => {
-        const resultDate = new Date(result.created_at);
-        return resultDate >= lastMonth && resultDate <= lastMonthEnd;
-      })
-      .reduce((sum, result) => sum + (result.total_questions || 0) * 2, 0);
-
     return {
+      todayMinutes: marathonTimeToday + quizTimeToday,
       thisMonthMinutes: marathonTimeThisMonth + quizTimeThisMonth,
       thisWeekMinutes: marathonTimeThisWeek + quizTimeThisWeek,
-      lastMonthMinutes: marathonTimeLastMonth + quizTimeLastMonth,
     };
   };
 
   const studyTimeData = calculateStudyTime();
-  const studyTimeHours = Math.round(studyTimeData.thisMonthMinutes / 60);
+  
+  // Format today's study time
+  const todayStudyTime = studyTimeData.todayMinutes;
+  const todayHours = todayStudyTime / 60;
+  const todayDisplay = todayHours >= 1 
+    ? { value: todayHours.toFixed(1), unit: 'Hours studied today' }
+    : { value: Math.round(todayStudyTime).toString(), unit: 'Minutes studied today' };
+  
+  // This month's study time in hours
+  const thisMonthHours = Math.round(studyTimeData.thisMonthMinutes / 60);
   const dailyAverageMinutes = Math.round(studyTimeData.thisMonthMinutes / new Date().getDate());
   const thisWeekHours = (studyTimeData.thisWeekMinutes / 60).toFixed(1);
-  const lastMonthHours = Math.round(studyTimeData.lastMonthMinutes / 60);
 
   // Calculate average time per question for marathon
   const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
@@ -380,8 +389,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 </div>
               </div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">{studyTimeHours}</div>
-              <div className="text-sm text-gray-500 mb-4">Hours This Month</div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{todayDisplay.value}</div>
+              <div className="text-sm text-gray-500 mb-4">{todayDisplay.unit}</div>
               
                {/* Weekly summary */}
                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
@@ -389,8 +398,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                  <div className="text-right">{dailyAverageMinutes} min</div>
                  <div>This Week</div>
                  <div className="text-right">{thisWeekHours}h</div>
-                 <div>Last Month</div>
-                 <div className="text-right">{lastMonthHours}h</div>
+                 <div>This Month</div>
+                 <div className="text-right">{thisMonthHours}h</div>
                </div>
             </CardContent>
           </Card>

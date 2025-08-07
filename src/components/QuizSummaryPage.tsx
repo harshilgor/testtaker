@@ -271,67 +271,7 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
         </Card>
 
         {/* Question Review */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Question Review</h2>
-            
-            <div className="space-y-6">
-              {questions.map((question, index) => {
-                const userAnswer = answers[index];
-                const isCorrect = userAnswer === question.correctAnswer;
-                
-                return (
-                  <div key={question.id} className={`p-4 rounded-lg border-2 ${
-                    isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-                  }`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 mb-2">
-                          Question {index + 1}: {question.question}
-                        </h3>
-                        <div className="grid gap-2">
-                          {question.options.map((option, optionIndex) => (
-                            <div 
-                              key={optionIndex}
-                              className={`p-2 rounded text-sm ${
-                                optionIndex === question.correctAnswer
-                                  ? 'bg-green-100 text-green-800 font-medium'
-                                  : optionIndex === userAnswer && userAnswer !== question.correctAnswer
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-white text-gray-700'
-                              }`}
-                            >
-                              {String.fromCharCode(65 + optionIndex)}. {option}
-                              {optionIndex === question.correctAnswer && (
-                                <span className="ml-2 text-green-600">✓ Correct</span>
-                              )}
-                              {optionIndex === userAnswer && userAnswer !== question.correctAnswer && (
-                                <span className="ml-2 text-red-600">✗ Your answer</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className={`ml-4 px-3 py-1 rounded-full text-sm font-medium ${
-                        isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {isCorrect ? 'Correct' : 'Incorrect'}
-                      </div>
-                    </div>
-                    
-                    {question.explanation && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                        <p className="text-sm text-blue-800">
-                          <strong>Explanation:</strong> {question.explanation}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <CollapsibleQuestionReview questions={questions} answers={answers} />
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
