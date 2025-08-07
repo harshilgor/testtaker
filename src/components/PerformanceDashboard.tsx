@@ -15,6 +15,7 @@ import PerformanceTrends from './Performance/PerformanceTrends';
 import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 import StreakNotification from './StreakNotification';
+import QuestionsSolvedCard from './QuestionsSolvedCard';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -290,36 +291,48 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               </div>
               <div className="text-sm text-gray-500 mb-4">Day Streak</div>
               
-              {/* Week progress circles */}
-              <div className="mb-4">
-                <div className="text-xs text-gray-500 mb-2">
-                  Next milestone: {((streakData?.current_streak || 0) + (7 - ((streakData?.current_streak || 0) % 7)))} days
+                  {/* Week progress circles */}
+                <div className="mb-4">
+                  <div className="text-xs text-gray-500 mb-2">
+                    Next milestone: {((streakData?.current_streak || 0) + (7 - ((streakData?.current_streak || 0) % 7)))} days
+                  </div>
+                  <div className="flex justify-between items-center">
+                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                      const dayOfWeek = new Date().getDay();
+                      const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                      const currentStreak = streakData?.current_streak || 0;
+                      
+                      // Calculate which bubbles should be filled based on current streak
+                      const isToday = index === mondayIndex;
+                      
+                      // For today, check if user has completed 5 questions
+                      if (isToday) {
+                        const shouldBeFilled = questionsToday >= 5;
+                        return (
+                          <div key={index} className="flex flex-col items-center">
+                            <div className={`w-4 h-4 rounded-full mb-1 ${
+                              shouldBeFilled ? 'bg-orange-500' : 'bg-gray-300'
+                            }`}></div>
+                            <div className="text-xs text-gray-400">{day}</div>
+                          </div>
+                        );
+                      }
+                      
+                      // For past days, fill based on streak count going backwards from yesterday
+                      const daysBack = mondayIndex - index;
+                      const shouldBeFilled = daysBack > 0 && daysBack <= (currentStreak - (questionsToday >= 5 ? 1 : 0));
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center">
+                          <div className={`w-4 h-4 rounded-full mb-1 ${
+                            shouldBeFilled ? 'bg-orange-500' : 'bg-gray-300'
+                          }`}></div>
+                          <div className="text-xs text-gray-400">{day}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
-                    const dayOfWeek = new Date().getDay();
-                    const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const currentStreak = streakData?.current_streak || 0;
-                    
-                    // Calculate which bubbles should be filled based on current streak
-                    // Fill bubbles from the most recent days going backwards
-                    const isToday = index === mondayIndex;
-                    const daysFromToday = index - mondayIndex;
-                    const shouldBeFilled = isToday ? (questionsToday >= 5) : 
-                      (daysFromToday < 0 && Math.abs(daysFromToday) <= currentStreak);
-                    
-                    return (
-                      <div key={index} className="flex flex-col items-center">
-                        <div className={`w-4 h-4 rounded-full mb-1 ${
-                          shouldBeFilled ? 'bg-orange-500' : 
-                          index <= mondayIndex ? 'bg-gray-300' : 'bg-gray-200'
-                        }`}></div>
-                        <div className="text-xs text-gray-400">{day}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
               
               {questionsToday < 5 ? (
                 <div className="text-xs text-orange-600 font-medium">
@@ -383,29 +396,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </Card>
 
           {/* Questions Solved */}
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
-                <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                </div>
-              </div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">{totalQuestions}</div>
-              <div className="text-sm text-gray-500 mb-4">Total Questions</div>
-              
-              {/* Progress bar */}
-              <div className="mb-2">
-                <div className="text-xs text-gray-500 mb-1">Last 7 Days</div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '84%' }}></div>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">84 questions</div>
-              </div>
-              
-              <div className="text-xs text-gray-500">Accuracy: {marathonStats.averageAccuracy}% Overall</div>
-            </CardContent>
-          </Card>
+          <QuestionsSolvedCard userName={userName} marathonStats={marathonStats} />
         </div>
 
         {/* Two Column Layout - Weakest Topics & Recent Sessions */}

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -12,11 +12,85 @@ interface UserStreak {
 export const useUserStreak = (userName: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [questionsToday, setQuestionsToday] = useState(0);
+  const [previousQuestionsToday, setPreviousQuestionsToday] = useState(0);
+
+  // Optimized query to get all daily activity in one call
+  const getOptimizedDailyActivity = useCallback(async (userId: string, days: number = 7) => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < days; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      dates.push(checkDate.toISOString().split('T')[0]);
+    }
+
+    // Single query to get all question activity
+    const [quizData, marathonData, mockTestData] = await Promise.all([
+      supabase
+        .from('quiz_results')
+        .select('total_questions, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', `${dates[dates.length - 1]}T00:00:00Z`)
+        .lte('created_at', `${dates[0]}T23:59:59Z`),
+      
+      supabase
+        .from('question_attempts_v2')
+        .select('created_at, session_type')
+        .eq('user_id', userId)
+        .gte('created_at', `${dates[dates.length - 1]}T00:00:00Z`)
+        .lte('created_at', `${dates[0]}T23:59:59Z`),
+      
+      supabase
+        .from('mock_test_results')
+        .select('completed_at')
+        .eq('user_id', userId)
+        .gte('completed_at', `${dates[dates.length - 1]}T00:00:00Z`)
+        .lte('completed_at', `${dates[0]}T23:59:59Z`)
+    ]);
+
+    // Process data by date
+    const dailyActivity = dates.map(date => {
+      let questionCount = 0;
+
+      // Count quiz questions for this date
+      if (quizData.data) {
+        const dayQuizzes = quizData.data.filter(quiz => 
+          quiz.created_at.startsWith(date)
+        );
+        questionCount += dayQuizzes.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
+      }
+
+      // Count marathon questions for this date
+      if (marathonData.data) {
+        const dayMarathons = marathonData.data.filter(attempt => 
+          attempt.created_at.startsWith(date)
+        );
+        questionCount += dayMarathons.length;
+      }
+
+      // Count mock test questions for this date
+      if (mockTestData.data) {
+        const dayMockTests = mockTestData.data.filter(test => 
+          test.completed_at.startsWith(date)
+        );
+        questionCount += dayMockTests.length * 154;
+      }
+
+      return {
+        date,
+        questionCount,
+        hasActivity: questionCount >= 5
+      };
+    });
+
+    return dailyActivity;
+  }, []);
 
   const { data: streakData, refetch } = useQuery({
     queryKey: ['user-streak', userName],
     queryFn: async () => {
-      console.log('Fetching streak data...');
+      console.log('Fetching optimized streak data...');
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) {
         console.log('No authenticated user found');
@@ -24,235 +98,85 @@ export const useUserStreak = (userName: string) => {
         return null;
       }
 
-      console.log('Fetching streak data for user:', user.user.id);
-
-      // Get today's question count from all sources
-      const today = new Date().toISOString().split('T')[0];
+      // Get activity for last 7 days (enough for streak calculation and display)
+      const dailyActivity = await getOptimizedDailyActivity(user.user.id, 7);
       
-      // Count questions from different sources today
-      const [quizResults, marathonAttempts, mockTests] = await Promise.all([
-        supabase
-          .from('quiz_results')
-          .select('total_questions')
-          .eq('user_id', user.user.id)
-          .gte('created_at', `${today}T00:00:00Z`)
-          .lt('created_at', `${today}T23:59:59Z`),
-        
-        supabase
-          .from('question_attempts_v2')
-          .select('id')
-          .eq('user_id', user.user.id)
-          .eq('session_type', 'marathon')
-          .gte('created_at', `${today}T00:00:00Z`)
-          .lt('created_at', `${today}T23:59:59Z`),
-        
-        supabase
-          .from('mock_test_results')
-          .select('id')
-          .eq('user_id', user.user.id)
-          .gte('completed_at', `${today}T00:00:00Z`)
-          .lt('completed_at', `${today}T23:59:59Z`)
-      ]);
-
-      let todayQuestionCount = 0;
+      const todayActivity = dailyActivity[0];
+      const todayQuestionCount = todayActivity.questionCount;
       
-      // Add quiz questions
-      if (quizResults.data) {
-        todayQuestionCount += quizResults.data.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
-      }
-      
-      // Add marathon questions
-      if (marathonAttempts.data) {
-        todayQuestionCount += marathonAttempts.data.length;
-      }
-      
-      // Add mock test questions (assuming 154 questions per SAT test)
-      if (mockTests.data) {
-        todayQuestionCount += mockTests.data.length * 154;
-      }
-
       setQuestionsToday(todayQuestionCount);
 
-      // Calculate streak manually based on daily activity
-      const calculatedStreak = await calculateStreakFromActivity(user.user.id);
+      // Calculate current streak
+      let currentStreak = 0;
+      for (let i = 0; i < dailyActivity.length; i++) {
+        if (dailyActivity[i].hasActivity) {
+          currentStreak = i + 1;
+        } else {
+          break;
+        }
+      }
+
+      // For longest streak, we still need to check more days
+      const extendedActivity = await getOptimizedDailyActivity(user.user.id, 30);
+      let longestStreak = 0;
+      let tempStreak = 0;
       
+      for (const day of extendedActivity) {
+        if (day.hasActivity) {
+          tempStreak++;
+          longestStreak = Math.max(longestStreak, tempStreak);
+        } else {
+          tempStreak = 0;
+        }
+      }
+
       // Check if user has qualifying activity today (5+ questions)
       const hasQualifyingActivity = todayQuestionCount >= 5;
-
-      // Track user activity for weekly display
-      trackUserActivity();
 
       // Only trigger streak update if user has qualifying activity
       if (hasQualifyingActivity) {
         try {
           console.log('Calling update_user_streak function...');
-          const { error: updateError } = await supabase.rpc('update_user_streak', {
+          await supabase.rpc('update_user_streak', {
             target_user_id: user.user.id
           });
-          if (updateError) {
-            console.warn('Error updating streak:', updateError);
-          } else {
-            console.log('Streak update function called successfully');
-          }
+          console.log('Streak update function called successfully');
         } catch (error) {
           console.warn('Error calling update_user_streak:', error);
         }
       }
 
-      // Return calculated streak instead of database value for accuracy
-      console.log('Calculated streak:', calculatedStreak, 'Questions today:', todayQuestionCount);
+      console.log('Calculated streak:', currentStreak, 'Questions today:', todayQuestionCount);
       setIsLoading(false);
+      
       return { 
-        current_streak: calculatedStreak.current_streak, 
-        longest_streak: calculatedStreak.longest_streak, 
+        current_streak: currentStreak, 
+        longest_streak: longestStreak, 
         last_activity_date: null, 
-        questionsToday: todayQuestionCount 
+        questionsToday: todayQuestionCount,
+        dailyActivity: dailyActivity
       };
     },
     enabled: !!userName,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 1000, // 1 second
-    refetchInterval: 5000, // Refetch every 5 seconds to catch new question attempts
+    staleTime: 4000, // Cache for 4 seconds
+    gcTime: 10000, // Keep in cache for 10 seconds
+    refetchInterval: 5000, // Still refetch every 5 seconds
   });
 
-  // Function to calculate streak from actual daily activity
-  const calculateStreakFromActivity = async (userId: string) => {
-    const days = [];
-    const today = new Date();
-    
-    // Check last 30 days for activity
-    for (let i = 0; i < 30; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      const dateString = checkDate.toISOString().split('T')[0];
-      
-      // Count questions for this date from all sources
-      const [quizResults, marathonAttempts, mockTests] = await Promise.all([
-        supabase
-          .from('quiz_results')
-          .select('total_questions')
-          .eq('user_id', userId)
-          .gte('created_at', `${dateString}T00:00:00Z`)
-          .lt('created_at', `${dateString}T23:59:59Z`),
-        
-        supabase
-          .from('question_attempts_v2')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('session_type', 'marathon')
-          .gte('created_at', `${dateString}T00:00:00Z`)
-          .lt('created_at', `${dateString}T23:59:59Z`),
-        
-        supabase
-          .from('mock_test_results')
-          .select('id')
-          .eq('user_id', userId)
-          .gte('completed_at', `${dateString}T00:00:00Z`)
-          .lt('completed_at', `${dateString}T23:59:59Z`)
-      ]);
-
-      let questionCount = 0;
-      
-      if (quizResults.data) {
-        questionCount += quizResults.data.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
-      }
-      
-      if (marathonAttempts.data) {
-        questionCount += marathonAttempts.data.length;
-      }
-      
-      if (mockTests.data) {
-        questionCount += mockTests.data.length * 154;
-      }
-
-      days.push({
-        date: dateString,
-        hasActivity: questionCount >= 5,
-        questionCount
-      });
+  // Check if notification should be triggered
+  useEffect(() => {
+    if (questionsToday >= 5 && previousQuestionsToday < 5 && previousQuestionsToday > 0) {
+      // User just reached 5 questions - trigger notification
+      console.log('Triggering streak notification - reached 5 questions');
+      // This will be handled by the parent component
     }
-
-    // Calculate current streak (consecutive days from today backwards)
-    let currentStreak = 0;
-    let longestStreak = 0;
-    let tempStreak = 0;
-
-    // Calculate current streak from today backwards
-    for (let i = 0; i < days.length; i++) {
-      if (days[i].hasActivity) {
-        if (i === 0 || (i > 0 && days[i-1].hasActivity)) {
-          currentStreak = i + 1;
-        } else {
-          break; // Streak broken
-        }
-      } else {
-        break; // No activity today, streak is 0
-      }
-    }
-
-    // Calculate longest streak in the period
-    for (let i = 0; i < days.length; i++) {
-      if (days[i].hasActivity) {
-        tempStreak++;
-        longestStreak = Math.max(longestStreak, tempStreak);
-      } else {
-        tempStreak = 0;
-      }
-    }
-
-    return { current_streak: currentStreak, longest_streak: longestStreak };
-  };
-
-  // Function to track user activity for weekly display
-  const trackUserActivity = () => {
-    const today = new Date();
-    const dateString = today.toDateString();
-    
-    // Get existing login history
-    const loginHistory = JSON.parse(localStorage.getItem('userLoginHistory') || '[]');
-    
-    // Check if today is already recorded
-    const todayExists = loginHistory.some((login: any) => 
-      new Date(login.date).toDateString() === dateString
-    );
-    
-    if (!todayExists) {
-      // Add today's login
-      loginHistory.push({
-        date: today.toISOString(),
-        timestamp: Date.now()
-      });
-      
-      // Keep only last 30 days of history
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const filteredHistory = loginHistory.filter((login: any) => 
-        new Date(login.date) >= thirtyDaysAgo
-      );
-      
-      localStorage.setItem('userLoginHistory', JSON.stringify(filteredHistory));
-      console.log('User activity tracked for:', dateString);
-    }
-  };
+    setPreviousQuestionsToday(questionsToday);
+  }, [questionsToday, previousQuestionsToday]);
 
   // Function to manually trigger streak update
   const checkTodayActivity = async () => {
     console.log('Manually checking today activity...');
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    trackUserActivity();
-
-    try {
-      await supabase.rpc('update_user_streak', {
-        target_user_id: user.user.id
-      });
-      console.log('Manual streak update completed');
-      refetch();
-    } catch (error) {
-      console.error('Error updating streak:', error);
-    }
+    refetch();
   };
 
   return {
@@ -260,6 +184,7 @@ export const useUserStreak = (userName: string) => {
     isLoading,
     refetch,
     checkTodayActivity,
-    questionsToday
+    questionsToday,
+    hasJustReached5Questions: questionsToday >= 5 && previousQuestionsToday < 5 && previousQuestionsToday > 0
   };
 };
