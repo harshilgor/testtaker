@@ -6,13 +6,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Calendar } from '@/components/ui/calendar';
 import { Flame, Award, Calendar as CalendarIcon, X } from 'lucide-react';
 import { useUserStreak } from '@/hooks/useUserStreak';
+import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
 
 interface StreakDisplayProps {
   userName: string;
 }
 
 const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
-  const { streakData, isLoading } = useUserStreak(userName);
+  // Try optimized hook first, fallback to legacy
+  const { streakData: optimizedData, isLoading: optimizedLoading } = useOptimizedStreak(userName);
+  const { streakData: legacyData, isLoading: legacyLoading } = useUserStreak(userName);
+  
+  const streakData = optimizedData || legacyData;
+  const isLoading = optimizedLoading || legacyLoading;
+  
   const [showMonthlyView, setShowMonthlyView] = useState(false);
 
   console.log('StreakDisplay - isLoading:', isLoading, 'streakData:', streakData);

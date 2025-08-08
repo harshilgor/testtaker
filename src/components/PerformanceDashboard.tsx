@@ -16,6 +16,8 @@ import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 import StreakNotification from './StreakNotification';
 import QuestionsSolvedCard from './QuestionsSolvedCard';
+import StreakDebugPanel from './StreakDebugPanel';
+import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -251,8 +253,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   // Calculate average time per question for marathon
   const avgTimePerQuestion = marathonStats.totalQuestions > 0 ? "43s" : "0s"; // Mock value
 
-  // Get streak data with auto-refresh
-  const { streakData, questionsToday, refetch: refetchStreak } = useUserStreak(userName);
+  // Get streak data with optimized performance
+  const { streakData: optimizedStreakData, questionsToday, refetch: refetchStreak } = useOptimizedStreak(userName);
+  
+  // Fallback to legacy hook for compatibility
+  const { streakData: legacyStreakData } = useUserStreak(userName);
+  
+  // Use optimized data if available, fallback to legacy
+  const streakData = optimizedStreakData || legacyStreakData;
 
   // Check for streak notification trigger
   useEffect(() => {
@@ -263,14 +271,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     setPreviousQuestionsToday(questionsToday);
   }, [questionsToday, previousQuestionsToday]);
 
-  // Refetch streak data periodically to catch new question attempts
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetchStreak();
-    }, 3000); // Refetch every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [refetchStreak]);
+  // Optimized: Only refetch when necessary, not on a timer
+  // The optimized hook already handles efficient caching and updates
 
   const handleCloseStreakNotification = () => {
     setShowStreakNotification(false);
@@ -283,6 +285,13 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
+
+        {/* Debug Panel - Only show in development or for troubleshooting */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-6">
+            <StreakDebugPanel userName={userName} />
+          </div>
+        )}
 
         {/* Top Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

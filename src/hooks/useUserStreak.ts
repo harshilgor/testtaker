@@ -14,6 +14,9 @@ export const useUserStreak = (userName: string) => {
   const [questionsToday, setQuestionsToday] = useState(0);
   const [previousQuestionsToday, setPreviousQuestionsToday] = useState(0);
 
+  // LEGACY HOOK - Use useOptimizedStreak for new components
+  console.warn('⚠️ Using legacy useUserStreak hook. Consider migrating to useOptimizedStreak for better performance.');
+
   // Optimized query to get all daily activity in one call
   const getOptimizedDailyActivity = useCallback(async (userId: string, days: number = 7) => {
     const dates = [];
@@ -158,9 +161,9 @@ export const useUserStreak = (userName: string) => {
       };
     },
     enabled: !!userName,
-    staleTime: 4000, // Cache for 4 seconds
-    gcTime: 10000, // Keep in cache for 10 seconds
-    refetchInterval: 5000, // Still refetch every 5 seconds
+    staleTime: 30000, // Cache for 30 seconds - improved performance
+    gcTime: 60000, // Keep in cache for 1 minute
+    refetchInterval: 60000, // Refetch every minute - much better performance
   });
 
   // Check if notification should be triggered

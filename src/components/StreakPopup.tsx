@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Flame } from 'lucide-react';
 import { useUserStreak } from '@/hooks/useUserStreak';
+import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
 
 interface StreakPopupProps {
   userName: string;
@@ -12,7 +13,13 @@ interface StreakPopupProps {
 
 const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerformance }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const { streakData, isLoading, checkTodayActivity } = useUserStreak(userName);
+  
+  // Try optimized hook first, fallback to legacy
+  const { streakData: optimizedData, isLoading: optimizedLoading, refetch: optimizedRefetch } = useOptimizedStreak(userName);
+  const { streakData: legacyData, isLoading: legacyLoading, checkTodayActivity } = useUserStreak(userName);
+  
+  const streakData = optimizedData || legacyData;
+  const isLoading = optimizedLoading || legacyLoading;
 
   useEffect(() => {
     // Check if popup has been shown today
@@ -43,9 +50,14 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
   // Trigger activity check when component mounts
   useEffect(() => {
     if (!isLoading) {
-      checkTodayActivity();
+      // Use optimized refetch if available, otherwise fallback to legacy method
+      if (optimizedRefetch) {
+        optimizedRefetch();
+      } else if (checkTodayActivity) {
+        checkTodayActivity();
+      }
     }
-  }, [isLoading, checkTodayActivity]);
+  }, [isLoading, optimizedRefetch, checkTodayActivity]);
 
   const handleClose = () => {
     setIsVisible(false);
