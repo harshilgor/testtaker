@@ -9,7 +9,7 @@ import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
 import StreakDisplay from './StreakDisplay';
 import { useUserStreak } from '@/hooks/useUserStreak';
-import WeakestTopicsSection from './Performance/WeakestTopicsSection';
+import PerformanceOverview from './Performance/PerformanceOverview';
 import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
 import CompetitiveLandscape from './Performance/CompetitiveLandscape';
@@ -458,7 +458,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Your Weakest Topics */}
           <div className="lg:col-span-2 h-full">
-            <WeakestTopicsSection userName={userName} />
+            <PerformanceOverview userName={userName} />
           </div>
           
           {/* Recent Sessions */}
