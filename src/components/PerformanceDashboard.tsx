@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
@@ -133,6 +133,43 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     enabled: !!userName,
   });
 
+  // Fetch difficulty breakdown from attempts
+  const { data: difficultyBreakdown = { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } } } = useQuery({
+    queryKey: ['difficulty-breakdown', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } };
+
+      const { data, error } = await supabase
+        .from('question_attempts_v2')
+        .select('difficulty, session_type')
+        .eq('user_id', user.user.id);
+
+      if (error || !data) {
+        console.error('Error fetching difficulty breakdown:', error);
+        return { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } };
+      }
+
+      const init = { easy: 0, medium: 0, hard: 0 } as { [k: string]: number };
+      const quiz = { ...init } as { [k: string]: number };
+      const marathon = { ...init } as { [k: string]: number };
+
+      (data as { difficulty: string | null; session_type: string | null }[]).forEach((a) => {
+        const d = (a.difficulty || '').toLowerCase();
+        if (!['easy', 'medium', 'hard'].includes(d)) return;
+        if (a.session_type === 'quiz') {
+          // @ts-ignore
+          quiz[d] += 1;
+        } else if (a.session_type === 'marathon') {
+          // @ts-ignore
+          marathon[d] += 1;
+        }
+      });
+
+      return { quiz, marathon };
+    },
+    enabled: !!userName,
+  });
   useEffect(() => {
     const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
     const storedMockTests = JSON.parse(localStorage.getItem('mockTestResults') || '[]');
@@ -481,12 +518,27 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   </div>
                 </div>
                 
-                <Button 
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
-                  onClick={() => window.location.href = '/quiz'}
-                >
-                  Start Quiz
-                </Button>
+<Accordion type="single" collapsible>
+  <AccordionItem value="quiz-difficulty">
+    <AccordionTrigger className="text-sm text-gray-800">Difficulty breakdown</AccordionTrigger>
+    <AccordionContent>
+      <div className="grid grid-cols-3 gap-4 text-center">
+        <div>
+          <div className="text-xl font-bold text-green-600">{difficultyBreakdown.quiz.easy}</div>
+          <div className="text-xs text-gray-500">Easy</div>
+        </div>
+        <div>
+          <div className="text-xl font-bold text-blue-600">{difficultyBreakdown.quiz.medium}</div>
+          <div className="text-xs text-gray-500">Medium</div>
+        </div>
+        <div>
+          <div className="text-xl font-bold text-purple-600">{difficultyBreakdown.quiz.hard}</div>
+          <div className="text-xs text-gray-500">Hard</div>
+        </div>
+      </div>
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
               </CardContent>
             </Card>
 
@@ -518,12 +570,27 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   </div>
                 </div>
                 
-                <Button 
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
-                  onClick={() => window.location.href = '/marathon'}
-                >
-                  Start Marathon
-                </Button>
+<Accordion type="single" collapsible>
+  <AccordionItem value="marathon-difficulty">
+    <AccordionTrigger className="text-sm text-gray-800">Difficulty breakdown</AccordionTrigger>
+    <AccordionContent>
+      <div className="grid grid-cols-3 gap-4 text-center">
+        <div>
+          <div className="text-xl font-bold text-green-600">{difficultyBreakdown.marathon.easy}</div>
+          <div className="text-xs text-gray-500">Easy</div>
+        </div>
+        <div>
+          <div className="text-xl font-bold text-blue-600">{difficultyBreakdown.marathon.medium}</div>
+          <div className="text-xs text-gray-500">Medium</div>
+        </div>
+        <div>
+          <div className="text-xl font-bold text-purple-600">{difficultyBreakdown.marathon.hard}</div>
+          <div className="text-xs text-gray-500">Hard</div>
+        </div>
+      </div>
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
               </CardContent>
             </Card>
 
@@ -559,12 +626,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   </div>
                 </div>
                 
-                <Button 
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white"
-                  onClick={() => window.location.href = '/sat-mock-test'}
-                >
-                  Take Mock Test
-                </Button>
               </CardContent>
             </Card>
           </div>
