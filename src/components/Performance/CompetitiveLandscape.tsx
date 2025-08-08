@@ -59,42 +59,90 @@ const CompetitiveLandscape: React.FC<CompetitiveLandscapeProps> = ({ userName })
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-      // Get user's activity this week
-      const { data: userActivity, error: userError } = await supabase
+      // User weekly questions
+      const { data: userAttempts, error: userAttemptsError } = await supabase
         .from('question_attempts_v2')
         .select('id')
         .eq('user_id', user.user.id)
         .gte('created_at', oneWeekAgo.toISOString());
 
-      if (userError) {
-        console.error('Error fetching user weekly activity:', userError);
+      if (userAttemptsError) {
+        console.error('Error fetching user weekly attempts:', userAttemptsError);
         return 0;
       }
 
-      const userWeeklyQuestions = userActivity?.length || 0;
+      const userWeeklyQuestions = userAttempts?.length || 0;
 
-      // Get all users' weekly activity
-      const { data: allUsersActivity, error: allError } = await supabase
-        .from('question_attempts_v2')
-        .select('user_id')
-        .gte('created_at', oneWeekAgo.toISOString());
+      // User weekly study time (from marathon sessions)
+      const { data: userMarathons, error: userMarathonsError } = await supabase
+        .from('marathon_sessions')
+        .select('start_time,end_time')
+        .eq('user_id', user.user.id)
+        .gte('start_time', oneWeekAgo.toISOString());
 
-      if (allError) {
-        console.error('Error fetching all users weekly activity:', allError);
-        return 0;
+      if (userMarathonsError) {
+        console.error('Error fetching user weekly marathon time:', userMarathonsError);
       }
 
-      // Count questions per user this week
-      const userQuestionCounts = allUsersActivity?.reduce((acc, attempt) => {
-        acc[attempt.user_id] = (acc[attempt.user_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>) || {};
+      const now = new Date();
+      const userWeeklySeconds = (userMarathons || []).reduce((sum, s: any) => {
+        const start = s.start_time ? new Date(s.start_time) : null;
+        const end = s.end_time ? new Date(s.end_time) : now;
+        if (!start) return sum;
+        const diff = Math.max(0, (end.getTime() - start.getTime()) / 1000);
+        return sum + diff;
+      }, 0);
 
-      const allWeeklyCounts = Object.values(userQuestionCounts);
-      const usersWithLessActivity = allWeeklyCounts.filter(count => count < userWeeklyQuestions).length;
-      const totalUsers = allWeeklyCounts.length;
+      // Effort score = questions + (seconds / 75)
+      const userEffort = userWeeklyQuestions + userWeeklySeconds / 75;
 
-      return totalUsers > 0 ? Math.round((usersWithLessActivity / totalUsers) * 100) : 0;
+      // All users weekly activity
+      const [
+        { data: allAttempts, error: allAttemptsError },
+        { data: allMarathons, error: allMarathonsError }
+      ] = await Promise.all([
+        supabase
+          .from('question_attempts_v2')
+          .select('user_id')
+          .gte('created_at', oneWeekAgo.toISOString()),
+        supabase
+          .from('marathon_sessions')
+          .select('user_id,start_time,end_time')
+          .gte('start_time', oneWeekAgo.toISOString())
+      ]);
+
+      if (allAttemptsError) console.error('Error fetching all weekly attempts:', allAttemptsError);
+      if (allMarathonsError) console.error('Error fetching all weekly marathon time:', allMarathonsError);
+
+      const userMap: Record<string, { q: number; secs: number }> = {};
+
+      (allAttempts || []).forEach((a: any) => {
+        if (!a.user_id) return;
+        userMap[a.user_id] = userMap[a.user_id] || { q: 0, secs: 0 };
+        userMap[a.user_id].q += 1;
+      });
+
+      (allMarathons || []).forEach((s: any) => {
+        const uid = s.user_id;
+        if (!uid) return;
+        const start = s.start_time ? new Date(s.start_time) : null;
+        const end = s.end_time ? new Date(s.end_time) : now;
+        if (!start) return;
+        const diff = Math.max(0, (end.getTime() - start.getTime()) / 1000);
+        userMap[uid] = userMap[uid] || { q: 0, secs: 0 };
+        userMap[uid].secs += diff;
+      });
+
+      const efforts = Object.values(userMap)
+        .map(({ q, secs }) => q + secs / 75)
+        .filter((e) => e > 0);
+
+      if (efforts.length === 0) return 0;
+
+      const usersWithLessEffort = efforts.filter((e) => e < userEffort).length;
+      const percentile = Math.round((usersWithLessEffort / efforts.length) * 100);
+
+      return Math.max(0, Math.min(100, percentile));
     },
     enabled: !!userName,
   });
@@ -111,36 +159,18 @@ const CompetitiveLandscape: React.FC<CompetitiveLandscapeProps> = ({ userName })
 
   const percentile = calculatePercentile();
 
-  const handleViewDetails = () => {
-    console.log('View detailed breakdown clicked');
-    // Navigate to detailed competitive analysis page
-  };
 
   return (
     <Card 
-      className="h-full cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] bg-white"
-      onClick={handleViewDetails}
+      className="h-full bg-white"
     >
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">Competitive Landscape</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-6">
-          {/* Percentile Section */}
-          <div className="text-center">
-            <div className="text-4xl font-bold text-gray-900 mb-2">
-              {percentile}th
-            </div>
-            <div className="text-lg text-gray-600 mb-4">
-              Percentile
-            </div>
-            <div className="text-sm text-gray-500">
-              You're performing better than {percentile}% of students
-            </div>
-          </div>
-
           {/* Weekly Performance Section */}
-          <div className="text-center border-t pt-6">
+          <div className="text-center">
             <div className="text-3xl font-bold text-gray-900 mb-2">
               {weeklyComparison}%
             </div>
@@ -149,30 +179,9 @@ const CompetitiveLandscape: React.FC<CompetitiveLandscapeProps> = ({ userName })
             </div>
           </div>
 
-          {/* Visual indicator */}
-          <div className="flex justify-center">
-            <div className="w-full max-w-xs">
-              <div className="flex justify-between text-xs text-gray-500 mb-2">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 relative">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.max(1, percentile)}%` }}
-                ></div>
-                <div 
-                  className="absolute top-0 w-2 h-2 bg-white border-2 border-blue-600 rounded-full transform -translate-y-0"
-                  style={{ left: `calc(${Math.max(1, percentile)}% - 4px)` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA */}
+          {/* CTA (optional) */}
           <div className="mt-6 pt-4">
-            <div className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+            <div className="text-sm text-gray-500 flex items-center">
               <span>See Detailed Breakdown</span>
               <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
