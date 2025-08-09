@@ -31,17 +31,71 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [] as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }>;
 
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('topic, is_correct, time_spent')
-        .eq('user_id', user.user.id);
+      // Get data from quiz_results and marathon_sessions instead of question_attempts_v2
+      const [quizResults, marathonSessions] = await Promise.all([
+        supabase
+          .from('quiz_results')
+          .select('topics, correct_answers, total_questions, time_taken')
+          .eq('user_id', user.user.id),
+        
+        supabase
+          .from('marathon_sessions')
+          .select('subjects, correct_answers, total_questions')
+          .eq('user_id', user.user.id)
+      ]);
 
-      if (error || !data) {
-        console.error('Error fetching attempts for PerformanceOverview:', error);
-        return [] as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }>;
+      const attempts: Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }> = [];
+
+      // Process quiz results
+      if (quizResults.data) {
+        quizResults.data.forEach(quiz => {
+          const avgTimePerQuestion = quiz.time_taken ? Math.round(quiz.time_taken / quiz.total_questions) : 0;
+          const topics = quiz.topics || [];
+          
+          topics.forEach(topic => {
+            // Estimate correct/incorrect distribution across topics
+            const questionsPerTopic = Math.ceil(quiz.total_questions / topics.length);
+            const correctPerTopic = Math.ceil(quiz.correct_answers / topics.length);
+            
+            for (let i = 0; i < questionsPerTopic; i++) {
+              attempts.push({
+                topic,
+                is_correct: i < correctPerTopic,
+                time_spent: avgTimePerQuestion
+              });
+            }
+          });
+        });
       }
 
-      return data as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }>;
+      // Process marathon sessions 
+      if (marathonSessions.data) {
+        marathonSessions.data.forEach(session => {
+          const subjects = session.subjects || [];
+          const totalQuestions = session.total_questions || 0;
+          const correctAnswers = session.correct_answers || 0;
+          
+          // Create generic topic entries for marathon sessions
+          const questionsPerSubject = Math.ceil(totalQuestions / Math.max(subjects.length, 1));
+          const correctPerSubject = Math.ceil(correctAnswers / Math.max(subjects.length, 1));
+          
+          subjects.forEach(subject => {
+            const topicName = subject === 'math' ? 'Mathematics' : subject === 'english' ? 'Reading & Writing' : 'Mixed Practice';
+            
+            for (let i = 0; i < questionsPerSubject; i++) {
+              attempts.push({
+                topic: topicName,
+                is_correct: i < correctPerSubject,
+                time_spent: 60 // Estimate 60 seconds per question for marathon
+              });
+            }
+          });
+        });
+      }
+
+      console.log('Performance Overview data:', { quizResults: quizResults.data?.length, marathonSessions: marathonSessions.data?.length, totalAttempts: attempts.length });
+      
+      return attempts;
     },
     enabled: !!userName,
     staleTime: 60_000,

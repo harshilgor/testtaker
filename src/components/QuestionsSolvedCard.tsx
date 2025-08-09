@@ -64,22 +64,22 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
         
         // 7 days - Marathon
         supabase
-          .from('question_attempts_v2')
-          .select('id')
+          .from('marathon_sessions')
+          .select('total_questions')
           .eq('user_id', user.user.id)
           .gte('created_at', sevenDaysAgo.toISOString()),
         
         // 1 month - Marathon
         supabase
-          .from('question_attempts_v2')
-          .select('id')
+          .from('marathon_sessions')
+          .select('total_questions')
           .eq('user_id', user.user.id)
           .gte('created_at', oneMonthAgo.toISOString()),
         
         // All time - Marathon
         supabase
-          .from('question_attempts_v2')
-          .select('id')
+          .from('marathon_sessions')
+          .select('total_questions')
           .eq('user_id', user.user.id),
         
         // 7 days - Mock Tests
@@ -107,17 +107,17 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
       const counts = {
         '7days': 
           (quizResults7Days.data?.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0) || 0) +
-          (marathonAttempts7Days.data?.length || 0) +
+          (marathonAttempts7Days.data?.reduce((sum, session) => sum + (session.total_questions || 0), 0) || 0) +
           (mockTests7Days.data?.length || 0) * 154,
         
         '1month': 
           (quizResults1Month.data?.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0) || 0) +
-          (marathonAttempts1Month.data?.length || 0) +
+          (marathonAttempts1Month.data?.reduce((sum, session) => sum + (session.total_questions || 0), 0) || 0) +
           (mockTests1Month.data?.length || 0) * 154,
         
         'alltime': 
           (quizResultsAllTime.data?.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0) || 0) +
-          (marathonAttemptsAllTime.data?.length || 0) +
+          (marathonAttemptsAllTime.data?.reduce((sum, session) => sum + (session.total_questions || 0), 0) || 0) +
           (mockTestsAllTime.data?.length || 0) * 154
       };
 

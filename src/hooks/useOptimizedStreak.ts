@@ -139,13 +139,24 @@ export const useOptimizedStreak = (userName: string) => {
       const todayQuestionCount = todayActivity.questionCount;
 
       // Calculate current streak (consecutive days from today backwards)
+      // If today has no activity, start checking from yesterday
       let currentStreak = 0;
-      for (let i = 0; i < dailyActivity.length; i++) {
+      let startIndex = todayActivity.hasActivity ? 0 : 1;
+      
+      for (let i = startIndex; i < dailyActivity.length; i++) {
         if (dailyActivity[i].hasActivity) {
-          currentStreak = i + 1;
+          currentStreak++;
         } else {
           break;
         }
+      }
+      
+      // If today has activity, add it to the streak
+      if (todayActivity.hasActivity && startIndex === 0) {
+        // currentStreak already includes today from the loop
+      } else if (todayActivity.hasActivity && startIndex === 1) {
+        // Add today's activity to the streak
+        currentStreak++;
       }
 
       // Calculate longest streak in the 30-day period
