@@ -467,22 +467,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </div>
         </div>
 
-        {/* Time & Pacing Analysis */}
-        <div className="mb-8">
-          <TimePacingAnalysis userName={userName} mockTestResults={mockTestResults} />
-        </div>
-
-        {/* Performance Trends Section */}
+        {/* Time & Pacing + Competitive Landscape */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Performance Trends */}
           <div className="lg:col-span-2 h-full">
-            <PerformanceTrends userName={userName} />
+            <TimePacingAnalysis userName={userName} mockTestResults={mockTestResults} />
           </div>
-          
-          {/* Competitive Landscape */}
           <div className="lg:col-span-1 h-full">
             <CompetitiveLandscape userName={userName} />
           </div>
+        </div>
+
+        {/* Performance Trends Section */}
+        <div className="mb-8">
+          <PerformanceTrends userName={userName} />
         </div>
 
         {/* Practice Summary */}

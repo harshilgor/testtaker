@@ -156,7 +156,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
   const renderRow = (s: SkillStats) => (
     <div key={s.skill} className="flex items-center justify-between rounded-md border px-4 py-3">
       <div className="min-w-0">
-        <div className="font-medium truncate">{s.skill}</div>
+        <div className="font-medium truncate">{s.skill.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()}</div>
         <div className="text-sm text-muted-foreground mt-1">
           {s.correct}/{s.total} correct • {s.accuracy}% accuracy • avg {formatTime(s.avgTime)} per question
         </div>
