@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { Target } from 'lucide-react';
+import SetGoalDialog from '@/components/Goals/SetGoalDialog';
 
 interface QuestionsSolvedCardProps {
   userName: string;
@@ -16,9 +18,11 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
     'alltime': 0
   });
   const [loading, setLoading] = useState(true);
-
+  const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   useEffect(() => {
     fetchQuestionCounts();
+    fetchGoals();
   }, [userName]);
 
   const fetchQuestionCounts = async () => {
@@ -129,6 +133,40 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
     }
   };
 
+  const fetchGoals = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+      const { data } = await supabase
+        .from('user_goals')
+        .select('period, target')
+        .eq('user_id', user.user.id);
+      const next = { '7days': 0, '1month': 0, 'alltime': 0 } as Record<'7days' | '1month' | 'alltime', number>;
+      data?.forEach((row: { period: '7days' | '1month' | 'alltime'; target: number }) => {
+        next[row.period] = row.target || 0;
+      });
+      setGoals(next);
+    } catch (e) {
+      console.error('Error fetching goals:', e);
+    }
+  };
+
+  const handleSaveGoals = async (updated: { '7days': number; '1month': number; 'alltime': number }) => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+      const rows = Object.entries(updated).map(([period, target]) => ({
+        user_id: user.user.id,
+        period,
+        target,
+      }));
+      await supabase.from('user_goals').upsert(rows);
+      setGoals(updated);
+      setGoalDialogOpen(false);
+    } catch (e) {
+      console.error('Error saving goals:', e);
+    }
+  };
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
       case '7days': return 'Last 7 Days';
@@ -139,6 +177,8 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
 
   const getProgressWidth = () => {
     const currentCount = questionCounts[selectedPeriod];
+    const goal = goals[selectedPeriod] || 0;
+    if (goal > 0) return Math.min((currentCount / goal) * 100, 100);
     const maxCount = questionCounts.alltime;
     if (selectedPeriod === 'alltime') return 84; // Default width for all time
     return maxCount > 0 ? Math.min((currentCount / maxCount) * 100, 100) : 0;
@@ -149,8 +189,13 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
-          <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setGoalDialogOpen(true)}>
+              <Target className="h-3.5 w-3.5 mr-1" /> Set goal
+            </Button>
+            <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+            </div>
           </div>
         </div>
         
@@ -169,10 +214,14 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
             ></div>
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            {selectedPeriod === 'alltime' 
-              ? `${questionCounts[selectedPeriod]} questions solved`
-              : `${questionCounts[selectedPeriod]} of ${questionCounts.alltime} total`
-            }
+            {(() => {
+              const current = questionCounts[selectedPeriod];
+              const goal = goals[selectedPeriod];
+              if (goal && goal > 0) return `${current} of ${goal} goal`;
+              return selectedPeriod === 'alltime'
+                ? `${current} questions solved`
+                : `${current} of ${questionCounts.alltime} total`;
+            })()}
           </div>
         </div>
         
@@ -207,6 +256,12 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
             All Time
           </Button>
         </div>
+        <SetGoalDialog
+          open={goalDialogOpen}
+          onOpenChange={setGoalDialogOpen}
+          initialTargets={goals}
+          onSave={handleSaveGoals}
+        />
       </CardContent>
     </Card>
   );

@@ -24,18 +24,19 @@ const MIN_ATTEMPTS = 3; // small threshold to avoid noisy rankings
 
 const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) => {
   const [mode, setMode] = useState<ViewMode>('strongest');
+  const [subjectFilter, setSubjectFilter] = useState<'reading_writing' | 'math'>('reading_writing');
 
   const { data: attempts = [], isLoading } = useQuery({
     queryKey: ['performance-overview-attempts', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [] as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }>;
+      if (!user.user) return [] as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null; subject: 'reading_writing' | 'math' | null }>;
 
       // Get data from quiz_results and marathon_sessions instead of question_attempts_v2
       const [quizResults, marathonSessions] = await Promise.all([
         supabase
           .from('quiz_results')
-          .select('topics, correct_answers, total_questions, time_taken')
+          .select('topics, correct_answers, total_questions, time_taken, subject')
           .eq('user_id', user.user.id),
         
         supabase
@@ -44,24 +45,26 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
           .eq('user_id', user.user.id)
       ]);
 
-      const attempts: Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null }> = [];
+      const attempts: Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null; subject: 'reading_writing' | 'math' | null }> = [];
 
       // Process quiz results
       if (quizResults.data) {
         quizResults.data.forEach(quiz => {
           const avgTimePerQuestion = quiz.time_taken ? Math.round(quiz.time_taken / quiz.total_questions) : 0;
           const topics = quiz.topics || [];
+          const normalizedSubject: 'reading_writing' | 'math' = (quiz.subject && String(quiz.subject).toLowerCase() === 'math') ? 'math' : 'reading_writing';
           
           topics.forEach(topic => {
             // Estimate correct/incorrect distribution across topics
-            const questionsPerTopic = Math.ceil(quiz.total_questions / topics.length);
-            const correctPerTopic = Math.ceil(quiz.correct_answers / topics.length);
+            const questionsPerTopic = Math.ceil(quiz.total_questions / Math.max(topics.length, 1));
+            const correctPerTopic = Math.ceil(quiz.correct_answers / Math.max(topics.length, 1));
             
             for (let i = 0; i < questionsPerTopic; i++) {
               attempts.push({
                 topic,
                 is_correct: i < correctPerTopic,
-                time_spent: avgTimePerQuestion
+                time_spent: avgTimePerQuestion,
+                subject: normalizedSubject
               });
             }
           });
@@ -81,12 +84,14 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
           
           subjects.forEach(subject => {
             const topicName = subject === 'math' ? 'Mathematics' : subject === 'english' ? 'Reading & Writing' : 'Mixed Practice';
+            const normalizedSubject: 'reading_writing' | 'math' = subject === 'math' ? 'math' : 'reading_writing';
             
             for (let i = 0; i < questionsPerSubject; i++) {
               attempts.push({
                 topic: topicName,
                 is_correct: i < correctPerSubject,
-                time_spent: 60 // Estimate 60 seconds per question for marathon
+                time_spent: 60, // Estimate 60 seconds per question for marathon
+                subject: normalizedSubject
               });
             }
           });
@@ -105,7 +110,10 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     const map = new Map<string, { total: number; correct: number; totalTime: number }>();
 
     attempts.forEach((a) => {
-      const skill = (a.topic || '').trim();
+      if (!a || !a.topic) return;
+      if (subjectFilter === 'reading_writing' && a.subject !== 'reading_writing') return;
+      if (subjectFilter === 'math' && a.subject !== 'math') return;
+      const skill = a.topic.trim();
       if (!skill) return;
       const entry = map.get(skill) || { total: 0, correct: 0, totalTime: 0 };
       entry.total += 1;
@@ -121,7 +129,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     });
 
     return list;
-  }, [attempts]);
+  }, [attempts, subjectFilter]);
 
   const top5: SkillStats[] = useMemo(() => {
     const eligible = bySkill.filter((s) => s.total >= MIN_ATTEMPTS);
@@ -161,6 +169,15 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Performance overview</h2>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button variant={subjectFilter === 'reading_writing' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('reading_writing')}>
+            Reading & Writing
+          </Button>
+          <Button variant={subjectFilter === 'math' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('math')}>
+            Math
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
