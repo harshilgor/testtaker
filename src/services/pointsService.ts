@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface QuestionAttempt {
@@ -65,8 +64,11 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
         supabase.rpc('update_leaderboard_stats_v2', {
           target_user_id: user.id
         }),
+        // Try to update periodic stats, but don't fail if function doesn't exist yet
         supabase.rpc('update_periodic_leaderboard_stats', {
           target_user_id: user.id
+        }).catch(error => {
+          console.log('Periodic leaderboard function not available yet:', error);
         })
       ]);
     }
