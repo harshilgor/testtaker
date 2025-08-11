@@ -523,6 +523,30 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: number
       }
+      get_questions_for_quiz: {
+        Args: {
+          p_section?: string
+          p_difficulty?: string
+          p_skill?: string
+          p_domain?: string
+          p_limit?: number
+          p_exclude_ids?: number[]
+        }
+        Returns: {
+          id: number
+          question_text: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          section: string
+          skill: string
+          difficulty: string
+          domain: string
+          test_name: string
+          question_type: string
+        }[]
+      }
       get_random_questions: {
         Args: {
           p_section?: string
@@ -612,6 +636,19 @@ export type Database = {
       update_user_streak: {
         Args: { target_user_id: string }
         Returns: undefined
+      }
+      validate_answer_and_get_explanation: {
+        Args: {
+          p_question_id: number
+          p_submitted_answer: string
+          p_user_id?: string
+        }
+        Returns: {
+          is_correct: boolean
+          correct_answer: string
+          correct_explanation: string
+          incorrect_explanation: string
+        }[]
       }
     }
     Enums: {
