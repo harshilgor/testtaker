@@ -50,23 +50,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
         return data || [];
       } else {
-        // For weekly/monthly, query the periodic_leaderboard_stats table directly
-        // Since TypeScript doesn't recognize it yet, we'll use a raw query
-        const periodType = timeFrame === 'weekly' ? 'weekly' : 'monthly';
-        
-        const { data, error } = await supabase
-          .rpc('get_periodic_leaderboard_data', {
-            period_type: periodType
+        // For weekly/monthly, try to use the periodic leaderboard system
+        // If it fails, fall back to showing all-time data
+        try {
+          // Since TypeScript doesn't recognize the new function yet, use any
+          const { data, error } = await (supabase as any).rpc('get_periodic_leaderboard_data', {
+            period_type: timeFrame === 'weekly' ? 'weekly' : 'monthly'
           });
 
-        if (error) {
-          console.error('Error fetching periodic leaderboard:', error);
-          // Fallback to empty array if function doesn't exist yet
-          return [];
-        }
+          if (error) {
+            console.error('Error fetching periodic leaderboard:', error);
+            // Fallback to all-time data
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('leaderboard_stats')
+              .select('*')
+              .eq('visibility', 'public')
+              .order('total_points', { ascending: false });
+            
+            if (fallbackError) throw fallbackError;
+            return fallbackData || [];
+          }
 
-        console.log(`Successfully loaded ${data?.length || 0} users for ${timeFrame}`);
-        return data || [];
+          console.log(`Successfully loaded ${data?.length || 0} users for ${timeFrame}`);
+          return Array.isArray(data) ? data : [];
+        } catch (error) {
+          console.log('Periodic leaderboard not available, using all-time data:', error);
+          // Fallback to all-time data
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('leaderboard_stats')
+            .select('*')
+            .eq('visibility', 'public')
+            .order('total_points', { ascending: false });
+          
+          if (fallbackError) throw fallbackError;
+          return fallbackData || [];
+        }
       }
     },
     staleTime: 5000, // Cache for 5 seconds
@@ -81,7 +99,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         if (user.user) {
           // Only call this if user has activity, to avoid errors if function doesn't exist
           try {
-            await supabase.rpc('update_periodic_leaderboard_stats', {
+            await (supabase as any).rpc('update_periodic_leaderboard_stats', {
               target_user_id: user.user.id
             });
           } catch (error) {
@@ -136,7 +154,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
   // Find current user rank
   useEffect(() => {
-    if (leaderboard.length > 0) {
+    if (Array.isArray(leaderboard) && leaderboard.length > 0) {
       const rank = leaderboard.findIndex(user => user.display_name === userName) + 1;
       setCurrentUserRank(rank > 0 ? rank : null);
       console.log('Current user rank:', rank > 0 ? rank : 'Not found');
@@ -148,7 +166,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
     return <LeaderboardStats onBack={onBack} isLoading={isLoading} error={error} />;
   }
 
-  const currentUserData = leaderboard.find(user => user.display_name === userName);
+  const currentUserData = Array.isArray(leaderboard) ? leaderboard.find(user => user.display_name === userName) : null;
 
   return (
     <div className="min-h-screen bg-white py-4 md:py-8 px-4">
@@ -202,7 +220,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         )}
 
         <LeaderboardList 
-          leaderboard={leaderboard} 
+          leaderboard={Array.isArray(leaderboard) ? leaderboard : []} 
           currentUserName={userName} 
         />
       </div>

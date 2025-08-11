@@ -49,17 +49,23 @@ export const useMarathonNavigation = ({
             console.error('Error saving marathon session:', error);
           } else {
             // Update both all-time and periodic leaderboards
-            await Promise.all([
-              supabase.rpc('update_leaderboard_stats_v2', {
-                target_user_id: user.user.id
-              }),
-              // Try to update periodic stats, but don't fail if function doesn't exist yet
-              supabase.rpc('update_periodic_leaderboard_stats', {
-                target_user_id: user.user.id
-              }).catch(error => {
-                console.log('Periodic leaderboard function not available yet:', error);
-              })
-            ]);
+            try {
+              await Promise.all([
+                supabase.rpc('update_leaderboard_stats_v2', {
+                  target_user_id: user.user.id
+                }),
+                // Try to update periodic stats, but don't fail if function doesn't exist yet
+                (supabase as any).rpc('update_periodic_leaderboard_stats', {
+                  target_user_id: user.user.id
+                }).then(() => {
+                  console.log('Updated periodic leaderboard stats');
+                }).catch((error: any) => {
+                  console.log('Periodic leaderboard function not available yet:', error);
+                })
+              ]);
+            } catch (error) {
+              console.error('Error updating leaderboard stats:', error);
+            }
           }
         }
       }

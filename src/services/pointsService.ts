@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface QuestionAttempt {
@@ -60,17 +61,23 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
     
     // Trigger leaderboard refresh by updating user stats (both all-time and periodic)
     if (points > 0) {
-      await Promise.all([
-        supabase.rpc('update_leaderboard_stats_v2', {
-          target_user_id: user.id
-        }),
-        // Try to update periodic stats, but don't fail if function doesn't exist yet
-        supabase.rpc('update_periodic_leaderboard_stats', {
-          target_user_id: user.id
-        }).catch(error => {
-          console.log('Periodic leaderboard function not available yet:', error);
-        })
-      ]);
+      try {
+        await Promise.all([
+          supabase.rpc('update_leaderboard_stats_v2', {
+            target_user_id: user.id
+          }),
+          // Try to update periodic stats, but don't fail if function doesn't exist yet
+          (supabase as any).rpc('update_periodic_leaderboard_stats', {
+            target_user_id: user.id
+          }).then(() => {
+            console.log('Updated periodic leaderboard stats');
+          }).catch((error: any) => {
+            console.log('Periodic leaderboard function not available yet:', error);
+          })
+        ]);
+      } catch (error) {
+        console.error('Error updating leaderboard stats:', error);
+      }
     }
     
     return points;
