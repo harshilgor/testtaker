@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AdminConfig {
@@ -27,20 +26,8 @@ export const useSecureAdminAccess = () => {
     try {
       console.log(`Security Event: ${event}`, details);
       
-      // Log to Supabase for audit trail
-      if (user) {
-        await supabase.from('security_logs').insert({
-          user_id: user.id,
-          event_type: event,
-          details: details,
-          ip_address: 'client-side', // In production, get from server
-          user_agent: navigator.userAgent,
-          timestamp: new Date().toISOString()
-        }).catch(() => {
-          // Fail silently if security_logs table doesn't exist yet
-          console.log('Security logging not yet configured');
-        });
-      }
+      // In the future, this would log to a security_logs table
+      // For now, we just log to console
     } catch (error) {
       console.error('Failed to log security event:', error);
     }
@@ -56,19 +43,9 @@ export const useSecureAdminAccess = () => {
     try {
       setLoading(true);
 
-      // Try to get admin configuration from Supabase settings first
-      const { data: configData } = await supabase
-        .from('admin_config')
-        .select('config')
-        .single()
-        .catch(() => ({ data: null }));
-
+      // For now, use the default admin emails
+      // In the future, this could be fetched from a database configuration
       let currentAdminEmails = defaultAdminEmails;
-      
-      if (configData?.config?.adminEmails) {
-        currentAdminEmails = configData.config.adminEmails;
-        setAdminConfig(configData.config);
-      }
 
       const hasAdminAccess = currentAdminEmails.includes(user.email || '');
       
@@ -76,7 +53,7 @@ export const useSecureAdminAccess = () => {
         await logSecurityEvent('admin_access_check', {
           user_email: user.email,
           access_granted: hasAdminAccess,
-          config_source: configData ? 'database' : 'default'
+          config_source: 'default'
         });
       }
 

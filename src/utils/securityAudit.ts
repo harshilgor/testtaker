@@ -1,6 +1,4 @@
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface SecurityAuditResult {
   score: number;
   issues: SecurityIssue[];
@@ -19,13 +17,7 @@ export const performSecurityAudit = async (): Promise<SecurityAuditResult> => {
   const recommendations: string[] = [];
 
   try {
-    // Check RLS policies
-    const { data: tables } = await supabase.rpc('get_table_security_status').catch(() => ({ data: null }));
-    
-    // Check for tables without proper RLS
-    const criticalTables = ['profiles', 'question_attempts_v2', 'marathon_sessions', 'quiz_results'];
-    
-    // Simulate security checks (since we can't access system tables directly)
+    // Simulate security checks since we can't access system tables directly
     const auditChecks = [
       {
         name: 'RLS Enabled on Critical Tables',

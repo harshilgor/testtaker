@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -30,23 +29,10 @@ export const SecurityMonitor: React.FC = () => {
 
   const loadSecurityEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('security_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) {
-        if (error.code === '42P01') {
-          // Table doesn't exist yet
-          setError('Security logging table not configured yet');
-        } else {
-          throw error;
-        }
-      } else {
-        setRecentEvents(data || []);
-        setError(null);
-      }
+      // Since security_logs table doesn't exist yet, we'll show a placeholder
+      // In a real implementation, this would query the actual security logs
+      setRecentEvents([]);
+      setError('Security logging table not configured yet');
     } catch (err) {
       console.error('Error loading security events:', err);
       setError('Failed to load security events');
