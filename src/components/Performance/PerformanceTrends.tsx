@@ -266,26 +266,26 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                 >
                   Accuracy Trend
                 </Button>
-                 <Button
-                   variant={activeView === 'studyTime' ? "default" : "ghost"}
-                   size="sm"
-                   className={`px-4 py-2 text-sm rounded-md ${
-                     activeView === 'studyTime' 
-                       ? 'bg-gray-100 text-gray-900 hover:bg-gray-200' 
-                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                   }`}
-                   onClick={() => setActiveView('studyTime')}
-                 >
-                   Minutes Studied
-                 </Button>
+                <Button
+                  variant={activeView === 'studyTime' ? "default" : "ghost"}
+                  size="sm"
+                  className={`px-4 py-2 text-sm rounded-md ${
+                    activeView === 'studyTime' 
+                      ? 'bg-gray-100 text-gray-900 hover:bg-gray-200' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveView('studyTime')}
+                >
+                  Hours Studied
+                </Button>
               </div>
             </div>
 
             {/* Graph Title */}
             <div className="flex items-center justify-between">
-               <h3 className="text-base font-medium text-gray-700">
-                 {activeView === 'accuracy' ? 'Accuracy Trend (Last 14 Days)' : 'Study Time (Last 14 Days)'}
-               </h3>
+              <h3 className="text-base font-medium text-gray-700">
+                {activeView === 'accuracy' ? 'Accuracy Trend (Last 14 Days)' : 'Study Time (Last 14 Days)'}
+              </h3>
             </div>
             
             <div className="h-56 w-full">

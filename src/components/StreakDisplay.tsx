@@ -234,18 +234,18 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                 <div className="mt-3 text-center">
                   <p className="text-green-600 text-sm font-medium">Great! Today's streak counted ✓</p>
                   
-                   {/* Calendar Button */}
-                   <div className="mt-2">
-                     <Button
-                       variant="ghost"
-                       size="sm"
-                       onClick={() => setShowMonthlyView(true)}
-                       className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 px-3 py-1 h-7 text-xs font-normal"
-                     >
-                       <CalendarIcon className="h-3 w-3 mr-1" />
-                       View Calendar
-                     </Button>
-                   </div>
+                  {/* Calendar Button */}
+                  <div className="mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMonthlyView(true)}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 px-3 py-1 h-7 text-xs font-normal"
+                    >
+                      <CalendarIcon className="h-3 w-3 mr-1" />
+                      View Calendar
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
