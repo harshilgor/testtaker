@@ -24,6 +24,7 @@ interface TopicProficiencyData {
 
 const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
   const [activeFilter, setActiveFilter] = useState<'All' | 'Math' | 'Verbal'>('All');
+  const [activeView, setActiveView] = useState<'accuracy' | 'studyTime'>('accuracy');
   const [accuracyData, setAccuracyData] = useState<AccuracyData[]>([]);
   const [topicProficiency, setTopicProficiency] = useState<TopicProficiencyData[]>([]);
 
@@ -245,32 +246,48 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
       </CardHeader>
       <CardContent className="space-y-8">
         <div className="grid grid-cols-2 gap-8">
-          {/* Accuracy Trend Section */}
+          {/* Left Section */}
           <div className="space-y-6">
+            {/* Main View Toggle Buttons */}
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium text-gray-700">Accuracy Trend (Last 14 Days)</h3>
               <div className="flex space-x-2">
-                {(['All', 'Math', 'Verbal'] as const).map((filter) => (
-                  <Button
-                    key={filter}
-                    variant={activeFilter === filter ? "default" : "outline"}
-                    size="sm"
-                    className={`px-4 py-2 text-xs rounded-full ${
-                      activeFilter === filter 
-                        ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setActiveFilter(filter)}
-                  >
-                    {filter}
-                  </Button>
-                ))}
+                <Button
+                  variant={activeView === 'accuracy' ? "default" : "ghost"}
+                  size="sm"
+                  className={`px-4 py-2 text-sm rounded-md ${
+                    activeView === 'accuracy' 
+                      ? 'bg-gray-100 text-gray-900 hover:bg-gray-200' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveView('accuracy')}
+                >
+                  Accuracy Trend
+                </Button>
+                <Button
+                  variant={activeView === 'studyTime' ? "default" : "ghost"}
+                  size="sm"
+                  className={`px-4 py-2 text-sm rounded-md ${
+                    activeView === 'studyTime' 
+                      ? 'bg-gray-100 text-gray-900 hover:bg-gray-200' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveView('studyTime')}
+                >
+                  Hours Studied
+                </Button>
               </div>
+            </div>
+
+            {/* Graph Title */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-medium text-gray-700">
+                {activeView === 'accuracy' ? 'Accuracy Trend (Last 14 Days)' : 'Study Time (Last 14 Days)'}
+              </h3>
             </div>
             
             <div className="h-56 w-full">
               <ChartContainer config={chartConfig} className="h-full w-full">
-                <LineChart data={getFilteredData} margin={{ left: 16, right: 16, top: 8, bottom: 28 }}>
+                <LineChart data={activeView === 'accuracy' ? getFilteredData : getStudyFilteredData} margin={{ left: 16, right: 16, top: 8, bottom: 28 }}>
                   <XAxis 
                     dataKey="date" 
                     axisLine={false}
@@ -279,7 +296,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                     tickMargin={12}
                   />
                   <YAxis 
-                    domain={yAxisDomain}
+                    domain={activeView === 'accuracy' ? yAxisDomain : yStudyDomain}
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 11, fill: '#6B7280' }}
@@ -304,6 +321,27 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                 </LineChart>
               </ChartContainer>
             </div>
+
+            {/* Filter Buttons - Only show for Accuracy Trend */}
+            {activeView === 'accuracy' && (
+              <div className="flex space-x-2">
+                {(['All', 'Math', 'Verbal'] as const).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={activeFilter === filter ? "default" : "outline"}
+                    size="sm"
+                    className={`px-4 py-2 text-xs rounded-full ${
+                      activeFilter === filter 
+                        ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setActiveFilter(filter)}
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Topic Proficiency Section */}

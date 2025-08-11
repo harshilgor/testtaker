@@ -164,26 +164,26 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  {longest_streak > current_streak && (
-                    <div className="text-right">
-                      <div className="flex items-center space-x-1 text-gray-600">
-                        <Award className="h-4 w-4" />
-                        <span className="text-xs">Best</span>
-                      </div>
-                      <p className="text-lg font-semibold text-gray-800">{longest_streak}</p>
-                    </div>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowMonthlyView(true)}
-                    className="text-gray-600 hover:text-gray-800"
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+                 <div className="flex items-center space-x-3">
+                   {longest_streak > current_streak && (
+                     <div className="text-right">
+                       <div className="flex items-center space-x-1 text-gray-600">
+                         <Award className="h-4 w-4" />
+                         <span className="text-xs">Best</span>
+                       </div>
+                       <p className="text-lg font-semibold text-gray-800">{longest_streak}</p>
+                     </div>
+                   )}
+                   
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setShowMonthlyView(true)}
+                     className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 p-1 h-8 w-8"
+                   >
+                     <CalendarIcon className="h-4 w-4" />
+                   </Button>
+                 </div>
               </div>
 
               {/* Compact Week view */}
