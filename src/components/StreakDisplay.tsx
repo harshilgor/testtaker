@@ -228,6 +228,18 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                   </div>
                 </div>
               )}
+              
+              {/* Calendar Button */}
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMonthlyView(true)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 px-3 py-1 h-7 text-xs font-normal"
+                >
+                  View Calendar
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
