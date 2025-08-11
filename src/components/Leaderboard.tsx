@@ -29,23 +29,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('all-time');
 
-  // Calculate date filters based on timeframe
-  const getDateFilter = (timeFrame: TimeFrame) => {
-    const now = new Date();
-    switch (timeFrame) {
-      case 'weekly':
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
-        weekStart.setHours(0, 0, 0, 0);
-        return weekStart.toISOString();
-      case 'monthly':
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        return monthStart.toISOString();
-      default:
-        return null;
-    }
-  };
-
   // Fetch leaderboard data from Supabase with real-time updates
   const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
     queryKey: ['leaderboard', timeFrame],
@@ -67,99 +50,55 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
         return data || [];
       } else {
-        // For weekly/monthly, get ALL users who have accounts and calculate their points
-        const dateFilter = getDateFilter(timeFrame);
-        
-        console.log('Fetching attempts for timeframe with date filter:', dateFilter);
-
-        // First get all user profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name');
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          throw profilesError;
-        }
-
-        if (!profiles || profiles.length === 0) {
-          console.log('No profiles found');
-          return [];
-        }
-
-        // Get question attempts for the timeframe
-        const { data: attempts, error: attemptsError } = await supabase
-          .from('question_attempts_v2')
+        // For weekly/monthly, use the new periodic_leaderboard_stats table
+        const { data, error } = await supabase
+          .from('periodic_leaderboard_stats')
           .select(`
+            id,
             user_id,
-            points_earned,
-            session_type,
-            session_id,
-            created_at
+            display_name,
+            total_points,
+            quiz_count,
+            mock_test_count,
+            marathon_questions_count,
+            period_id,
+            leaderboard_periods!inner(period_type, is_current)
           `)
-          .gte('created_at', dateFilter)
-          .order('created_at', { ascending: false });
+          .eq('leaderboard_periods.period_type', timeFrame === 'weekly' ? 'weekly' : 'monthly')
+          .eq('leaderboard_periods.is_current', true)
+          .order('total_points', { ascending: false });
 
-        if (attemptsError) {
-          console.error('Error fetching attempts:', attemptsError);
-          throw attemptsError;
+        if (error) {
+          console.error('Error fetching periodic leaderboard:', error);
+          throw error;
         }
 
-        console.log('Found attempts for timeframe:', attempts?.length || 0);
-
-        // Create a map of user stats starting with all users at 0
-        const userStats = new Map();
-        
-        // Initialize all users with 0 stats
-        profiles.forEach(profile => {
-          userStats.set(profile.id, {
-            user_id: profile.id,
-            display_name: profile.display_name || 'Anonymous',
-            total_points: 0,
-            quiz_count: new Set(),
-            mock_test_count: new Set(),
-            marathon_questions_count: 0
-          });
-        });
-
-        // Add points and counts for users who have attempts
-        if (attempts && attempts.length > 0) {
-          attempts.forEach(attempt => {
-            const userId = attempt.user_id;
-            if (userStats.has(userId)) {
-              const stats = userStats.get(userId);
-              stats.total_points += attempt.points_earned || 0;
-              
-              if (attempt.session_type === 'quiz' && attempt.session_id) {
-                stats.quiz_count.add(attempt.session_id);
-              } else if (attempt.session_type === 'mocktest' && attempt.session_id) {
-                stats.mock_test_count.add(attempt.session_id);
-              } else if (attempt.session_type === 'marathon') {
-                stats.marathon_questions_count++;
-              }
-            }
-          });
-        }
-
-        // Convert sets to counts and create final array
-        const leaderboardData = Array.from(userStats.values()).map(stats => ({
-          ...stats,
-          quiz_count: stats.quiz_count.size,
-          mock_test_count: stats.mock_test_count.size,
-          id: stats.user_id
-        }));
-
-        // Sort by total points (users with 0 points will be included)
-        const sortedData = leaderboardData
-          .sort((a, b) => b.total_points - a.total_points);
-
-        console.log(`Successfully loaded ${sortedData.length} users for ${timeFrame}`);
-        return sortedData;
+        console.log(`Successfully loaded ${data?.length || 0} users for ${timeFrame}`);
+        return data || [];
       }
     },
-    staleTime: 1000, // Refetch every second for real-time updates
-    refetchInterval: 1000,
+    staleTime: 5000, // Cache for 5 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Initialize periodic stats for current user when component mounts
+  useEffect(() => {
+    const initializeUserStats = async () => {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          // Trigger the function to ensure user has entries in periodic tables
+          await supabase.rpc('update_periodic_leaderboard_stats', {
+            target_user_id: user.user.id
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing user stats:', error);
+      }
+    };
+
+    initializeUserStats();
+  }, []);
 
   // Set up real-time subscription for leaderboard updates
   useEffect(() => {
@@ -176,6 +115,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         },
         (payload) => {
           console.log('Leaderboard updated via real-time:', payload);
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'periodic_leaderboard_stats'
+        },
+        (payload) => {
+          console.log('Periodic leaderboard updated via real-time:', payload);
           refetch();
         }
       )

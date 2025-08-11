@@ -59,11 +59,16 @@ export const recordQuestionAttempt = async (attempt: QuestionAttempt): Promise<n
       throw error;
     }
     
-    // Trigger leaderboard refresh by updating user stats
+    // Trigger leaderboard refresh by updating user stats (both all-time and periodic)
     if (points > 0) {
-      await supabase.rpc('update_leaderboard_stats_v2', {
-        target_user_id: user.id
-      });
+      await Promise.all([
+        supabase.rpc('update_leaderboard_stats_v2', {
+          target_user_id: user.id
+        }),
+        supabase.rpc('update_periodic_leaderboard_stats', {
+          target_user_id: user.id
+        })
+      ]);
     }
     
     return points;

@@ -47,6 +47,16 @@ export const useMarathonNavigation = ({
 
           if (error) {
             console.error('Error saving marathon session:', error);
+          } else {
+            // Update both all-time and periodic leaderboards
+            await Promise.all([
+              supabase.rpc('update_leaderboard_stats_v2', {
+                target_user_id: user.user.id
+              }),
+              supabase.rpc('update_periodic_leaderboard_stats', {
+                target_user_id: user.user.id
+              })
+            ]);
           }
         }
       }
