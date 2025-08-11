@@ -1,15 +1,14 @@
 
-import { useAuth } from '@/contexts/AuthContext';
+// DEPRECATED: Use useSecureAdminAccess instead
+// This file is kept for backward compatibility
 
-const ADMIN_EMAIL = 'harshilgor06@gmail.com';
+import { useSecureAdminAccess } from './useSecureAdminAccess';
 
 export const useAdminAccess = () => {
-  const { user } = useAuth();
+  const { isAdmin, loading } = useSecureAdminAccess();
   
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  // Log deprecation warning
+  console.warn('⚠️ useAdminAccess is deprecated. Please migrate to useSecureAdminAccess for enhanced security.');
   
-  return {
-    isAdmin,
-    adminEmail: ADMIN_EMAIL
-  };
+  return { isAdmin, loading };
 };

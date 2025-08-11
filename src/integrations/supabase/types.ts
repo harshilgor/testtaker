@@ -397,7 +397,7 @@ export type Database = {
           session_id: string | null
           session_type: string
           used_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           id?: string
@@ -405,7 +405,7 @@ export type Database = {
           session_id?: string | null
           session_type: string
           used_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           id?: string
@@ -413,7 +413,7 @@ export type Database = {
           session_id?: string | null
           session_type?: string
           used_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

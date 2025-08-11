@@ -1,126 +1,136 @@
-
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, Upload, BarChart3, Settings, AlertTriangle } from 'lucide-react';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { SecurityMonitor } from './Security/SecurityMonitor';
+import { AuthSecuritySettings } from './Security/AuthSecuritySettings';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
-interface AdminPanelProps {
-  onBack: () => void;
-}
+export default function AdminPanel() {
+  const { isAdmin, loading, logSecurityEvent } = useSecureAdminAccess();
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
-  const { isAdmin } = useAdminAccess();
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-  // If user is not admin, show access denied message
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-center space-x-2 text-red-600">
-                <AlertTriangle className="h-6 w-6" />
-                <span>Access Denied</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">
-                You don't have permission to access the admin panel.
-              </p>
-              <Button onClick={onBack} variant="outline" className="w-full">
-                Back to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Alert variant="destructive">
+        <AlertDescription>
+          You are not authorized to view this page.
+        </AlertDescription>
+      </Alert>
     );
   }
 
+  useEffect(() => {
+    if (isAdmin) {
+      logSecurityEvent('admin_panel_accessed', {
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [isAdmin, logSecurityEvent]);
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <Button onClick={onBack} variant="outline">
-            Back to Dashboard
-          </Button>
-        </div>
-
-        <Tabs defaultValue="import" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="import" className="flex items-center space-x-2">
-              <Upload className="h-4 w-4" />
-              <span>Import Questions</span>
-            </TabsTrigger>
-            <TabsTrigger value="database" className="flex items-center space-x-2">
-              <Database className="h-4 w-4" />
-              <span>Question Bank</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="import" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Question Import</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Question import functionality has been removed to streamline the application.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="database" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Question Bank Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Question bank management functionality has been removed to streamline the application.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Question Analytics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Analytics dashboard showing question performance, difficulty analysis, 
-                  and usage statistics will be available here.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  System configuration and question bank settings will be available here.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <Badge variant="outline" className="text-red-600">
+          Admin Access
+        </Badge>
       </div>
+
+      {/* Add security sections at the top */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SecurityMonitor />
+        <AuthSecuritySettings />
+      </div>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">User Management</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>User List</CardTitle>
+            <CardDescription>View and manage user accounts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableCaption>A list of all registered users.</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">1</TableCell>
+                  <TableCell>John Doe</TableCell>
+                  <TableCell>john.doe@example.com</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost">Edit</Button>
+                    <Button variant="destructive">Delete</Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">2</TableCell>
+                  <TableCell>Jane Smith</TableCell>
+                  <TableCell>jane.smith@example.com</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost">Edit</Button>
+                    <Button variant="destructive">Delete</Button>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">Content Management</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Question Bank</CardTitle>
+            <CardDescription>Manage questions and answers.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Here you can add, edit, and delete questions.</p>
+            <Button>Add Question</Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">Analytics</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard</CardTitle>
+            <CardDescription>View site analytics.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Here you can see site analytics.</p>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
-};
-
-export default AdminPanel;
+}
