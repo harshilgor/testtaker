@@ -184,12 +184,12 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     return [min, max];
   }, [getFilteredData]);
 
-  // Study time data (minutes per day) for last 30 days, filtered by subject
+  // Study time data (minutes per day) for last 14 days, filtered by subject
   const getStudyFilteredData = useMemo(() => {
-    // Build date keys for last 30 days
+    // Build date keys for last 14 days
     const days: { key: string; label: string }[] = []
     const today = new Date()
-    for (let i = 29; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
       const key = d.toISOString().slice(0, 10) // YYYY-MM-DD
@@ -209,13 +209,16 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
       const isMath = subj.includes('math')
       const isVerbal = subj.includes('reading') || subj.includes('writing') || subj.includes('verbal') || subj.includes('rw')
       const bucket = totals.get(key)!
-      if (isMath) bucket.math += minutes
-      else if (isVerbal) bucket.verbal += minutes
-      else {
+      if (isMath) {
+        bucket.math += minutes
+        bucket.all += minutes
+      } else if (isVerbal) {
+        bucket.verbal += minutes
+        bucket.all += minutes
+      } else {
         // Unknown subject, count towards all
         bucket.all += minutes
       }
-      bucket.all += minutes
     })
 
     const series = days.map(({ key, label }) => {
