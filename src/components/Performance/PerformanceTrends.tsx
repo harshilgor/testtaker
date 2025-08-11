@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,15 +75,15 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     enabled: !!userName,
   });
 
-  // Fetch question attempts (for study time) from Supabase - last 30 days
+  // Fetch question attempts for study time - last 14 days
   const { data: attempts = [] } = useQuery({
-    queryKey: ['attempts-last-30', userName],
+    queryKey: ['attempts-last-14', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [] as Array<{ created_at: string; time_spent: number; subject: string }>
 
       const since = new Date();
-      since.setDate(since.getDate() - 30);
+      since.setDate(since.getDate() - 14);
 
       const { data, error } = await supabase
         .from('question_attempts_v2')
@@ -204,7 +205,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
       if (!a?.created_at) return
       const key = new Date(a.created_at).toISOString().slice(0, 10)
       if (!totals.has(key)) return
-      const minutes = Math.max(0, Number(a.time_spent || 0) / 60)
+      const minutes = Math.max(0, Number(a.time_spent || 0) / 60) // Convert seconds to minutes
       const subj = String(a.subject || '').toLowerCase()
       const isMath = subj.includes('math')
       const isVerbal = subj.includes('reading') || subj.includes('writing') || subj.includes('verbal') || subj.includes('rw')
@@ -224,8 +225,8 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     const series = days.map(({ key, label }) => {
       const t = totals.get(key)!
       const base = activeFilter === 'All' ? t.all : activeFilter === 'Math' ? t.math : t.verbal
-      const value = Math.round(base)
-      const benchmark = Math.round(value * 1.3 + 5)
+      const value = Math.round(base) // Keep in minutes
+      const benchmark = Math.round(value * 1.2 + 10) // Benchmark is 20% more + 10 minutes
       return { date: label, value, benchmark }
     })
 
@@ -276,7 +277,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                   }`}
                   onClick={() => setActiveView('studyTime')}
                 >
-                  Hours Studied
+                  Minutes Studied
                 </Button>
               </div>
             </div>
@@ -284,7 +285,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
             {/* Graph Title */}
             <div className="flex items-center justify-between">
               <h3 className="text-base font-medium text-gray-700">
-                {activeView === 'accuracy' ? 'Accuracy Trend (Last 14 Days)' : 'Study Time (Last 14 Days)'}
+                {activeView === 'accuracy' ? 'Accuracy Trend (Last 14 Days)' : 'Study Time in Minutes (Last 14 Days)'}
               </h3>
             </div>
             
@@ -303,6 +304,12 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 11, fill: '#6B7280' }}
+                    label={{ 
+                      value: activeView === 'accuracy' ? 'Accuracy (%)' : 'Minutes', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle', fontSize: '12px', fill: '#6B7280' }
+                    }}
                   />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line 
@@ -325,26 +332,24 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
               </ChartContainer>
             </div>
 
-            {/* Filter Buttons - Only show for Accuracy Trend */}
-            {activeView === 'accuracy' && (
-              <div className="flex space-x-2">
-                {(['All', 'Math', 'Verbal'] as const).map((filter) => (
-                  <Button
-                    key={filter}
-                    variant={activeFilter === filter ? "default" : "outline"}
-                    size="sm"
-                    className={`px-4 py-2 text-xs rounded-full ${
-                      activeFilter === filter 
-                        ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setActiveFilter(filter)}
-                  >
-                    {filter}
-                  </Button>
-                ))}
-              </div>
-            )}
+            {/* Filter Buttons - Show for both views but with different labels */}
+            <div className="flex space-x-2">
+              {(['All', 'Math', 'Verbal'] as const).map((filter) => (
+                <Button
+                  key={filter}
+                  variant={activeFilter === filter ? "default" : "outline"}
+                  size="sm"
+                  className={`px-4 py-2 text-xs rounded-full ${
+                    activeFilter === filter 
+                      ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveFilter(filter)}
+                >
+                  {filter}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Topic Proficiency Section */}
