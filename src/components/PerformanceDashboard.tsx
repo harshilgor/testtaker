@@ -17,6 +17,7 @@ import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 import StreakNotification from './StreakNotification';
 import QuestionsSolvedCard from './QuestionsSolvedCard';
 import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
+import StreakCalendar from './StreakCalendar';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -85,6 +86,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   });
   const [showStreakNotification, setShowStreakNotification] = useState(false);
   const [previousQuestionsToday, setPreviousQuestionsToday] = useState(0);
+  const [showStreakCalendar, setShowStreakCalendar] = useState(false);
 
   // Fetch marathon sessions from Supabase
   const { data: marathonSessions = [], isLoading } = useQuery({
@@ -314,6 +316,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     setShowStreakNotification(false);
   };
 
+  // Get dates where user had activity for the calendar
+  const getActivityDates = () => {
+    const loginHistory = JSON.parse(localStorage.getItem('userLoginHistory') || '[]');
+    return loginHistory.map((login: any) => new Date(login.date));
+  };
+
+  const activityDates = getActivityDates();
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-6xl mx-auto">
@@ -326,7 +336,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         {/* Top Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Current Streak */}
-          <Card className="bg-white">
+          <Card className="bg-white relative">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-gray-600">Current Streak</h3>
@@ -383,14 +393,26 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                 </div>
               
               {questionsToday < 5 ? (
-                <div className="text-xs text-orange-600 font-medium">
+                <div className="text-xs text-orange-600 font-medium mb-3">
                   Solve {5 - questionsToday} more questions to count today's streak!
                 </div>
               ) : (
-                <div className="text-xs text-green-600 font-medium">
+                <div className="text-xs text-green-600 font-medium mb-3">
                   Great! Today's streak counted ✓
                 </div>
               )}
+
+              {/* View Calendar Button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowStreakCalendar(true)}
+                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 h-7 text-xs"
+                >
+                  View Calendar
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -621,6 +643,13 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </div>
         </div>
       </div>
+
+      {/* Streak Calendar Modal */}
+      <StreakCalendar
+        isOpen={showStreakCalendar}
+        onClose={() => setShowStreakCalendar(false)}
+        activityDates={activityDates}
+      />
 
       {/* Streak Notification */}
       <StreakNotification
