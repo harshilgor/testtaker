@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,8 @@ import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 import StreakNotification from './StreakNotification';
 import QuestionsSolvedCard from './QuestionsSolvedCard';
+import PracticeSummary from './Performance/PracticeSummary';
+import StreakCalendar from './StreakCalendar';
 import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
 
 interface PerformanceDashboardProps {
@@ -84,6 +87,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     averageAccuracy: 0
   });
   const [showStreakNotification, setShowStreakNotification] = useState(false);
+  const [showStreakCalendar, setShowStreakCalendar] = useState(false);
   const [previousQuestionsToday, setPreviousQuestionsToday] = useState(0);
 
   // Fetch marathon sessions from Supabase
@@ -132,43 +136,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     enabled: !!userName,
   });
 
-  // Fetch difficulty breakdown from attempts
-  const { data: difficultyBreakdown = { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } } } = useQuery({
-    queryKey: ['difficulty-breakdown', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } };
-
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('difficulty, session_type')
-        .eq('user_id', user.user.id);
-
-      if (error || !data) {
-        console.error('Error fetching difficulty breakdown:', error);
-        return { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } };
-      }
-
-      const init = { easy: 0, medium: 0, hard: 0 } as { [k: string]: number };
-      const quiz = { ...init } as { [k: string]: number };
-      const marathon = { ...init } as { [k: string]: number };
-
-      (data as { difficulty: string | null; session_type: string | null }[]).forEach((a) => {
-        const d = (a.difficulty || '').toLowerCase();
-        if (!['easy', 'medium', 'hard'].includes(d)) return;
-        if (a.session_type === 'quiz') {
-          // @ts-ignore
-          quiz[d] += 1;
-        } else if (a.session_type === 'marathon') {
-          // @ts-ignore
-          marathon[d] += 1;
-        }
-      });
-
-      return { quiz, marathon };
-    },
-    enabled: !!userName,
-  });
+  // Fetch difficulty breakdown from attempts - this is now handled in PracticeSummary component
   useEffect(() => {
     const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
     const storedMockTests = JSON.parse(localStorage.getItem('mockTestResults') || '[]');
@@ -387,9 +355,20 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   Solve {5 - questionsToday} more questions to count today's streak!
                 </div>
               ) : (
-                <div className="text-xs text-green-600 font-medium">
-                  Great! Today's streak counted ✓
-                </div>
+                <>
+                  <div className="text-xs text-green-600 font-medium mb-2">
+                    Great! Today's streak counted ✓
+                  </div>
+                  {/* Calendar Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowStreakCalendar(true)}
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 px-3 py-1 h-7 text-xs font-normal"
+                  >
+                    📅 View Calendar
+                  </Button>
+                </>
               )}
             </CardContent>
           </Card>
@@ -475,159 +454,35 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           <PerformanceTrends userName={userName} />
         </div>
 
-        {/* Practice Summary */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Practice Summary</h2>
+        {/* Two Column Layout - Weakest Topics & Recent Sessions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Your Weakest Topics */}
+          <div className="lg:col-span-2 h-full">
+            <PerformanceOverview userName={userName} />
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Quiz Mode */}
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-lg">?</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Quiz Mode</h3>
-                </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-4xl font-bold text-gray-900">{quizStats.totalQuestions}</span>
-                    <span className="text-2xl font-bold text-gray-900">{quizStats.averageAccuracy}%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>Questions Solved</span>
-                    <span>Avg. Accuracy</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-2 text-sm text-gray-500 mb-6">
-                  <div className="flex justify-between">
-                    <span>Last Attempt</span>
-                    <span>August 1, 2025</span>
-                  </div>
-                </div>
-                
-<Accordion type="single" collapsible>
-  <AccordionItem value="quiz-difficulty">
-    <AccordionTrigger className="text-sm text-gray-800">Difficulty breakdown</AccordionTrigger>
-    <AccordionContent>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
-          <div className="text-xl font-bold text-green-600">{difficultyBreakdown.quiz.easy}</div>
-          <div className="text-xs text-gray-500">Easy</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-blue-600">{difficultyBreakdown.quiz.medium}</div>
-          <div className="text-xs text-gray-500">Medium</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-purple-600">{difficultyBreakdown.quiz.hard}</div>
-          <div className="text-xs text-gray-500">Hard</div>
-        </div>
-      </div>
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-              </CardContent>
-            </Card>
-
-            {/* Marathon Mode */}
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-lg">⚡</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Marathon Mode</h3>
-                </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-4xl font-bold text-gray-900">{marathonStats.totalQuestions}</span>
-                    <span className="text-2xl font-bold text-gray-900">{avgTimePerQuestion}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>Questions Solved</span>
-                    <span>Avg. Time/Question</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-2 text-sm text-gray-500 mb-6">
-                  <div className="flex justify-between">
-                    <span>Longest Session</span>
-                    <span>45 Questions</span>
-                  </div>
-                </div>
-                
-<Accordion type="single" collapsible>
-  <AccordionItem value="marathon-difficulty">
-    <AccordionTrigger className="text-sm text-gray-800">Difficulty breakdown</AccordionTrigger>
-    <AccordionContent>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
-          <div className="text-xl font-bold text-green-600">{difficultyBreakdown.marathon.easy}</div>
-          <div className="text-xs text-gray-500">Easy</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-blue-600">{difficultyBreakdown.marathon.medium}</div>
-          <div className="text-xs text-gray-500">Medium</div>
-        </div>
-        <div>
-          <div className="text-xl font-bold text-purple-600">{difficultyBreakdown.marathon.hard}</div>
-          <div className="text-xs text-gray-500">Hard</div>
-        </div>
-      </div>
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-              </CardContent>
-            </Card>
-
-            {/* Mock Tests */}
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-lg">📄</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Mock Tests</h3>
-                </div>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-4xl font-bold text-gray-900">{mockTestResults.length}</span>
-                    <span className="text-2xl font-bold text-gray-900">{
-                      mockTestResults.length > 0 
-                        ? Math.round(mockTestResults.reduce((sum, result) => sum + ((result.mathScore || 0) + (result.englishScore || 0)), 0) / mockTestResults.length)
-                        : 0
-                    }</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>Tests Completed</span>
-                    <span>Avg. Score</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-2 text-sm text-gray-500 mb-6">
-                  <div className="flex justify-between">
-                    <span>Last Attempt</span>
-                    <span>July 25, 2025</span>
-                  </div>
-                </div>
-                
-              </CardContent>
-            </Card>
+          {/* Recent Sessions */}
+          <div className="lg:col-span-1 h-full">
+            <RecentSessions userName={userName} />
           </div>
         </div>
+
+        {/* Time & Pacing + Competitive Landscape */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2 h-full">
+            <TimePacingAnalysis userName={userName} mockTestResults={mockTestResults} />
+          </div>
+          <div className="lg:col-span-1 h-full">
+            <CompetitiveLandscape userName={userName} />
+          </div>
+        </div>
+
+        {/* Performance Trends Section */}
+        <div className="mb-8">
+          <PerformanceTrends userName={userName} />
+        </div>
       </div>
 
-      {/* Streak Notification */}
-      <StreakNotification
-        streakCount={streakData?.current_streak || 0}
-        onClose={handleCloseStreakNotification}
-        isVisible={showStreakNotification}
-      />
     </div>
   );
 };
