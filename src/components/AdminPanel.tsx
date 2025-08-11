@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database, Upload, BarChart3, Settings, AlertTriangle } from 'lucide-react';
-import QuestionImport from './QuestionImport';
-import QuestionBankManagement from './QuestionBankManagement';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface AdminPanelProps {
@@ -72,11 +70,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </TabsList>
 
           <TabsContent value="import" className="mt-6">
-            <QuestionImport />
+            <Card>
+              <CardHeader>
+                <CardTitle>Question Import</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Question import functionality has been removed to streamline the application.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="database" className="mt-6">
-            <QuestionBankManagement />
+            <Card>
+              <CardHeader>
+                <CardTitle>Question Bank Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Question bank management functionality has been removed to streamline the application.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">

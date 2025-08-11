@@ -10,7 +10,6 @@ import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
 import MarathonCompletionState from './Marathon/MarathonCompletionState';
 import MarathonEndConfirmation from './Marathon/MarathonEndConfirmation';
 import MarathonSummary from './MarathonSummary';
-import MarathonTimer from './Marathon/MarathonTimer';
 import { calculatePoints } from '@/services/pointsService';
 import { DatabaseQuestion } from '@/services/questionService';
 

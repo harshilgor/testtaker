@@ -16,7 +16,6 @@ import CompetitiveLandscape from './Performance/CompetitiveLandscape';
 import TimePacingAnalysis from './Performance/TimePacingAnalysis';
 import StreakNotification from './StreakNotification';
 import QuestionsSolvedCard from './QuestionsSolvedCard';
-import StreakDebugPanel from './StreakDebugPanel';
 import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
 
 interface PerformanceDashboardProps {
@@ -323,12 +322,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
 
-        {/* Debug Panel - Only show in development or for troubleshooting */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mb-6">
-            <StreakDebugPanel userName={userName} />
-          </div>
-        )}
 
         {/* Top Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
