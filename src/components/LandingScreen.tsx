@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
-import logo1600 from '@/assets/logo-1600.png';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
@@ -29,7 +28,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <img src={logo1600} alt="get1600" className="h-6 sm:h-8 w-auto" />
+              <div className="bg-blue-600 rounded-lg p-1.5 sm:p-2">
+                <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
               <h1 className="text-lg sm:text-xl font-bold text-slate-900">get1600.co</h1>
             </div>
             
@@ -191,7 +192,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <img src={logo1600} alt="get1600" className="h-4 sm:h-5 w-auto" />
+              <div className="bg-blue-600 rounded-lg p-1.5 sm:p-2">
+                <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+              </div>
               <span className="text-base sm:text-lg font-semibold">get1600.co</span>
             </div>
             

@@ -229,15 +229,14 @@ const StreakDisplay: React.FC<StreakDisplayProps> = ({ userName }) => {
                 </div>
               )}
               
-              {/* Calendar Button - Always visible at bottom */}
-              <div className="mt-4 pt-3 border-t border-orange-200/50 flex justify-center">
+              {/* Calendar Button */}
+              <div className="mt-3 flex justify-center">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowMonthlyView(true)}
-                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-4 py-2 h-8 text-xs font-medium flex items-center gap-2"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 px-3 py-1 h-7 text-xs font-normal"
                 >
-                  <CalendarIcon className="h-3 w-3" />
                   View Calendar
                 </Button>
               </div>

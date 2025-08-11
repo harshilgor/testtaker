@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import logo1600 from '@/assets/logo-1600.png';
 
 // Authentication cleanup utility
 const cleanupAuthState = () => {
@@ -171,7 +170,7 @@ const AuthPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center mb-6">
-            <img src={logo1600} alt="get1600" className="h-12 w-auto mr-3" />
+            <GraduationCap className="h-12 w-12 text-blue-600 mr-3" />
             <h1 className="text-3xl font-bold text-gray-900">get1600.co</h1>
           </div>
           <p className="text-gray-600">Sign in to access your SAT prep dashboard</p>

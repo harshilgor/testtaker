@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Home, BarChart3, Trophy, Activity, Menu, X } from 'lucide-react';
 import { Screen } from '@/pages/Index';
 import { useIsMobile } from '@/hooks/use-mobile';
-import logo1600 from '@/assets/logo-1600.png';
 
 interface NavigationProps {
   currentScreen: Screen;
@@ -57,8 +56,7 @@ const Navigation: React.FC<NavigationProps> = ({
     <nav className="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-3">
-            <img src={logo1600} alt="get1600" className="h-8 w-auto" />
+          <div className="flex items-center">
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">get1600</h1>
           </div>
           
