@@ -135,7 +135,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     enabled: !!userName,
   });
 
-  // Fetch difficulty breakdown from attempts
+  // Fetch difficulty breakdown from attempts - Updated to get real data
   const { data: difficultyBreakdown = { quiz: { easy: 0, medium: 0, hard: 0 }, marathon: { easy: 0, medium: 0, hard: 0 } } } = useQuery({
     queryKey: ['difficulty-breakdown', userName],
     queryFn: async () => {
