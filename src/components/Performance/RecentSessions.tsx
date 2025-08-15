@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,14 +124,17 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
       });
     });
 
-    // Add mock test sessions
+    // Add mock test sessions - fix the accuracy calculation
     mockTestSessions.forEach(session => {
+      // Calculate accuracy based on total score out of maximum possible score (1600)
+      const accuracy = Math.round((session.total_score / 1600) * 100);
+      
       sessions.push({
         id: session.id,
         type: 'mocktest',
         date: session.completed_at,
         questions: 154, // Standard SAT question count
-        accuracy: Math.round(((session.correct_answers || 0) / 154) * 100),
+        accuracy: accuracy,
         score: session.total_score || 0
       });
     });
