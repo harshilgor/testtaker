@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingDown, BookOpen } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Zap } from 'lucide-react';
 
 interface PerformanceOverviewProps {
   userName: string;
@@ -13,23 +13,23 @@ interface PerformanceOverviewProps {
 
 interface TopicPerformance {
   topic: string;
-  correct: number;
-  total: number;
   accuracy: number;
-  difficulty: string;
+  avgTime: number;
+  attempts: number;
+  category: 'best' | 'needs_work' | 'time_intensive' | 'quick';
 }
 
 const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) => {
-  // Fetch user's question attempts to analyze weakest topics
+  // Fetch user's question attempts for performance analysis
   const { data: questionAttempts = [] } = useQuery({
-    queryKey: ['topic-performance', userName],
+    queryKey: ['performance-analysis', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [];
 
       const { data, error } = await supabase
         .from('question_attempts_v2')
-        .select('topic, difficulty, is_correct')
+        .select('topic, is_correct, time_spent, difficulty')
         .eq('user_id', user.user.id);
 
       if (error) {
@@ -42,22 +42,34 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     enabled: !!userName,
   });
 
-  // Process data to find weakest topics
-  const getWeakestTopics = (): TopicPerformance[] => {
-    const topicStats: { [key: string]: { correct: number; total: number; difficulties: string[] } } = {};
+  // Process data to get performance insights
+  const getPerformanceInsights = (): {
+    bestTopics: TopicPerformance[];
+    needsWork: TopicPerformance[];
+    timeIntensive: TopicPerformance[];
+    quickTopics: TopicPerformance[];
+    overallAvgTime: number;
+  } => {
+    const topicStats: { [key: string]: { correct: number; total: number; totalTime: number } } = {};
+
+    // Calculate overall average time
+    const validTimes = questionAttempts.filter(a => a.time_spent && a.time_spent > 0);
+    const overallAvgTime = validTimes.length > 0 
+      ? validTimes.reduce((sum, a) => sum + a.time_spent, 0) / validTimes.length 
+      : 60;
 
     questionAttempts.forEach(attempt => {
       const topic = attempt.topic || 'Unknown Topic';
       if (!topicStats[topic]) {
-        topicStats[topic] = { correct: 0, total: 0, difficulties: [] };
+        topicStats[topic] = { correct: 0, total: 0, totalTime: 0 };
       }
       
       topicStats[topic].total++;
       if (attempt.is_correct) {
         topicStats[topic].correct++;
       }
-      if (attempt.difficulty) {
-        topicStats[topic].difficulties.push(attempt.difficulty);
+      if (attempt.time_spent && attempt.time_spent > 0) {
+        topicStats[topic].totalTime += attempt.time_spent;
       }
     });
 
@@ -65,96 +77,130 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
       .filter(([_, stats]) => stats.total >= 3) // Only include topics with at least 3 attempts
       .map(([topic, stats]) => ({
         topic,
-        correct: stats.correct,
-        total: stats.total,
         accuracy: Math.round((stats.correct / stats.total) * 100),
-        difficulty: stats.difficulties.length > 0 ? 
-          stats.difficulties.sort()[Math.floor(stats.difficulties.length / 2)] : 'medium'
-      }))
-      .sort((a, b) => a.accuracy - b.accuracy) // Sort by accuracy (lowest first)
-      .slice(0, 5); // Take top 5 weakest topics
+        avgTime: stats.totalTime > 0 ? Math.round(stats.totalTime / stats.total) : overallAvgTime,
+        attempts: stats.total,
+        category: 'best' as const
+      }));
 
-    return topicPerformance;
+    // Categorize topics
+    const bestTopics = topicPerformance
+      .filter(t => t.accuracy >= 80)
+      .sort((a, b) => b.accuracy - a.accuracy)
+      .slice(0, 3);
+
+    const needsWork = topicPerformance
+      .filter(t => t.accuracy < 60)
+      .sort((a, b) => a.accuracy - b.accuracy)
+      .slice(0, 3);
+
+    const timeIntensive = topicPerformance
+      .filter(t => t.avgTime > overallAvgTime * 1.2)
+      .sort((a, b) => b.avgTime - a.avgTime)
+      .slice(0, 3);
+
+    const quickTopics = topicPerformance
+      .filter(t => t.avgTime < overallAvgTime * 0.8 && t.accuracy >= 70)
+      .sort((a, b) => a.avgTime - b.avgTime)
+      .slice(0, 3);
+
+    return { bestTopics, needsWork, timeIntensive, quickTopics, overallAvgTime };
   };
 
-  const weakestTopics = getWeakestTopics();
+  const insights = getPerformanceInsights();
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'hard': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
+
+  const renderTopicCard = (topic: TopicPerformance, index: number) => (
+    <div key={topic.topic} className="flex items-center justify-between p-2 rounded border border-gray-100">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+          {index + 1}
+        </div>
+        <div>
+          <div className="font-medium text-gray-900 text-xs">{topic.topic}</div>
+          <div className="text-xs text-gray-500">{topic.attempts} attempts</div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="text-sm font-bold text-gray-900">{topic.accuracy}%</div>
+        <div className="text-xs text-gray-500">{formatTime(topic.avgTime)}</div>
+      </div>
+    </div>
+  );
+
+  const renderSection = (
+    title: string, 
+    topics: TopicPerformance[], 
+    icon: React.ReactNode, 
+    emptyMessage: string
+  ) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h4 className="font-medium text-gray-900 text-sm">{title}</h4>
+      </div>
+      {topics.length > 0 ? (
+        <div className="space-y-2">
+          {topics.map((topic, index) => renderTopicCard(topic, index))}
+        </div>
+      ) : (
+        <div className="text-center py-4">
+          <p className="text-xs text-gray-500">{emptyMessage}</p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <Card className="bg-white h-full">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-red-500" />
-            <CardTitle className="text-lg">Your Weakest Topics</CardTitle>
-          </div>
+          <CardTitle className="text-lg">Performance</CardTitle>
           <Button 
             variant="ghost" 
             size="sm" 
             className="text-gray-500 hover:text-gray-700 text-xs"
           >
-            View Advanced Trends
+            View Advanced Insights
           </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {weakestTopics.length > 0 ? (
-          <div className="space-y-4">
-            {weakestTopics.map((topic, index) => (
-              <div key={topic.topic} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 text-sm font-semibold">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">{topic.topic}</div>
-                    <div className="text-xs text-gray-500">
-                      {topic.correct}/{topic.total} correct
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className={`text-xs ${getDifficultyColor(topic.difficulty)}`}>
-                    {topic.difficulty}
-                  </Badge>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-red-600">{topic.accuracy}%</div>
-                    <div className="text-xs text-gray-500">accuracy</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="flex items-start gap-3">
-                <BookOpen className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-blue-900 text-sm mb-1">Recommendation</h4>
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    Focus on practicing your weakest topics. Consider using Quiz mode to target specific areas 
-                    or Marathon mode with custom difficulty settings to improve these skills.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <TrendingDown className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-1">No Data Available</h3>
-            <p className="text-sm text-gray-500">
-              Complete more questions to see your performance analysis
-            </p>
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-4">
+          {renderSection(
+            "Best Topics",
+            insights.bestTopics,
+            <TrendingUp className="h-4 w-4 text-green-500" />,
+            "Keep practicing to see your best topics"
+          )}
+          
+          {renderSection(
+            "Needs Work",
+            insights.needsWork,
+            <TrendingDown className="h-4 w-4 text-red-500" />,
+            "Great job! No weak areas detected"
+          )}
+          
+          {renderSection(
+            "Time Intensive",
+            insights.timeIntensive,
+            <Clock className="h-4 w-4 text-orange-500" />,
+            "You're managing time well across topics"
+          )}
+          
+          {renderSection(
+            "Quick Topics",
+            insights.quickTopics,
+            <Zap className="h-4 w-4 text-blue-500" />,
+            "Practice more to find your quick topics"
+          )}
+        </div>
       </CardContent>
     </Card>
   );

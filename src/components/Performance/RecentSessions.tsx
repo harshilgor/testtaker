@@ -197,7 +197,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
             size="sm" 
             className="text-gray-500 hover:text-gray-700 text-xs"
           >
-            View Advanced Trends
+            View Advanced Insights
           </Button>
         </div>
       </CardHeader>
