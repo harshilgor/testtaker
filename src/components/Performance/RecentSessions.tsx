@@ -1,287 +1,257 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, FileText, Brain, Eye } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
-interface Session {
-  id: string;
-  type: 'Quiz Mode' | 'Marathon Mode' | 'Mock Test';
-  date: string;
-  time: string;
-  accuracy?: number;
-  score?: string;
-  questionCount: number;
-  topic: string;
-  sessionData?: any;
-}
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Clock, Target, Brain, FileText } from 'lucide-react';
 
 interface RecentSessionsProps {
   userName: string;
 }
 
+interface Session {
+  id: string;
+  type: 'marathon' | 'quiz' | 'mocktest';
+  date: string;
+  questions: number;
+  accuracy: number;
+  subject?: string;
+  difficulty?: string;
+  score?: number;
+}
+
 const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
-  const navigate = useNavigate();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Fetch recent marathon sessions
+  const { data: marathonSessions = [] } = useQuery({
+    queryKey: ['recent-marathon-sessions', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
 
-  useEffect(() => {
-    fetchRecentSessions();
-  }, []);
+      const { data, error } = await supabase
+        .from('marathon_sessions')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
 
-  const fetchRecentSessions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch recent sessions from different tables
-      const [marathonRes, quizRes, mockTestRes] = await Promise.all([
-        supabase
-          .from('marathon_sessions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase
-          .from('quiz_results')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase
-          .from('mock_test_results')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('completed_at', { ascending: false })
-          .limit(10)
-      ]);
-
-      const allSessions: Session[] = [];
-
-      // Process marathon sessions
-      if (marathonRes.data) {
-        marathonRes.data.forEach(session => {
-          const accuracy = session.total_questions > 0 ? 
-            Math.round((session.correct_answers / session.total_questions) * 100) : 0;
-          
-          allSessions.push({
-            id: session.id,
-            type: 'Marathon Mode',
-            date: new Date(session.created_at).toLocaleDateString('en-US', { 
-              month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            time: new Date(session.created_at).toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit', hour12: true 
-            }),
-            accuracy,
-            questionCount: session.total_questions,
-            topic: Array.isArray(session.subjects) ? 
-              session.subjects.join(', ').replace(/,/g, ', ') : 'Mixed Topics',
-            sessionData: session
-          });
-        });
+      if (error) {
+        console.error('Error fetching marathon sessions:', error);
+        return [];
       }
 
-      // Process quiz results
-      if (quizRes.data) {
-        quizRes.data.forEach(quiz => {
-          allSessions.push({
-            id: quiz.id,
-            type: 'Quiz Mode',
-            date: new Date(quiz.created_at).toLocaleDateString('en-US', { 
-              month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            time: new Date(quiz.created_at).toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit', hour12: true 
-            }),
-            accuracy: quiz.score_percentage,
-            questionCount: quiz.total_questions,
-            topic: Array.isArray(quiz.topics) ? 
-              quiz.topics.join(', ') : quiz.subject,
-            sessionData: quiz
-          });
-        });
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Fetch recent quiz results
+  const { data: quizSessions = [] } = useQuery({
+    queryKey: ['recent-quiz-sessions', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const { data, error } = await supabase
+        .from('quiz_results')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        console.error('Error fetching quiz sessions:', error);
+        return [];
       }
 
-      // Process mock test results
-      if (mockTestRes.data) {
-        mockTestRes.data.forEach(test => {
-          allSessions.push({
-            id: test.id,
-            type: 'Mock Test',
-            date: new Date(test.completed_at).toLocaleDateString('en-US', { 
-              month: 'short', day: 'numeric', year: 'numeric' 
-            }),
-            time: new Date(test.completed_at).toLocaleTimeString('en-US', { 
-              hour: 'numeric', minute: '2-digit', hour12: true 
-            }),
-            score: `${test.total_score}/1600`,
-            questionCount: 0,
-            topic: `Full SAT Practice Test`,
-            sessionData: test
-          });
-        });
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Fetch recent mock test results
+  const { data: mockTestSessions = [] } = useQuery({
+    queryKey: ['recent-mocktest-sessions', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const { data, error } = await supabase
+        .from('mock_test_results')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('completed_at', { ascending: false })
+        .limit(2);
+
+      if (error) {
+        console.error('Error fetching mock test sessions:', error);
+        return [];
       }
 
-      // Sort all sessions by date
-      allSessions.sort((a, b) => {
-        const dateA = new Date(`${a.date} ${a.time}`);
-        const dateB = new Date(`${b.date} ${b.time}`);
-        return dateB.getTime() - dateA.getTime();
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Combine and sort all sessions
+  const getAllSessions = (): Session[] => {
+    const sessions: Session[] = [];
+
+    // Add marathon sessions
+    marathonSessions.forEach(session => {
+      sessions.push({
+        id: session.id,
+        type: 'marathon',
+        date: session.created_at,
+        questions: session.total_questions || 0,
+        accuracy: session.total_questions > 0 ? 
+          Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : 0,
+        difficulty: session.difficulty || 'mixed'
       });
+    });
 
-      setSessions(allSessions.slice(0, 5)); // Show only latest 5
-    } catch (error) {
-      console.error('Error fetching recent sessions:', error);
-    } finally {
-      setLoading(false);
-    }
+    // Add quiz sessions
+    quizSessions.forEach(session => {
+      sessions.push({
+        id: session.id,
+        type: 'quiz',
+        date: session.created_at,
+        questions: session.total_questions || 0,
+        accuracy: session.total_questions > 0 ? 
+          Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : 0,
+        subject: session.subject || 'Mixed'
+      });
+    });
+
+    // Add mock test sessions
+    mockTestSessions.forEach(session => {
+      sessions.push({
+        id: session.id,
+        type: 'mocktest',
+        date: session.completed_at,
+        questions: 154, // Standard SAT question count
+        accuracy: Math.round(((session.correct_answers || 0) / 154) * 100),
+        score: session.total_score || 0
+      });
+    });
+
+    // Sort by date (most recent first) and take top 5
+    return sessions
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
   };
 
-  const handleReviewSession = (session: Session) => {
-    switch (session.type) {
-      case 'Marathon Mode':
-        // Navigate to marathon summary with session data
-        navigate('/marathon', { 
-          state: { 
-            showSummary: true, 
-            sessionData: session.sessionData 
-          } 
-        });
-        break;
-      case 'Quiz Mode':
-        // Navigate to quiz summary with session data
-        navigate('/quiz', { 
-          state: { 
-            showSummary: true, 
-            sessionData: session.sessionData 
-          } 
-        });
-        break;
-      case 'Mock Test':
-        // Navigate to SAT mock test results
-        navigate('/sat-mock-test', { 
-          state: { 
-            showResults: true, 
-            sessionData: session.sessionData 
-          } 
-        });
-        break;
-    }
-  };
+  const recentSessions = getAllSessions();
 
   const getSessionIcon = (type: string) => {
     switch (type) {
-      case 'Quiz Mode':
-        return <Brain className="h-4 w-4" />;
-      case 'Marathon Mode':
-        return <Clock className="h-4 w-4" />;
-      case 'Mock Test':
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <Brain className="h-4 w-4" />;
+      case 'marathon': return <Target className="h-4 w-4 text-orange-500" />;
+      case 'quiz': return <Brain className="h-4 w-4 text-purple-500" />;
+      case 'mocktest': return <FileText className="h-4 w-4 text-blue-500" />;
+      default: return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  const getStatusColor = (type: string) => {
+  const getSessionTypeLabel = (type: string) => {
     switch (type) {
-      case 'Quiz Mode':
-        return 'bg-blue-100 text-blue-800';
-      case 'Marathon Mode':
-        return 'bg-purple-100 text-purple-800';
-      case 'Mock Test':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'marathon': return 'Marathon';
+      case 'quiz': return 'Quiz';
+      case 'mocktest': return 'Mock Test';
+      default: return 'Session';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getAccuracyColor = (accuracy: number) => {
+    if (accuracy >= 80) return 'text-green-600';
+    if (accuracy >= 60) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   return (
-    <Card className="h-full">
-      <CardContent className="p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Sessions</h2>
-        
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="p-4 border rounded-lg bg-gray-50 animate-pulse">
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-300 rounded w-1/4 mb-2"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/3 mb-1"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
+    <Card className="bg-white h-full">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-500" />
+            <CardTitle className="text-lg">Recent Sessions</CardTitle>
           </div>
-        ) : sessions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Brain className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-            <p>No recent sessions found</p>
-            <p className="text-sm">Complete some quizzes or tests to see your history</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {sessions.map((session) => (
-              <div key={session.id} className="relative p-4 border rounded-lg bg-gray-50">
-                <div className="flex items-start space-x-3">
-                  <div className={`p-2 rounded-full ${getStatusColor(session.type)}`}>
-                    {getSessionIcon(session.type)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 pr-16">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="text-sm font-medium text-gray-900">{session.type}</h3>
-                      {session.accuracy && (
-                        <span className="inline-flex items-center text-xs font-medium text-green-700">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          {session.accuracy}%
-                        </span>
-                      )}
-                      {session.score && (
-                        <span className="text-xs font-medium text-gray-700">
-                          {session.score}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <p className="text-xs text-gray-600 mb-1">
-                      {session.date} • {session.time}
-                    </p>
-                    
-                    <p className="text-xs text-gray-500">
-                      {session.questionCount > 0 ? `${session.questionCount} Questions ` : ''}
-                      ({session.topic})
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Review button in bottom right */}
-                <div className="absolute bottom-3 right-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReviewSession(session)}
-                    className="h-6 px-2 text-xs border-blue-200 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                    title={session.type === 'Mock Test' ? 'View Analysis' : 'Review Session'}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Review
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        <div className="mt-6 text-center">
-          <Button variant="ghost" className="text-sm text-gray-600 hover:text-gray-800">
-            View All Sessions
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-gray-500 hover:text-gray-700 text-xs"
+          >
+            View Advanced Trends
           </Button>
         </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {recentSessions.length > 0 ? (
+          <div className="space-y-3">
+            {recentSessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50">
+                    {getSessionIcon(session.type)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-gray-900 text-sm">
+                        {getSessionTypeLabel(session.type)}
+                      </span>
+                      {session.type === 'mocktest' && session.score && (
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          {session.score} pts
+                        </Badge>
+                      )}
+                      {session.subject && (
+                        <Badge variant="secondary" className="text-xs">
+                          {session.subject}
+                        </Badge>
+                      )}
+                      {session.difficulty && session.difficulty !== 'mixed' && (
+                        <Badge variant="secondary" className="text-xs">
+                          {session.difficulty}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {session.questions} Questions • {formatDate(session.date)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-lg font-bold ${getAccuracyColor(session.accuracy)}`}>
+                    {session.accuracy}%
+                  </div>
+                  <div className="text-xs text-gray-500">accuracy</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-medium text-gray-900 mb-1">No Recent Sessions</h3>
+            <p className="text-sm text-gray-500">
+              Start practicing to see your recent activity here
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

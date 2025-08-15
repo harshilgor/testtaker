@@ -1,207 +1,158 @@
-import React, { useMemo, useState } from 'react';
+
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { formatTime } from '@/utils/timeUtils';
+import { TrendingDown, BookOpen } from 'lucide-react';
 
 interface PerformanceOverviewProps {
   userName: string;
 }
 
-type ViewMode = 'strongest' | 'improvement' | 'fastest' | 'timeSink';
-
-interface SkillStats {
-  skill: string; // aggregated across subjects
-  total: number;
+interface TopicPerformance {
+  topic: string;
   correct: number;
-  accuracy: number; // 0-100
-  totalTime: number; // seconds
-  avgTime: number; // seconds per question
+  total: number;
+  accuracy: number;
+  difficulty: string;
 }
 
-const MIN_ATTEMPTS = 3; // small threshold to avoid noisy rankings
-
 const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) => {
-  const [mode, setMode] = useState<ViewMode>('strongest');
-  const [subjectFilter, setSubjectFilter] = useState<'reading_writing' | 'math'>('reading_writing');
-
-  const { data: attempts = [], isLoading } = useQuery({
-    queryKey: ['performance-overview-attempts', userName],
+  // Fetch user's question attempts to analyze weakest topics
+  const { data: questionAttempts = [] } = useQuery({
+    queryKey: ['topic-performance', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [] as Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null; subject: 'reading_writing' | 'math' | null }>;
+      if (!user.user) return [];
 
-      // Get data from quiz_results and marathon_sessions instead of question_attempts_v2
-      const [quizResults, marathonSessions] = await Promise.all([
-        supabase
-          .from('quiz_results')
-          .select('topics, correct_answers, total_questions, time_taken, subject')
-          .eq('user_id', user.user.id),
-        
-        supabase
-          .from('marathon_sessions')
-          .select('subjects, correct_answers, total_questions')
-          .eq('user_id', user.user.id)
-      ]);
+      const { data, error } = await supabase
+        .from('question_attempts_v2')
+        .select('topic, difficulty, is_correct')
+        .eq('user_id', user.user.id);
 
-      const attempts: Array<{ topic: string | null; is_correct: boolean | null; time_spent: number | null; subject: 'reading_writing' | 'math' | null }> = [];
-
-      // Process quiz results
-      if (quizResults.data) {
-        quizResults.data.forEach(quiz => {
-          const avgTimePerQuestion = quiz.time_taken ? Math.round(quiz.time_taken / quiz.total_questions) : 0;
-          const topics = quiz.topics || [];
-          const normalizedSubject: 'reading_writing' | 'math' = (quiz.subject && String(quiz.subject).toLowerCase() === 'math') ? 'math' : 'reading_writing';
-          
-          topics.forEach(topic => {
-            // Estimate correct/incorrect distribution across topics
-            const questionsPerTopic = Math.ceil(quiz.total_questions / Math.max(topics.length, 1));
-            const correctPerTopic = Math.ceil(quiz.correct_answers / Math.max(topics.length, 1));
-            
-            for (let i = 0; i < questionsPerTopic; i++) {
-              attempts.push({
-                topic,
-                is_correct: i < correctPerTopic,
-                time_spent: avgTimePerQuestion,
-                subject: normalizedSubject
-              });
-            }
-          });
-        });
+      if (error) {
+        console.error('Error fetching question attempts:', error);
+        return [];
       }
 
-      // Process marathon sessions 
-      if (marathonSessions.data) {
-        marathonSessions.data.forEach(session => {
-          const subjects = session.subjects || [];
-          const totalQuestions = session.total_questions || 0;
-          const correctAnswers = session.correct_answers || 0;
-          
-          // Create generic topic entries for marathon sessions
-          const questionsPerSubject = Math.ceil(totalQuestions / Math.max(subjects.length, 1));
-          const correctPerSubject = Math.ceil(correctAnswers / Math.max(subjects.length, 1));
-          
-          subjects.forEach(subject => {
-            const topicName = subject === 'math' ? 'Mathematics' : subject === 'english' ? 'Reading & Writing' : 'Mixed Practice';
-            const normalizedSubject: 'reading_writing' | 'math' = subject === 'math' ? 'math' : 'reading_writing';
-            
-            for (let i = 0; i < questionsPerSubject; i++) {
-              attempts.push({
-                topic: topicName,
-                is_correct: i < correctPerSubject,
-                time_spent: 60, // Estimate 60 seconds per question for marathon
-                subject: normalizedSubject
-              });
-            }
-          });
-        });
-      }
-
-      console.log('Performance Overview data:', { quizResults: quizResults.data?.length, marathonSessions: marathonSessions.data?.length, totalAttempts: attempts.length });
-      
-      return attempts;
+      return data || [];
     },
     enabled: !!userName,
-    staleTime: 60_000,
   });
 
-  const bySkill: SkillStats[] = useMemo(() => {
-    const map = new Map<string, { total: number; correct: number; totalTime: number }>();
+  // Process data to find weakest topics
+  const getWeakestTopics = (): TopicPerformance[] => {
+    const topicStats: { [key: string]: { correct: number; total: number; difficulties: string[] } } = {};
 
-    attempts.forEach((a) => {
-      if (!a || !a.topic) return;
-      if (subjectFilter === 'reading_writing' && a.subject !== 'reading_writing') return;
-      if (subjectFilter === 'math' && a.subject !== 'math') return;
-      const skill = a.topic.trim();
-      if (!skill) return;
-      const entry = map.get(skill) || { total: 0, correct: 0, totalTime: 0 };
-      entry.total += 1;
-      entry.correct += a.is_correct ? 1 : 0;
-      entry.totalTime += Math.max(0, a.time_spent || 0);
-      map.set(skill, entry);
+    questionAttempts.forEach(attempt => {
+      const topic = attempt.topic || 'Unknown Topic';
+      if (!topicStats[topic]) {
+        topicStats[topic] = { correct: 0, total: 0, difficulties: [] };
+      }
+      
+      topicStats[topic].total++;
+      if (attempt.is_correct) {
+        topicStats[topic].correct++;
+      }
+      if (attempt.difficulty) {
+        topicStats[topic].difficulties.push(attempt.difficulty);
+      }
     });
 
-    const list: SkillStats[] = Array.from(map.entries()).map(([skill, v]) => {
-      const accuracy = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-      const avgTime = v.total > 0 ? Math.round(v.totalTime / v.total) : 0;
-      return { skill, total: v.total, correct: v.correct, accuracy, totalTime: v.totalTime, avgTime };
-    });
+    const topicPerformance: TopicPerformance[] = Object.entries(topicStats)
+      .filter(([_, stats]) => stats.total >= 3) // Only include topics with at least 3 attempts
+      .map(([topic, stats]) => ({
+        topic,
+        correct: stats.correct,
+        total: stats.total,
+        accuracy: Math.round((stats.correct / stats.total) * 100),
+        difficulty: stats.difficulties.length > 0 ? 
+          stats.difficulties.sort()[Math.floor(stats.difficulties.length / 2)] : 'medium'
+      }))
+      .sort((a, b) => a.accuracy - b.accuracy) // Sort by accuracy (lowest first)
+      .slice(0, 5); // Take top 5 weakest topics
 
-    return list;
-  }, [attempts, subjectFilter]);
+    return topicPerformance;
+  };
 
-  const top5: SkillStats[] = useMemo(() => {
-    const eligible = bySkill.filter((s) => s.total >= MIN_ATTEMPTS);
-    if (eligible.length === 0) return [];
+  const weakestTopics = getWeakestTopics();
 
-    const sorted = [...eligible];
-    switch (mode) {
-      case 'strongest':
-        sorted.sort((a, b) => (b.accuracy - a.accuracy) || (b.total - a.total));
-        break;
-      case 'improvement':
-        sorted.sort((a, b) => (a.accuracy - b.accuracy) || (b.total - a.total));
-        break;
-      case 'fastest':
-        sorted.sort((a, b) => (a.avgTime - b.avgTime) || (b.total - a.total));
-        break;
-      case 'timeSink':
-        sorted.sort((a, b) => (b.avgTime - a.avgTime) || (b.total - a.total));
-        break;
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    return sorted.slice(0, 5);
-  }, [bySkill, mode]);
-
-  const renderRow = (s: SkillStats) => (
-    <div key={s.skill} className="flex items-center justify-between rounded-md border px-4 py-3">
-      <div className="min-w-0">
-        <div className="font-medium truncate">{s.skill.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()}</div>
-        <div className="text-sm text-muted-foreground mt-1">
-          {s.correct}/{s.total} correct • {s.accuracy}% accuracy • avg {formatTime(s.avgTime)} per question
-        </div>
-      </div>
-    </div>
-  );
+  };
 
   return (
-    <Card className="bg-background">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Performance overview</h2>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-3">
-          <Button variant={subjectFilter === 'reading_writing' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('reading_writing')}>
-            Reading & Writing
-          </Button>
-          <Button variant={subjectFilter === 'math' ? 'default' : 'outline'} size="sm" onClick={() => setSubjectFilter('math')}>
-            Math
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-6">
-          <Button variant={mode === 'strongest' ? 'default' : 'outline'} size="sm" onClick={() => setMode('strongest')}>
-            Strongest skill
-          </Button>
-          <Button variant={mode === 'improvement' ? 'default' : 'outline'} size="sm" onClick={() => setMode('improvement')}>
-            Top areas of improvement
-          </Button>
-          <Button variant={mode === 'fastest' ? 'default' : 'outline'} size="sm" onClick={() => setMode('fastest')}>
-            Fastest skill
-          </Button>
-          <Button variant={mode === 'timeSink' ? 'default' : 'outline'} size="sm" onClick={() => setMode('timeSink')}>
-            Biggest Time Sink
+    <Card className="bg-white h-full">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-5 w-5 text-red-500" />
+            <CardTitle className="text-lg">Your Weakest Topics</CardTitle>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-gray-500 hover:text-gray-700 text-xs"
+          >
+            View Advanced Trends
           </Button>
         </div>
-
-        {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading your performance...</div>
-        ) : top5.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Not enough data yet. Practice a few more questions to see insights.</div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {weakestTopics.length > 0 ? (
+          <div className="space-y-4">
+            {weakestTopics.map((topic, index) => (
+              <div key={topic.topic} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 text-sm font-semibold">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">{topic.topic}</div>
+                    <div className="text-xs text-gray-500">
+                      {topic.correct}/{topic.total} correct
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className={`text-xs ${getDifficultyColor(topic.difficulty)}`}>
+                    {topic.difficulty}
+                  </Badge>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-red-600">{topic.accuracy}%</div>
+                    <div className="text-xs text-gray-500">accuracy</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-start gap-3">
+                <BookOpen className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-blue-900 text-sm mb-1">Recommendation</h4>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    Focus on practicing your weakest topics. Consider using Quiz mode to target specific areas 
+                    or Marathon mode with custom difficulty settings to improve these skills.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {top5.map(renderRow)}
+          <div className="text-center py-8">
+            <TrendingDown className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-medium text-gray-900 mb-1">No Data Available</h3>
+            <p className="text-sm text-gray-500">
+              Complete more questions to see your performance analysis
+            </p>
           </div>
         )}
       </CardContent>

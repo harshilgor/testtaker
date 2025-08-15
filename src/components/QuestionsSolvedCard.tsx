@@ -20,6 +20,7 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
   const [loading, setLoading] = useState(true);
   const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
+  
   useEffect(() => {
     fetchQuestionCounts();
     fetchGoals();
@@ -184,6 +185,18 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
     return maxCount > 0 ? Math.min((currentCount / maxCount) * 100, 100) : 0;
   };
 
+  const getGoalProgressText = () => {
+    const currentCount = questionCounts[selectedPeriod];
+    const goal = goals[selectedPeriod] || 0;
+    
+    if (goal > 0) {
+      const percentage = Math.round((currentCount / goal) * 100);
+      return `${percentage}% of your goal reached`;
+    }
+    
+    return 'Set a goal to track progress';
+  };
+
   return (
     <Card className="bg-white">
       <CardContent className="p-6">
@@ -226,7 +239,7 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
         </div>
         
         <div className="text-xs text-gray-500 mb-4">
-          Accuracy: {marathonStats.averageAccuracy}% Overall
+          {getGoalProgressText()}
         </div>
 
         {/* Time Period Buttons */}
