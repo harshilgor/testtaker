@@ -114,9 +114,9 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
     enabled: !!userName,
   });
 
-  // Fetch question attempts for skills analysis
-  const { data: questionAttempts = [] } = useQuery({
-    queryKey: ['question-attempts-analysis', userName],
+  // Get comprehensive activity data for today's analysis
+  const { data: allTodayActivities = [] } = useQuery({
+    queryKey: ['all-today-activities', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [];
@@ -124,20 +124,89 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .gte('created_at', today.toISOString());
+      // Combine quiz, marathon and mock test data to get comprehensive activity data
+      const [quizData, marathonData, mockData] = await Promise.all([
+        supabase
+          .from('quiz_results')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('created_at', today.toISOString()),
+        supabase
+          .from('marathon_sessions')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('created_at', today.toISOString()),
+        supabase
+          .from('mock_test_results')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('completed_at', today.toISOString())
+      ]);
 
-      return data || [];
+      const activities = [];
+
+      // Add quiz activities with synthetic question attempt data
+      (quizData.data || []).forEach(quiz => {
+        for (let i = 0; i < quiz.total_questions; i++) {
+          activities.push({
+            is_correct: i < quiz.correct_answers,
+            topic: quiz.topics?.[0] || quiz.subject,
+            subject: quiz.subject,
+            time_spent: Math.floor((quiz.time_taken || 0) / quiz.total_questions),
+            created_at: quiz.created_at,
+            session_type: 'quiz'
+          });
+        }
+      });
+
+      // Add marathon activities
+      (marathonData.data || []).forEach(marathon => {
+        for (let i = 0; i < (marathon.total_questions || 0); i++) {
+          activities.push({
+            is_correct: i < (marathon.correct_answers || 0),
+            topic: marathon.subjects?.[0] || 'Mixed',
+            subject: marathon.subjects?.[0] || 'Mixed',
+            time_spent: 60, // Estimate 1 minute per question
+            created_at: marathon.created_at,
+            session_type: 'marathon'
+          });
+        }
+      });
+
+      // Add mock test activities
+      (mockData.data || []).forEach(mock => {
+        // Math questions
+        for (let i = 0; i < 54; i++) {
+          activities.push({
+            is_correct: i < (mock.math_score || 0) / 10, // Rough conversion
+            topic: 'Math',
+            subject: 'Math',
+            time_spent: 80, // Estimate based on SAT timing
+            created_at: mock.completed_at,
+            session_type: 'mocktest'
+          });
+        }
+        // English questions
+        for (let i = 0; i < 44; i++) {
+          activities.push({
+            is_correct: i < (mock.english_score || 0) / 10,
+            topic: 'English',
+            subject: 'English', 
+            time_spent: 80,
+            created_at: mock.completed_at,
+            session_type: 'mocktest'
+          });
+        }
+      });
+
+      return activities;
     },
     enabled: !!userName,
   });
 
   // Fetch weekly data for summary
   const { data: weeklyData = [] } = useQuery({
-    queryKey: ['weekly-data', userName],
+    queryKey: ['weekly-activities', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [];
@@ -145,13 +214,65 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
 
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .gte('created_at', weekAgo.toISOString());
+      // Get all activities from the past week
+      const [quizData, marathonData, mockData] = await Promise.all([
+        supabase
+          .from('quiz_results')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('created_at', weekAgo.toISOString()),
+        supabase
+          .from('marathon_sessions')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('created_at', weekAgo.toISOString()),
+        supabase
+          .from('mock_test_results')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('completed_at', weekAgo.toISOString())
+      ]);
 
-      return data || [];
+      const activities = [];
+
+      // Process all activities similar to today's data
+      (quizData.data || []).forEach(quiz => {
+        for (let i = 0; i < quiz.total_questions; i++) {
+          activities.push({
+            is_correct: i < quiz.correct_answers,
+            topic: quiz.topics?.[0] || quiz.subject,
+            subject: quiz.subject,
+            time_spent: Math.floor((quiz.time_taken || 0) / quiz.total_questions),
+            created_at: quiz.created_at
+          });
+        }
+      });
+
+      (marathonData.data || []).forEach(marathon => {
+        for (let i = 0; i < (marathon.total_questions || 0); i++) {
+          activities.push({
+            is_correct: i < (marathon.correct_answers || 0),
+            topic: marathon.subjects?.[0] || 'Mixed',
+            subject: marathon.subjects?.[0] || 'Mixed',
+            time_spent: 60,
+            created_at: marathon.created_at
+          });
+        }
+      });
+
+      (mockData.data || []).forEach(mock => {
+        for (let i = 0; i < 98; i++) { // Total SAT questions
+          activities.push({
+            is_correct: i < (mock.math_score + mock.english_score) / 20,
+            topic: i < 54 ? 'Math' : 'English',
+            subject: i < 54 ? 'Math' : 'English',
+            time_spent: 80,
+            created_at: mock.completed_at
+          });
+        }
+      });
+
+      return activities;
     },
     enabled: !!userName,
   });
@@ -214,18 +335,18 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
 
   // Calculate performance trends with real data comparison
   const getPerformanceTrends = () => {
-    const totalQuestions = questionAttempts.length;
-    const correctAnswers = questionAttempts.filter(q => q.is_correct).length;
+    const totalQuestions = allTodayActivities.length;
+    const correctAnswers = allTodayActivities.filter(q => q.is_correct).length;
     const overallAccuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
     
-    // Calculate yesterday's accuracy for comparison
+    // Calculate yesterday's accuracy for comparison (use weekly data for comparison)
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
     
-    const yesterdayAttempts = questionAttempts.filter(q => {
+    const yesterdayAttempts = weeklyData.filter(q => {
       const attemptDate = new Date(q.created_at);
       return attemptDate >= yesterday && attemptDate <= yesterdayEnd;
     });
@@ -235,7 +356,7 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
     const accuracyChange = overallAccuracy - yesterdayAccuracy;
     
     // Calculate actual study time in seconds, convert to hours and minutes
-    const studyTimeSeconds = questionAttempts.reduce((sum, q) => sum + (q.time_spent || 0), 0);
+    const studyTimeSeconds = allTodayActivities.reduce((sum, q) => sum + (q.time_spent || 0), 0);
     const studyTimeMinutes = Math.floor(studyTimeSeconds / 60);
     const studyTimeHours = Math.floor(studyTimeMinutes / 60);
     const studyTimeRemainder = studyTimeMinutes % 60;
@@ -252,7 +373,7 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
   const getSkillsTestedToday = (): SkillStat[] => {
     const skillMap = new Map<string, { correct: number; total: number }>();
 
-    questionAttempts.forEach(attempt => {
+    allTodayActivities.forEach(attempt => {
       const skill = attempt.topic || attempt.subject;
       if (!skillMap.has(skill)) {
         skillMap.set(skill, { correct: 0, total: 0 });
