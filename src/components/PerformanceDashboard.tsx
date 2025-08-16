@@ -23,6 +23,7 @@ import StreakCalendar from './StreakCalendar';
 interface PerformanceDashboardProps {
   userName: string;
   onBack: () => void;
+  onNavigateToTrends?: () => void;
 }
 
 interface QuizResult {
@@ -69,7 +70,7 @@ interface QuizStats {
   averageAccuracy: number;
 }
 
-const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack }) => {
+const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack, onNavigateToTrends }) => {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
@@ -479,7 +480,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           
           {/* Recent Sessions */}
           <div className="lg:col-span-1 h-full">
-            <RecentSessions userName={userName} />
+            <RecentSessions userName={userName} onViewTrends={onNavigateToTrends} />
           </div>
         </div>
 

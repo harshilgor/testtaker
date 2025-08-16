@@ -7,10 +7,11 @@ import AuthPage from '@/components/AuthPage';
 import Dashboard from '@/components/Dashboard';
 import Leaderboard from '@/components/Leaderboard';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
+import TrendsPage from '@/components/TrendsPage';
 import Navigation from '@/components/Navigation';
 import StreakPopup from '@/components/StreakPopup';
 
-export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard' | 'trends';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -47,6 +48,10 @@ const Index = () => {
     setCurrentScreen('performance-dashboard');
   };
 
+  const handleNavigateToTrends = () => {
+    setCurrentScreen('trends');
+  };
+
   if (currentScreen === 'leaderboard') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -79,9 +84,19 @@ const Index = () => {
           <PerformanceDashboard 
             userName={userName}
             onBack={() => setCurrentScreen('dashboard')} 
+            onNavigateToTrends={handleNavigateToTrends}
           />
         </div>
       </div>
+    );
+  }
+
+  if (currentScreen === 'trends') {
+    return (
+      <TrendsPage 
+        userName={userName}
+        onBack={() => setCurrentScreen('performance-dashboard')} 
+      />
     );
   }
 

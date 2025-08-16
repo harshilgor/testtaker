@@ -8,6 +8,7 @@ import { Clock, Target, Brain, FileText } from 'lucide-react';
 
 interface RecentSessionsProps {
   userName: string;
+  onViewTrends?: () => void;
 }
 
 interface Session {
@@ -21,7 +22,7 @@ interface Session {
   score?: number;
 }
 
-const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
+const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends }) => {
   // Fetch recent marathon sessions
   const { data: marathonSessions = [] } = useQuery({
     queryKey: ['recent-marathon-sessions', userName],
@@ -196,8 +197,9 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName }) => {
             variant="ghost" 
             size="sm" 
             className="text-gray-500 hover:text-gray-700 text-xs"
+            onClick={onViewTrends}
           >
-            View Advanced Insights
+            View Trends
           </Button>
         </div>
       </CardHeader>
