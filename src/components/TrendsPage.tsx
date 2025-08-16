@@ -429,17 +429,21 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Skills Tested Today</h4>
                 <div className="space-y-2">
-                  {skillsTestedToday.map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">{skill.skill}</span>
-                      <span className={`text-sm font-medium ${
-                        skill.accuracy >= 80 ? 'text-green-600' : 
-                        skill.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {skill.accuracy}%
-                      </span>
-                    </div>
-                  ))}
+                  {skillsTestedToday.length > 0 ? (
+                    skillsTestedToday.map((skill, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{skill.skill}</span>
+                        <span className={`text-sm font-medium ${
+                          skill.accuracy >= 80 ? 'text-green-600' : 
+                          skill.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {skill.accuracy}%
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No skills tested today</p>
+                  )}
                 </div>
               </div>
 
@@ -450,8 +454,41 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
                   AI Insights
                 </h4>
                 <div className="text-sm text-gray-600 space-y-2">
-                  <p>Your Reading accuracy improved by 6% today. You're strongest in Evidence Questions but need work on Punctuation.</p>
-                  <p className="font-medium text-blue-600">Recommendation: Focus on Grammar Practice Set #4 tomorrow.</p>
+                  {(() => {
+                    // Generate AI insights based on real data
+                    const insights = [];
+                    
+                    if (skillsTestedToday.length > 0) {
+                      const bestSkill = skillsTestedToday.reduce((prev, current) => 
+                        current.accuracy > prev.accuracy ? current : prev
+                      );
+                      const worstSkill = skillsTestedToday.reduce((prev, current) => 
+                        current.accuracy < prev.accuracy ? current : prev
+                      );
+                      
+                      if (performanceTrends.accuracyChange > 0) {
+                        insights.push(`Your ${bestSkill.skill} accuracy improved by ${performanceTrends.accuracyChange}% today. You're strongest in ${bestSkill.skill} (${bestSkill.accuracy}%).`);
+                      } else if (performanceTrends.accuracyChange < 0) {
+                        insights.push(`Your accuracy decreased by ${Math.abs(performanceTrends.accuracyChange)}% today. Consider reviewing ${worstSkill.skill} concepts.`);
+                      } else {
+                        insights.push(`Consistent performance today! You're excelling in ${bestSkill.skill} with ${bestSkill.accuracy}% accuracy.`);
+                      }
+                      
+                      if (worstSkill.accuracy < 70 && skillsTestedToday.length > 1) {
+                        insights.push(`Recommendation: Focus on ${worstSkill.skill} practice tomorrow to improve from ${worstSkill.accuracy}%.`);
+                      } else if (bestSkill.accuracy >= 90) {
+                        insights.push(`Excellent work on ${bestSkill.skill}! Consider challenging yourself with harder problems.`);
+                      }
+                    } else {
+                      insights.push("No activities completed today. Start practicing to see personalized insights!");
+                    }
+                    
+                    return insights.map((insight, index) => (
+                      <p key={index} className={index === insights.length - 1 && insights.length > 1 ? "font-medium text-blue-600" : ""}>
+                        {insight}
+                      </p>
+                    ));
+                  })()}
                 </div>
               </div>
             </CardContent>
