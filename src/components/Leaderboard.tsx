@@ -29,66 +29,64 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('all-time');
 
-  // Fetch leaderboard data from Supabase with real-time updates
+  // Fetch leaderboard data with support for periodic stats
   const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
     queryKey: ['leaderboard', timeFrame],
     queryFn: async () => {
-      console.log('Fetching leaderboard data for timeframe:', timeFrame);
-      
-      if (timeFrame === 'all-time') {
-        // Use existing leaderboard_stats table for all-time data
-        const { data, error } = await supabase
-          .from('leaderboard_stats')
-          .select('*')
-          .eq('visibility', 'public')
-          .order('total_points', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching leaderboard:', error);
-          throw error;
-        }
-
-        return data || [];
-      } else {
-        // For weekly/monthly, try to use the periodic leaderboard system
-        // If it fails, fall back to showing all-time data
-        try {
-          // Since TypeScript doesn't recognize the new function yet, use any
-          const { data, error } = await (supabase as any).rpc('get_periodic_leaderboard_data', {
-            period_type: timeFrame === 'weekly' ? 'weekly' : 'monthly'
-          });
-
-          if (error) {
-            console.error('Error fetching periodic leaderboard:', error);
-            // Fallback to all-time data
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('leaderboard_stats')
-              .select('*')
-              .eq('visibility', 'public')
-              .order('total_points', { ascending: false });
-            
-            if (fallbackError) throw fallbackError;
-            return fallbackData || [];
-          }
-
-          console.log(`Successfully loaded ${data?.length || 0} users for ${timeFrame}`);
-          return Array.isArray(data) ? data : [];
-        } catch (error) {
-          console.log('Periodic leaderboard not available, using all-time data:', error);
-          // Fallback to all-time data
-          const { data: fallbackData, error: fallbackError } = await supabase
+      try {
+        if (timeFrame === 'all-time') {
+          // Fetch all-time leaderboard
+          const { data, error } = await supabase
             .from('leaderboard_stats')
             .select('*')
             .eq('visibility', 'public')
-            .order('total_points', { ascending: false });
+            .order('total_points', { ascending: false })
+            .limit(50);
           
-          if (fallbackError) throw fallbackError;
-          return fallbackData || [];
+          if (error) throw error;
+          return data || [];
+        } else if (timeFrame === 'weekly') {
+          // Fetch current week's leaderboard
+          const weekStart = new Date();
+          weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+          weekStart.setHours(0, 0, 0, 0);
+          
+          const { data, error } = await supabase
+            .from('weekly_leaderboard_stats')
+            .select('*')
+            .eq('visibility', 'public')
+            .eq('week_start_date', weekStart.toISOString().split('T')[0])
+            .order('total_points', { ascending: false })
+            .limit(50);
+          
+          if (error) throw error;
+          return data || [];
+        } else if (timeFrame === 'monthly') {
+          // Fetch current month's leaderboard
+          const monthStart = new Date();
+          monthStart.setDate(1);
+          monthStart.setHours(0, 0, 0, 0);
+          
+          const { data, error } = await supabase
+            .from('monthly_leaderboard_stats')
+            .select('*')
+            .eq('visibility', 'public')
+            .eq('month_start_date', monthStart.toISOString().split('T')[0])
+            .order('total_points', { ascending: false })
+            .limit(50);
+          
+          if (error) throw error;
+          return data || [];
         }
+        
+        return [];
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        return [];
       }
     },
-    staleTime: 5000, // Cache for 5 seconds
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 1000 * 60 * 10, // 10 minutes
   });
 
   // Initialize periodic stats for current user when component mounts
