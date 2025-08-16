@@ -1,8 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, TrendingDown, Clock, Zap } from 'lucide-react';
@@ -19,7 +18,11 @@ interface TopicPerformance {
   category: 'best' | 'needs_work' | 'time_intensive' | 'quick';
 }
 
+type MetricType = 'best' | 'needs_work' | 'time_intensive' | 'quick';
+
 const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) => {
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>('best');
+
   // Fetch user's question attempts for performance analysis
   const { data: questionAttempts = [] } = useQuery({
     queryKey: ['performance-analysis', userName],
@@ -87,22 +90,22 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     const bestTopics = topicPerformance
       .filter(t => t.accuracy >= 80)
       .sort((a, b) => b.accuracy - a.accuracy)
-      .slice(0, 3);
+      .slice(0, 5);
 
     const needsWork = topicPerformance
       .filter(t => t.accuracy < 60)
       .sort((a, b) => a.accuracy - b.accuracy)
-      .slice(0, 3);
+      .slice(0, 5);
 
     const timeIntensive = topicPerformance
       .filter(t => t.avgTime > overallAvgTime * 1.2)
       .sort((a, b) => b.avgTime - a.avgTime)
-      .slice(0, 3);
+      .slice(0, 5);
 
     const quickTopics = topicPerformance
       .filter(t => t.avgTime < overallAvgTime * 0.8 && t.accuracy >= 70)
       .sort((a, b) => a.avgTime - b.avgTime)
-      .slice(0, 3);
+      .slice(0, 5);
 
     return { bestTopics, needsWork, timeIntensive, quickTopics, overallAvgTime };
   };
@@ -116,14 +119,66 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     return `${mins}m ${secs}s`;
   };
 
+  const getMetricData = (metric: MetricType) => {
+    switch (metric) {
+      case 'best':
+        return insights.bestTopics;
+      case 'needs_work':
+        return insights.needsWork;
+      case 'time_intensive':
+        return insights.timeIntensive;
+      case 'quick':
+        return insights.quickTopics;
+    }
+  };
+
+  const getMetricTitle = (metric: MetricType) => {
+    switch (metric) {
+      case 'best':
+        return 'Best Topics';
+      case 'needs_work':
+        return 'Needs Work';
+      case 'time_intensive':
+        return 'Time Intensive';
+      case 'quick':
+        return 'Quick Topics';
+    }
+  };
+
+  const getMetricIcon = (metric: MetricType) => {
+    switch (metric) {
+      case 'best':
+        return <TrendingUp className="h-4 w-4 text-green-500" />;
+      case 'needs_work':
+        return <TrendingDown className="h-4 w-4 text-red-500" />;
+      case 'time_intensive':
+        return <Clock className="h-4 w-4 text-orange-500" />;
+      case 'quick':
+        return <Zap className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getEmptyMessage = (metric: MetricType) => {
+    switch (metric) {
+      case 'best':
+        return 'Keep practicing to see your best topics';
+      case 'needs_work':
+        return 'Great job! No weak areas detected';
+      case 'time_intensive':
+        return "You're managing time well across topics";
+      case 'quick':
+        return 'Practice more to find your quick topics';
+    }
+  };
+
   const renderTopicCard = (topic: TopicPerformance, index: number) => (
-    <div key={topic.topic} className="flex items-center justify-between p-2 rounded border border-gray-100">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+    <div key={topic.topic} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 text-sm font-semibold">
           {index + 1}
         </div>
         <div>
-          <div className="font-medium text-gray-900 text-xs">{topic.topic}</div>
+          <div className="font-medium text-gray-900 text-sm">{topic.topic}</div>
           <div className="text-xs text-gray-500">{topic.attempts} attempts</div>
         </div>
       </div>
@@ -134,28 +189,7 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     </div>
   );
 
-  const renderSection = (
-    title: string, 
-    topics: TopicPerformance[], 
-    icon: React.ReactNode, 
-    emptyMessage: string
-  ) => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h4 className="font-medium text-gray-900 text-sm">{title}</h4>
-      </div>
-      {topics.length > 0 ? (
-        <div className="space-y-2">
-          {topics.map((topic, index) => renderTopicCard(topic, index))}
-        </div>
-      ) : (
-        <div className="text-center py-4">
-          <p className="text-xs text-gray-500">{emptyMessage}</p>
-        </div>
-      )}
-    </div>
-  );
+  const currentData = getMetricData(selectedMetric);
 
   return (
     <Card className="bg-white h-full">
@@ -172,33 +206,60 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 gap-4">
-          {renderSection(
-            "Best Topics",
-            insights.bestTopics,
-            <TrendingUp className="h-4 w-4 text-green-500" />,
-            "Keep practicing to see your best topics"
-          )}
-          
-          {renderSection(
-            "Needs Work",
-            insights.needsWork,
-            <TrendingDown className="h-4 w-4 text-red-500" />,
-            "Great job! No weak areas detected"
-          )}
-          
-          {renderSection(
-            "Time Intensive",
-            insights.timeIntensive,
-            <Clock className="h-4 w-4 text-orange-500" />,
-            "You're managing time well across topics"
-          )}
-          
-          {renderSection(
-            "Quick Topics",
-            insights.quickTopics,
-            <Zap className="h-4 w-4 text-blue-500" />,
-            "Practice more to find your quick topics"
+        {/* Metric Selection Buttons */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <Button
+            variant={selectedMetric === 'best' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedMetric('best')}
+            className="flex items-center gap-1"
+          >
+            <TrendingUp className="h-3 w-3" />
+            Best Topics
+          </Button>
+          <Button
+            variant={selectedMetric === 'needs_work' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedMetric('needs_work')}
+            className="flex items-center gap-1"
+          >
+            <TrendingDown className="h-3 w-3" />
+            Needs Work
+          </Button>
+          <Button
+            variant={selectedMetric === 'time_intensive' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedMetric('time_intensive')}
+            className="flex items-center gap-1"
+          >
+            <Clock className="h-3 w-3" />
+            Time Intensive
+          </Button>
+          <Button
+            variant={selectedMetric === 'quick' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedMetric('quick')}
+            className="flex items-center gap-1"
+          >
+            <Zap className="h-3 w-3" />
+            Quick Topics
+          </Button>
+        </div>
+
+        {/* Selected Metric Content */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            {getMetricIcon(selectedMetric)}
+            <h4 className="font-medium text-gray-900 text-sm">{getMetricTitle(selectedMetric)}</h4>
+          </div>
+          {currentData.length > 0 ? (
+            <div className="space-y-3">
+              {currentData.map((topic, index) => renderTopicCard(topic, index))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">{getEmptyMessage(selectedMetric)}</p>
+            </div>
           )}
         </div>
       </CardContent>

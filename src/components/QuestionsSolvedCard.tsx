@@ -138,15 +138,22 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
-      const { data } = await supabase
+      
+      const { data, error } = await supabase
         .from('user_goals')
         .select('period, target')
         .eq('user_id', user.user.id);
-      const next = { '7days': 0, '1month': 0, 'alltime': 0 } as Record<'7days' | '1month' | 'alltime', number>;
+        
+      if (error) {
+        console.error('Error fetching goals:', error);
+        return;
+      }
+      
+      const goalsMap = { '7days': 0, '1month': 0, 'alltime': 0 } as Record<'7days' | '1month' | 'alltime', number>;
       data?.forEach((row: { period: '7days' | '1month' | 'alltime'; target: number }) => {
-        next[row.period] = row.target || 0;
+        goalsMap[row.period] = row.target || 0;
       });
-      setGoals(next);
+      setGoals(goalsMap);
     } catch (e) {
       console.error('Error fetching goals:', e);
     }
@@ -156,18 +163,40 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
-      const rows = Object.entries(updated).map(([period, target]) => ({
-        user_id: user.user.id,
-        period,
-        target,
-      }));
-      await supabase.from('user_goals').upsert(rows);
+      
+      // Use individual upserts for each period to ensure proper saving
+      const upsertPromises = Object.entries(updated).map(([period, target]) =>
+        supabase
+          .from('user_goals')
+          .upsert({
+            user_id: user.user.id,
+            period,
+            target,
+          }, {
+            onConflict: 'user_id,period'
+          })
+      );
+      
+      const results = await Promise.all(upsertPromises);
+      
+      // Check for any errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        console.error('Error saving goals:', errors);
+        return;
+      }
+      
+      console.log('Goals saved successfully');
       setGoals(updated);
       setGoalDialogOpen(false);
+      
+      // Refresh goals to confirm they were saved
+      await fetchGoals();
     } catch (e) {
       console.error('Error saving goals:', e);
     }
   };
+
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
       case '7days': return 'Last 7 Days';
