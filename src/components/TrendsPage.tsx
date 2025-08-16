@@ -212,17 +212,31 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
     return activities;
   };
 
-  // Calculate performance trends
+  // Calculate performance trends with real data comparison
   const getPerformanceTrends = () => {
     const totalQuestions = questionAttempts.length;
     const correctAnswers = questionAttempts.filter(q => q.is_correct).length;
     const overallAccuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
     
-    // Mock calculation for accuracy change
-    const accuracyChange = Math.floor(Math.random() * 10) - 3; // -3 to +6 range
+    // Calculate yesterday's accuracy for comparison
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const yesterdayEnd = new Date(yesterday);
+    yesterdayEnd.setHours(23, 59, 59, 999);
     
-    // Calculate study time (estimate 2 minutes per question)
-    const studyTimeMinutes = questionAttempts.reduce((sum, q) => sum + (q.time_spent || 120), 0);
+    const yesterdayAttempts = questionAttempts.filter(q => {
+      const attemptDate = new Date(q.created_at);
+      return attemptDate >= yesterday && attemptDate <= yesterdayEnd;
+    });
+    
+    const yesterdayCorrect = yesterdayAttempts.filter(q => q.is_correct).length;
+    const yesterdayAccuracy = yesterdayAttempts.length > 0 ? Math.round((yesterdayCorrect / yesterdayAttempts.length) * 100) : 0;
+    const accuracyChange = overallAccuracy - yesterdayAccuracy;
+    
+    // Calculate actual study time in seconds, convert to hours and minutes
+    const studyTimeSeconds = questionAttempts.reduce((sum, q) => sum + (q.time_spent || 0), 0);
+    const studyTimeMinutes = Math.floor(studyTimeSeconds / 60);
     const studyTimeHours = Math.floor(studyTimeMinutes / 60);
     const studyTimeRemainder = studyTimeMinutes % 60;
 
@@ -257,30 +271,42 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
       skills.push({ skill, accuracy });
     });
 
-    // Add mock data if no real data
+    // Return empty array if no real data - no mock data needed
     if (skills.length === 0) {
-      return [
-        { skill: 'Algebra', accuracy: 88 },
-        { skill: 'Reading', accuracy: 79 },
-        { skill: 'Writing', accuracy: 86 },
-        { skill: 'Geometry', accuracy: 91 }
-      ];
+      return [];
     }
 
     return skills.slice(0, 4);
   };
 
-  // Calculate weekly summary
+  // Calculate weekly summary with real data
   const getWeeklySummary = (): WeeklySummary => {
     const questionsAnswered = weeklyData.length;
     const correctAnswers = weeklyData.filter(q => q.is_correct).length;
     const averageAccuracy = questionsAnswered > 0 ? Math.round((correctAnswers / questionsAnswered) * 100) : 0;
     
-    // Mock calculations
-    const accuracyChange = 5; // +5% from last week
-    const studyTimeHours = Math.round(weeklyData.length * 2 / 60); // 2 min per question
-    const projectedSATScore = Math.min(1600, 1200 + (averageAccuracy * 4));
-    const scoreChange = 35;
+    // Calculate last week's data for comparison
+    const lastWeekStart = new Date();
+    lastWeekStart.setDate(lastWeekStart.getDate() - 14); // Two weeks ago
+    const lastWeekEnd = new Date();
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7); // One week ago
+    
+    const lastWeekAttempts = weeklyData.filter(q => {
+      const attemptDate = new Date(q.created_at);
+      return attemptDate >= lastWeekStart && attemptDate < lastWeekEnd;
+    });
+    
+    const lastWeekCorrect = lastWeekAttempts.filter(q => q.is_correct).length;
+    const lastWeekAccuracy = lastWeekAttempts.length > 0 ? Math.round((lastWeekCorrect / lastWeekAttempts.length) * 100) : 0;
+    const accuracyChange = averageAccuracy - lastWeekAccuracy;
+    
+    // Calculate real study time in hours
+    const studyTimeSeconds = weeklyData.reduce((sum, q) => sum + (q.time_spent || 0), 0);
+    const studyTimeHours = Math.round(studyTimeSeconds / 3600); // Convert to hours
+    
+    // Estimate SAT score based on accuracy (rough calculation)
+    const projectedSATScore = Math.min(1600, Math.max(400, 800 + (averageAccuracy * 8))); // Scale accuracy to SAT range
+    const scoreChange = accuracyChange * 8; // Rough correlation between accuracy and SAT points
 
     return {
       questionsAnswered,

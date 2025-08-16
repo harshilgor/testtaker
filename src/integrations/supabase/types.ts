@@ -145,6 +145,51 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_leaderboard_stats: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          last_updated: string
+          marathon_questions_count: number
+          mock_test_count: number
+          month_end_date: string
+          month_start_date: string
+          quiz_count: number
+          total_points: number
+          user_id: string
+          visibility: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          month_end_date: string
+          month_start_date: string
+          quiz_count?: number
+          total_points?: number
+          user_id: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          month_end_date?: string
+          month_start_date?: string
+          quiz_count?: number
+          total_points?: number
+          user_id?: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -510,6 +555,51 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_leaderboard_stats: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          last_updated: string
+          marathon_questions_count: number
+          mock_test_count: number
+          quiz_count: number
+          total_points: number
+          user_id: string
+          visibility: Database["public"]["Enums"]["leaderboard_visibility"]
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_updated?: string
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id?: string
+          visibility?: Database["public"]["Enums"]["leaderboard_visibility"]
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -633,7 +723,19 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      update_monthly_leaderboard_stats: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      update_periodic_leaderboard_stats: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       update_user_streak: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      update_weekly_leaderboard_stats: {
         Args: { target_user_id: string }
         Returns: undefined
       }
