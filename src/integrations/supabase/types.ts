@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -525,87 +525,87 @@ export type Database = {
       }
       get_questions_for_quiz: {
         Args: {
-          p_section?: string
           p_difficulty?: string
-          p_skill?: string
           p_domain?: string
-          p_limit?: number
           p_exclude_ids?: number[]
+          p_limit?: number
+          p_section?: string
+          p_skill?: string
         }
         Returns: {
+          difficulty: string
+          domain: string
           id: number
-          question_text: string
           option_a: string
           option_b: string
           option_c: string
           option_d: string
+          question_text: string
+          question_type: string
           section: string
           skill: string
-          difficulty: string
-          domain: string
           test_name: string
-          question_type: string
         }[]
       }
       get_random_questions: {
         Args: {
-          p_section?: string
           p_difficulty?: string
-          p_skill?: string
           p_domain?: string
-          p_limit?: number
           p_exclude_ids?: number[]
+          p_limit?: number
+          p_section?: string
+          p_skill?: string
         }
         Returns: {
-          id: number
-          question_text: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
           correct_answer: string
           correct_rationale: string
+          difficulty: string
+          domain: string
+          id: number
           incorrect_rationale_a: string
           incorrect_rationale_b: string
           incorrect_rationale_c: string
           incorrect_rationale_d: string
+          metadata: Json
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          question_type: string
           section: string
           skill: string
-          difficulty: string
-          domain: string
           test_name: string
-          question_type: string
-          metadata: Json
         }[]
       }
       get_unused_questions_for_session: {
         Args: {
-          p_session_id: string
-          p_session_type: string
-          p_section?: string
           p_difficulty?: string
           p_limit?: number
+          p_section?: string
+          p_session_id: string
+          p_session_type: string
         }
         Returns: {
-          id: number
-          question_text: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
           correct_answer: string
           correct_rationale: string
+          difficulty: string
+          domain: string
+          id: number
           incorrect_rationale_a: string
           incorrect_rationale_b: string
           incorrect_rationale_c: string
           incorrect_rationale_d: string
+          metadata: Json
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          question_type: string
           section: string
           skill: string
-          difficulty: string
-          domain: string
           test_name: string
-          question_type: string
-          metadata: Json
         }[]
       }
       import_questions_batch: {
@@ -614,9 +614,9 @@ export type Database = {
       }
       mark_question_used_in_session: {
         Args: {
+          p_question_id: string
           p_session_id: string
           p_session_type: string
-          p_question_id: string
           p_total_available?: number
         }
         Returns: undefined
@@ -644,10 +644,10 @@ export type Database = {
           p_user_id?: string
         }
         Returns: {
-          is_correct: boolean
           correct_answer: string
           correct_explanation: string
           incorrect_explanation: string
+          is_correct: boolean
         }[]
       }
     }
