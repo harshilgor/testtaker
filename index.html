@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/lovable-uploads/2bbd2253-a02a-4d37-b0e9-24d6eb5be0ce.png" type="image/png">
+    <title>get1600</title>
+    <meta name="description" content="Lovable Generated Project" />
+    <meta name="author" content="Lovable" />
+
+    <meta property="og:title" content="get1600" />
+    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <style>
+      /* 1) Hide any iframe or element coming from “lovable” */
+      iframe[src*="lovable"] { display: none !important; }
+
+      /* 2) Hide any anchor linking back to lovable.dev */
+      a[href*="lovable.dev"] { display: none !important; }
+
+      /* 3) Hide any element whose class or ID contains “lovable” */
+      [class*="lovable"], [id*="lovable"] { display: none !important; }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <!-- keep this so GPT-Engineer still loads -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Tiny JS fallback to remove any stray “Edit with Lovable” text-nodes -->
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('a, div, button').forEach(el => {
+          if (/edit with\s*lovable/i.test(el.textContent || '')) {
+            el.remove();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
