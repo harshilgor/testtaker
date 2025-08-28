@@ -16,7 +16,7 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
   
   // Try optimized hook first, fallback to legacy
   const { streakData: optimizedData, isLoading: optimizedLoading, refetch: optimizedRefetch } = useOptimizedStreak(userName);
-  const { streakData: legacyData, isLoading: legacyLoading, checkTodayActivity } = useOptimizedStreak(userName);
+  const { streakData: legacyData, isLoading: legacyLoading } = useOptimizedStreak(userName);
   
   const streakData = optimizedData || legacyData;
   const isLoading = optimizedLoading || legacyLoading;
@@ -49,15 +49,10 @@ const StreakPopup: React.FC<StreakPopupProps> = ({ userName, onNavigateToPerform
 
   // Trigger activity check when component mounts
   useEffect(() => {
-    if (!isLoading) {
-      // Use optimized refetch if available, otherwise fallback to legacy method
-      if (optimizedRefetch) {
-        optimizedRefetch();
-      } else if (checkTodayActivity) {
-        checkTodayActivity();
-      }
+    if (!isLoading && optimizedRefetch) {
+      optimizedRefetch();
     }
-  }, [isLoading, optimizedRefetch, checkTodayActivity]);
+  }, [isLoading, optimizedRefetch]);
 
   const handleClose = () => {
     setIsVisible(false);

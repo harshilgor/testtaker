@@ -261,18 +261,35 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     }
   };
 
+  const currentData = getMetricData(selectedMetric);
+
   const getEmptyMessage = (metric: MetricType) => {
     if (isLoading) return 'Loading your performance data...';
     
+    const combinedAttempts = questionAttempts.length;
+    console.log('Empty message check - attempts:', combinedAttempts, 'current data:', currentData.length);
+    
+    // Also check localStorage for backwards compatibility
+    let hasLocalData = false;
+    try {
+      const stored = JSON.parse(localStorage.getItem('quizResults') || '[]');
+      const localQuizzes = (stored || []).filter((r: any) => r.userName === userName);
+      hasLocalData = localQuizzes.some((r: any) => r.questions && r.questions.length > 0);
+    } catch (e) {
+      console.warn('Failed to check local quiz data', e);
+    }
+    
+    const hasAnyData = combinedAttempts > 0 || hasLocalData;
+    
     switch (metric) {
       case 'best':
-        return questionAttempts.length === 0 ? 'Start practicing to see your best topics!' : 'Keep practicing to improve your performance!';
+        return !hasAnyData ? 'Start practicing to see your best topics!' : 'Keep practicing to improve your performance!';
       case 'needs_work':
-        return questionAttempts.length === 0 ? 'Start practicing to identify areas for improvement!' : 'Great job! All topics are performing well!';
+        return !hasAnyData ? 'Start practicing to identify areas for improvement!' : 'Great job! All topics are performing well!';
       case 'time_intensive':
-        return questionAttempts.length === 0 ? 'Start practicing to see time analysis!' : "You're managing time well across all topics!";
+        return !hasAnyData ? 'Start practicing to see time analysis!' : "You're managing time well across all topics!";
       case 'quick':
-        return questionAttempts.length === 0 ? 'Start practicing to find your quick topics!' : 'Practice more to identify your fastest topics!';
+        return !hasAnyData ? 'Start practicing to find your quick topics!' : 'Practice more to identify your fastest topics!';
     }
   };
 
@@ -294,7 +311,6 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     </div>
   );
 
-  const currentData = getMetricData(selectedMetric);
 
   if (isLoading) {
     return (
