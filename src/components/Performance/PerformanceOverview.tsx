@@ -69,7 +69,8 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
           
           // Enhance question attempts with skill information
           const enhancedData = data?.map(attempt => {
-            const skillInfo = skillMap.get(attempt.question_id);
+            const qid = Number(attempt.question_id);
+            const skillInfo = !isNaN(qid) ? skillMap.get(qid) : undefined;
             return {
               ...attempt,
               skill: skillInfo?.skill || attempt.topic || attempt.subject || 'General Practice',
@@ -131,7 +132,9 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     const combinedAttempts: any[] = [...questionAttempts];
     try {
       const stored = JSON.parse(localStorage.getItem('quizResults') || '[]');
-      const localQuizzes = (stored || []).filter((r: any) => r.userName === userName);
+      const norm = (v: any) => (v || '').toString().trim().toLowerCase();
+      const localQuizzes = (stored || []).filter((r: any) => norm(r.userName) === norm(userName));
+      console.log('Merged local quiz sessions:', localQuizzes.length);
       localQuizzes.forEach((r: any) => {
         (r.questions || []).forEach((q: any, i: number) => {
           const isCorrect = r.answers?.[i] === q?.correctAnswer;
@@ -149,6 +152,8 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     } catch (e) {
       console.warn('Failed to merge local quiz attempts', e);
     }
+
+    console.log('Total combined attempts (DB + local):', combinedAttempts.length);
 
     const topicStats: { [key: string]: { correct: number; total: number; totalTime: number } } = {};
 
