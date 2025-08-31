@@ -29,7 +29,10 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
   const fetchQuestionCounts = async () => {
     try {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      if (!user.user) {
+        setLoading(false);
+        return;
+      }
 
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

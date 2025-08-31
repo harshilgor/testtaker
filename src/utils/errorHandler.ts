@@ -22,7 +22,7 @@ export const setupGlobalErrorHandling = () => {
     const originalConsoleError = console.error;
     console.error = (...args) => {
       // Filter out React hydration warnings in development
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         const message = args.join(' ');
         if (message.includes('Warning: Text content did not match') || 
             message.includes('Warning: Expected server HTML to contain')) {
