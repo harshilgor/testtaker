@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LandingScreen from '@/components/LandingScreen';
@@ -10,6 +10,7 @@ import PerformanceDashboard from '@/components/PerformanceDashboard';
 import TrendsPage from '@/components/TrendsPage';
 import Navigation from '@/components/Navigation';
 import StreakPopup from '@/components/StreakPopup';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard' | 'trends';
 
@@ -17,11 +18,27 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, session, loading, signOut } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
+  
+  console.log('Index component rendering - loading:', loading, 'user:', !!user, 'session:', !!session, 'currentScreen:', currentScreen);
+
+  // Add error handling for auth loading
+  useEffect(() => {
+    if (loading) {
+      console.log('Auth loading...');
+    }
+  }, [loading]);
+
+  // Temporary bypass for debugging - remove this after testing
+  if (window.location.search.includes('bypass=true')) {
+    console.log('Bypassing auth for debugging');
+    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
+  }
 
   if (loading) {
+    console.log('App is in loading state, showing spinner...');
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingSpinner size="lg" text="Loading your account..." />
       </div>
     );
   }

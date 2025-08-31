@@ -182,7 +182,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         .from('mock_test_results')
         .select('*')
         .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false });
+        .order('completed_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching mock tests:', error);

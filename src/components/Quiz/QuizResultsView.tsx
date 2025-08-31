@@ -40,7 +40,34 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
   }, 0);
 
   const accuracy = Math.round((correctAnswers / questions.length) * 100);
-  const totalScore = correctAnswers * 10;
+  // Calculate points based on difficulty (3/6/9 points per correct answer)
+  const calculatePointsFromQuestions = (questions: any[], answers: any[]) => {
+    let totalPoints = 0;
+    questions.forEach((question, index) => {
+      const userAnswer = answers[index];
+      const isCorrect = userAnswer === question.correctAnswer;
+      
+      if (isCorrect) {
+        const difficulty = question.difficulty || 'medium';
+        switch (difficulty.toLowerCase()) {
+          case 'easy':
+            totalPoints += 3;
+            break;
+          case 'medium':
+            totalPoints += 6;
+            break;
+          case 'hard':
+            totalPoints += 9;
+            break;
+          default:
+            totalPoints += 6; // Default to medium
+        }
+      }
+    });
+    return totalPoints;
+  };
+
+  const totalScore = calculatePointsFromQuestions(questions, answers);
 
   if (feedbackPreference === 'end') {
     return (
@@ -80,6 +107,11 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
             <div className="text-center mb-6">
               <div className="text-4xl font-bold text-blue-600 mb-2">{accuracy}%</div>
               <div className="text-slate-600">Overall Accuracy</div>
+            </div>
+
+            <div className="text-center mb-6">
+              <div className="text-4xl font-bold text-yellow-600 mb-2">{totalScore}</div>
+              <div className="text-slate-600">Points Earned</div>
             </div>
           </div>
 

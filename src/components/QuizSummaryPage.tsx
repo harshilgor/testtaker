@@ -47,8 +47,34 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
   const incorrectAnswers = questions.length - correctAnswers;
   const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
   
-  // Calculate points (10 points per correct answer)
-  const pointsEarned = correctAnswers * 10;
+  // Calculate points based on difficulty (3/6/9 points per correct answer)
+  const calculatePointsFromQuestions = (questions: any[], answers: any[]) => {
+    let totalPoints = 0;
+    questions.forEach((question, index) => {
+      const userAnswer = answers[index];
+      const isCorrect = userAnswer === question.correctAnswer;
+      
+      if (isCorrect) {
+        const difficulty = question.difficulty || 'medium';
+        switch (difficulty.toLowerCase()) {
+          case 'easy':
+            totalPoints += 3;
+            break;
+          case 'medium':
+            totalPoints += 6;
+            break;
+          case 'hard':
+            totalPoints += 9;
+            break;
+          default:
+            totalPoints += 6; // Default to medium
+        }
+      }
+    });
+    return totalPoints;
+  };
+
+  const pointsEarned = calculatePointsFromQuestions(questions, answers);
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

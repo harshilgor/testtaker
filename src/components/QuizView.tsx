@@ -217,6 +217,8 @@ const QuizView: React.FC<QuizViewProps> = ({
         queryClient.invalidateQueries({ queryKey: ['all-attempts', userName] });
         queryClient.invalidateQueries({ queryKey: ['difficulty-breakdown', userName] });
         queryClient.invalidateQueries({ queryKey: ['marathon-sessions-performance', userName] });
+        queryClient.invalidateQueries({ queryKey: ['user-mistakes', userName] });
+        queryClient.invalidateQueries({ queryKey: ['question-details'] });
         
       } catch (error) {
         console.error('Supabase save error (will continue with local save):', error);

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Clock, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Zap, Info } from 'lucide-react';
 
 interface PerformanceOverviewProps {
   userName: string;
@@ -181,34 +181,89 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
 
     console.log('Topic stats:', topicStats);
 
+    // Calculate global averages for Bayesian smoothing
+    const allTopics = Object.values(topicStats);
+    const globalAvgAccuracy = allTopics.length > 0 
+      ? allTopics.reduce((sum, stats) => sum + (stats.correct / stats.total), 0) / allTopics.length 
+      : 0.5; // Default 50% if no data
+    const globalAvgTime = allTopics.length > 0 
+      ? allTopics.reduce((sum, stats) => sum + (stats.totalTime / stats.total), 0) / allTopics.length 
+      : overallAvgTime;
+
     const topicPerformance: TopicPerformance[] = Object.entries(topicStats)
       .filter(([_, stats]) => stats.total >= 1) // Include topics with at least 1 attempt
-      .map(([topic, stats]) => ({
-        topic,
-        accuracy: Math.round((stats.correct / stats.total) * 100),
-        avgTime: stats.totalTime > 0 ? Math.round(stats.totalTime / stats.total) : overallAvgTime,
-        attempts: stats.total,
-        category: 'best' as const
-      }));
+      .map(([topic, stats]) => {
+        const rawAccuracy = stats.correct / stats.total;
+        const rawAvgTime = stats.totalTime / stats.total;
+        
+        // Bayesian smoothing for accuracy (weighted average with global prior)
+        const pseudoCount = 5; // Number of "virtual" attempts to blend with global average
+        const bayesianAccuracy = (stats.total * rawAccuracy + pseudoCount * globalAvgAccuracy) / (stats.total + pseudoCount);
+        
+        // Bayesian smoothing for time (weighted average with global prior)
+        const bayesianAvgTime = (stats.total * rawAvgTime + pseudoCount * globalAvgTime) / (stats.total + pseudoCount);
+        
+        return {
+          topic,
+          accuracy: Math.round(bayesianAccuracy * 100),
+          avgTime: Math.round(bayesianAvgTime),
+          attempts: stats.total,
+          category: 'best' as const
+        };
+      });
 
-    console.log('Topic performance:', topicPerformance);
+    console.log('Topic performance with Bayesian smoothing:', topicPerformance);
 
-  // Categorize topics - showing exactly top 5 as requested
-  const bestTopics = topicPerformance
-    .sort((a, b) => b.accuracy - a.accuracy)
-    .slice(0, 5);
+    // Improved ranking logic with minimum thresholds
+    const minAttemptsForRanking = 3; // Minimum attempts to be considered for ranking
+    
+    // Best Topics: High accuracy with sufficient attempts
+    const bestTopics = topicPerformance
+      .filter(topic => topic.attempts >= minAttemptsForRanking)
+      .sort((a, b) => {
+        // Primary: accuracy, Secondary: number of attempts (more attempts = more confidence)
+        if (Math.abs(a.accuracy - b.accuracy) > 5) {
+          return b.accuracy - a.accuracy;
+        }
+        return b.attempts - a.attempts; // Tie-breaker: more attempts wins
+      })
+      .slice(0, 5);
 
-  const needsWork = topicPerformance
-    .sort((a, b) => a.accuracy - b.accuracy)
-    .slice(0, 5);
+    // Needs Work: Low accuracy with sufficient attempts
+    const needsWork = topicPerformance
+      .filter(topic => topic.attempts >= minAttemptsForRanking)
+      .sort((a, b) => {
+        // Primary: accuracy (lower is worse), Secondary: attempts (more attempts = more reliable assessment)
+        if (Math.abs(a.accuracy - b.accuracy) > 5) {
+          return a.accuracy - b.accuracy;
+        }
+        return b.attempts - a.attempts; // Tie-breaker: more attempts = more reliable "needs work" assessment
+      })
+      .slice(0, 5);
 
-  const timeIntensive = topicPerformance
-    .sort((a, b) => b.avgTime - a.avgTime)
-    .slice(0, 5);
+    // Time Intensive: High average time with minimum attempts threshold
+    const timeIntensive = topicPerformance
+      .filter(topic => topic.attempts >= 5) // Higher threshold for time analysis
+      .sort((a, b) => {
+        // Primary: average time (higher = more time intensive), Secondary: attempts
+        if (Math.abs(a.avgTime - b.avgTime) > 10) {
+          return b.avgTime - a.avgTime;
+        }
+        return b.attempts - a.attempts; // Tie-breaker: more attempts = more reliable time assessment
+      })
+      .slice(0, 5);
 
-  const quickTopics = topicPerformance
-    .sort((a, b) => a.avgTime - b.avgTime)
-    .slice(0, 5);
+    // Quick Topics: Low average time with minimum attempts threshold
+    const quickTopics = topicPerformance
+      .filter(topic => topic.attempts >= 5) // Higher threshold for time analysis
+      .sort((a, b) => {
+        // Primary: average time (lower = quicker), Secondary: attempts
+        if (Math.abs(a.avgTime - b.avgTime) > 10) {
+          return a.avgTime - b.avgTime;
+        }
+        return b.attempts - a.attempts; // Tie-breaker: more attempts = more reliable speed assessment
+      })
+      .slice(0, 5);
 
     return { bestTopics, needsWork, timeIntensive, quickTopics, overallAvgTime };
   };
@@ -266,33 +321,93 @@ const PerformanceOverview: React.FC<PerformanceOverviewProps> = ({ userName }) =
     
     switch (metric) {
       case 'best':
-        return questionAttempts.length === 0 ? 'Start practicing to see your best topics!' : 'Keep practicing to improve your performance!';
+        return questionAttempts.length === 0 
+          ? 'Start practicing to see your best topics!' 
+          : 'Complete at least 3 questions per topic to see your best performing areas!';
       case 'needs_work':
-        return questionAttempts.length === 0 ? 'Start practicing to identify areas for improvement!' : 'Great job! All topics are performing well!';
+        return questionAttempts.length === 0 
+          ? 'Start practicing to identify areas for improvement!' 
+          : 'Complete at least 3 questions per topic to identify areas that need work!';
       case 'time_intensive':
-        return questionAttempts.length === 0 ? 'Start practicing to see time analysis!' : "You're managing time well across all topics!";
+        return questionAttempts.length === 0 
+          ? 'Start practicing to see time analysis!' 
+          : 'Complete at least 5 questions per topic to see time-intensive areas!';
       case 'quick':
-        return questionAttempts.length === 0 ? 'Start practicing to find your quick topics!' : 'Practice more to identify your fastest topics!';
+        return questionAttempts.length === 0 
+          ? 'Start practicing to find your quick topics!' 
+          : 'Complete at least 5 questions per topic to identify your fastest topics!';
     }
   };
 
-  const renderTopicCard = (topic: TopicPerformance, index: number) => (
-    <div key={topic.topic} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 text-sm font-semibold">
-          {index + 1}
+  const getConfidenceLevel = (attempts: number) => {
+    if (attempts >= 10) return { 
+      level: 'High', 
+      color: 'text-green-600', 
+      bg: 'bg-green-100',
+      description: 'Based on 10+ attempts. This ranking is very reliable and statistically significant.'
+    };
+    if (attempts >= 5) return { 
+      level: 'Medium', 
+      color: 'text-yellow-600', 
+      bg: 'bg-yellow-100',
+      description: 'Based on 5-9 attempts. This ranking is moderately reliable but could change with more practice.'
+    };
+    return { 
+      level: 'Low', 
+      color: 'text-red-600', 
+      bg: 'bg-red-100',
+      description: 'Based on fewer than 5 attempts. This ranking may not be reliable and could change significantly with more practice.'
+    };
+  };
+
+  const renderTopicCard = (topic: TopicPerformance, index: number) => {
+    const confidence = getConfidenceLevel(topic.attempts);
+    const [showTooltip, setShowTooltip] = useState(false);
+    
+    return (
+      <div key={topic.topic} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 text-sm font-semibold">
+            {index + 1}
+          </div>
+          <div>
+            <div className="font-medium text-gray-900 text-sm">{topic.topic}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{topic.attempts} attempt{topic.attempts !== 1 ? 's' : ''}</span>
+              <div className="relative">
+                <button
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${confidence.bg} ${confidence.color} font-medium flex items-center gap-1 hover:opacity-80 transition-opacity`}
+                  onClick={() => setShowTooltip(!showTooltip)}
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                >
+                  {confidence.level}
+                  <Info className="h-3 w-3" />
+                </button>
+                
+                {/* Tooltip */}
+                {showTooltip && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg shadow-lg z-10 w-80">
+                    <div className="font-semibold mb-2">Confidence Level: {confidence.level}</div>
+                    <div className="mb-2 leading-relaxed">{confidence.description}</div>
+                    <div className="text-gray-300 text-xs leading-relaxed">
+                      <strong>Tip:</strong> Practice more questions in this topic to get a more accurate ranking.
+                    </div>
+                    {/* Arrow */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <div className="font-medium text-gray-900 text-sm">{topic.topic}</div>
-          <div className="text-xs text-gray-500">{topic.attempts} attempt{topic.attempts !== 1 ? 's' : ''}</div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-gray-900">{topic.accuracy}%</div>
+          <div className="text-xs text-gray-500">{formatTime(topic.avgTime)}</div>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-sm font-bold text-gray-900">{topic.accuracy}%</div>
-        <div className="text-xs text-gray-500">{formatTime(topic.avgTime)}</div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const currentData = getMetricData(selectedMetric);
 

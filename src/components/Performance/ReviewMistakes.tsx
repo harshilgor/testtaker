@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,15 +8,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   AlertCircle,
-  Brain,
   Filter,
   Clock,
   Target,
-  BookOpen,
-  TrendingDown,
   Eye,
-  Save,
-  RefreshCw
+  TrendingDown,
+  X,
+  CheckCircle
 } from 'lucide-react';
 
 interface QuestionBankItem {
@@ -31,7 +29,7 @@ interface QuestionBankItem {
   skill: string;
   difficulty: string;
   domain: string;
-  error_type?: string; // New field for error categorization
+  error_type?: string;
 }
 
 interface Mistake {
@@ -42,9 +40,8 @@ interface Mistake {
   subject: string;
   time_spent: number;
   created_at: string;
-  review_status: 'unreviewed' | 'reviewed' | 'retried'; // New field for review tracking
-  repeat_count: number; // Track how many times this type of mistake occurs
-  // Question data from question_bank
+  review_status: 'unreviewed' | 'reviewed' | 'retried';
+  repeat_count: number;
   question_text?: string;
   correct_answer?: string;
   explanation?: string;
@@ -61,12 +58,6 @@ interface FilterOptions {
   reviewStatus: string;
 }
 
-interface SavedFilter {
-  id: string;
-  name: string;
-  filters: FilterOptions;
-}
-
 const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: 'all',
@@ -77,19 +68,35 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   });
   const [selectedMistake, setSelectedMistake] = useState<Mistake | null>(null);
   const [showMistakeDialog, setShowMistakeDialog] = useState(false);
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
-  const [showSaveFilterDialog, setShowSaveFilterDialog] = useState(false);
-  const [newFilterName, setNewFilterName] = useState('');
 
   // Fetch user's mistakes from question attempts
-  const { data: userAttempts = [] } = useQuery({
+  const { data: userAttempts = [], refetch: refetchMistakes } = useQuery({
     queryKey: ['user-mistakes', userName],
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
+      if (!user.user) {
+        console.log('No authenticated user found');
+        return [];
+      }
 
-      console.log('Fetching user mistakes...');
+      console.log('Fetching user mistakes for user:', user.user.id);
 
+      // First, let's check if there are ANY attempts for this user
+      const { data: allAttempts, error: allError } = await supabase
+        .from('question_attempts_v2')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .limit(10);
+
+      if (allError) {
+        console.error('Error fetching all attempts:', allError);
+        return [];
+      }
+
+      console.log(`Total attempts for user: ${allAttempts?.length || 0}`);
+      console.log('Sample attempts:', allAttempts);
+
+      // Now get incorrect attempts
       const { data, error } = await supabase
         .from('question_attempts_v2')
         .select('*')
@@ -107,19 +114,28 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
       return data || [];
     },
     enabled: !!userName,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch question details for the mistakes
   const { data: questionDetails = [] } = useQuery({
     queryKey: ['question-details', userAttempts],
     queryFn: async () => {
-      if (!userAttempts.length) return [];
+      if (!userAttempts.length) {
+        console.log('No user attempts to fetch question details for');
+        return [];
+      }
 
       const questionIds = [...new Set(userAttempts.map(a => a.question_id).filter(Boolean))];
       
-      if (!questionIds.length) return [];
+      if (!questionIds.length) {
+        console.log('No question IDs found in user attempts');
+        return [];
+      }
 
-      console.log('Fetching question details for:', questionIds);
+      console.log('Fetching question details for question IDs:', questionIds);
 
       const { data, error } = await supabase
         .from('question_bank')
@@ -132,18 +148,54 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
       }
 
       console.log(`Found ${data?.length || 0} question details`);
+      console.log('Sample question details:', data?.slice(0, 2));
       return data || [];
     },
     enabled: userAttempts.length > 0,
   });
 
+  // Realtime: auto-refresh when user's attempts change
+  useEffect(() => {
+    let channel: any;
+    (async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user) return;
+
+      channel = supabase
+        .channel('review-mistakes-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'question_attempts_v2',
+          filter: `user_id=eq.${user.user.id}`
+        }, () => {
+          refetchMistakes();
+        })
+        .subscribe();
+    })();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [userName, refetchMistakes]);
+
   // Combine attempts with question details and add review status
   const mistakesWithDetails = useMemo(() => {
-    if (!userAttempts.length || !questionDetails.length) return [];
+    console.log('Calculating mistakes with details...');
+    console.log('User attempts:', userAttempts.length);
+    console.log('Question details:', questionDetails.length);
+    
+    if (!userAttempts.length || !questionDetails.length) {
+      console.log('No user attempts or question details available');
+      return [];
+    }
 
     const questionMap = new Map(questionDetails.map(q => [q.id.toString(), q]));
+    console.log('Question map size:', questionMap.size);
     
-    return userAttempts.map(attempt => {
+    const mistakes = userAttempts.map(attempt => {
       const question = questionMap.get(attempt.question_id);
       if (!question) {
         console.warn('Question not found for attempt:', attempt.question_id);
@@ -173,6 +225,9 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
         error_type: (question as any).error_type || 'general'
       } as Mistake;
     }).filter(Boolean) as Mistake[];
+    
+    console.log('Final mistakes with details:', mistakes.length);
+    return mistakes;
   }, [userAttempts, questionDetails]);
 
   // Filter mistakes based on selected filters
@@ -253,22 +308,11 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
       ? mistakesWithDetails.reduce((sum, m) => sum + (m.time_spent || 0), 0) / mistakesWithDetails.length
       : 0;
 
-    // Most common error type
-    const errorTypeCounts = mistakesWithDetails.reduce((acc, mistake) => {
-      const errorType = mistake.error_type || 'general';
-      acc[errorType] = (acc[errorType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const topErrorType = Object.entries(errorTypeCounts)
-      .sort(([,a], [,b]) => b - a)[0];
-
     return {
       totalMistakes,
       recentMistakes,
       topTopics,
-      avgTimeSpent,
-      topErrorType: topErrorType ? { type: topErrorType[0], count: topErrorType[1], percentage: Math.round((topErrorType[1] / totalMistakes) * 100) } : null
+      avgTimeSpent
     };
   }, [mistakesWithDetails]);
 
@@ -292,136 +336,86 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
   };
 
-  // Save current filter preset
-  const saveCurrentFilter = () => {
-    if (!newFilterName.trim()) return;
+  // Generate learning insights based on mistake data
+  const generateInsights = (mistake: Mistake) => {
+    const insights = [];
     
-    const newFilter: SavedFilter = {
-      id: Date.now().toString(),
-      name: newFilterName,
-      filters: { ...filters }
-    };
-    
-    setSavedFilters(prev => [...prev.slice(-4), newFilter]); // Keep only 5 presets
-    setNewFilterName('');
-    setShowSaveFilterDialog(false);
-  };
-
-  // Apply saved filter
-  const applySavedFilter = (savedFilter: SavedFilter) => {
-    setFilters(savedFilter.filters);
-  };
-
-  // Get related mistakes for detailed review
-  const getRelatedMistakes = (currentMistake: Mistake) => {
-    return mistakesWithDetails
-      .filter(m => 
-        m.id !== currentMistake.id && 
-        m.topic === currentMistake.topic &&
-        new Date(m.created_at) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-      )
-      .slice(0, 3);
-  };
-
-  // Generate learning tips based on mistake data
-  const generateLearningTips = (mistake: Mistake) => {
-    const tips = [];
-    
-    if (mistake.time_spent < 10) {
-      tips.push("This might be a rushed guess—try reading twice");
+    if (mistake.time_spent < 15) {
+      insights.push("You answered too quickly. Take time to read the question carefully.");
     } else if (mistake.time_spent > 120) {
-      tips.push("You spent a lot of time on this question. Consider reviewing time management strategies.");
+      insights.push("You spent a long time on this question. Consider reviewing time management strategies.");
     }
     
     if (mistake.repeat_count > 2) {
-      tips.push(`You've missed this type ${mistake.repeat_count} times—review the rule here`);
+      insights.push(`This is a recurring mistake in ${mistake.topic}. Focus on understanding the underlying concept.`);
     }
     
-    if (tips.length === 0) {
-      tips.push("Take your time to understand the question fully before answering.");
+    if (insights.length === 0) {
+      insights.push("Review the explanation carefully to understand why your answer was incorrect.");
     }
     
-    return tips;
+    return insights;
   };
 
   return (
-    <Card className="bg-white border-0 shadow-sm">
+    <Card className="bg-white border border-gray-200 shadow-sm">
       <CardContent className="p-6">
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Review Mistakes</h3>
-              <p className="text-sm text-gray-500">Learn from your errors</p>
+              <h3 className="text-xl font-semibold text-gray-900">Review Mistakes</h3>
+              <p className="text-sm text-gray-500">Identify patterns and improve your performance</p>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-red-50 text-red-700">
-            {filteredMistakes.length} mistakes
-          </Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">{filteredMistakes.length} mistakes</span>
+          </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-4 bg-red-50 rounded-lg">
-            <div className="text-2xl font-bold text-red-600">{mistakeStats.totalMistakes}</div>
-            <div className="text-sm text-red-600">Total Mistakes</div>
+        {/* Key Insights */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-medium text-gray-700">Total Mistakes</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{mistakeStats.totalMistakes}</div>
           </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{mistakeStats.recentMistakes}</div>
-            <div className="text-sm text-orange-600">This Week</div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">This Week</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{mistakeStats.recentMistakes}</div>
           </div>
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Top Weak Area</span>
+            </div>
+            <div className="text-lg font-semibold text-gray-900">
               {mistakeStats.topTopics[0]?.topic || 'N/A'}
             </div>
-            <div className="text-sm text-blue-600">Top Weak Area</div>
-          </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">
-              {formatTime(mistakeStats.avgTimeSpent)}
-            </div>
-            <div className="text-sm text-purple-600">Avg. Time</div>
           </div>
         </div>
 
-        {/* Most Common Error Type Card */}
-        {mistakeStats.topErrorType && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-900">Most Common Error Type</h4>
-                <p className="text-sm text-gray-600">
-                  {mistakeStats.topErrorType.type}: {mistakeStats.topErrorType.percentage}% of Mistakes
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFilters(prev => ({ ...prev, skill: mistakeStats.topErrorType!.type }))}
-              >
-                View All
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Filters Section */}
+        {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filters:</span>
+            <span className="text-sm font-medium text-gray-700">Filter by:</span>
           </div>
           
           <Select value={filters.dateRange} onValueChange={(value) => setFilters(prev => ({ ...prev, dateRange: value }))}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-32 border-gray-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -429,12 +423,11 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="week">This Week</SelectItem>
               <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="3months">Last 3 Months</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={filters.skill} onValueChange={(value) => setFilters(prev => ({ ...prev, skill: value }))}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 border-gray-300">
               <SelectValue placeholder="All Skills" />
             </SelectTrigger>
             <SelectContent>
@@ -446,7 +439,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
           </Select>
 
           <Select value={filters.difficulty} onValueChange={(value) => setFilters(prev => ({ ...prev, difficulty: value }))}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-32 border-gray-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -456,87 +449,38 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
-
-          <Select value={filters.subject} onValueChange={(value) => setFilters(prev => ({ ...prev, subject: value }))}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {uniqueSubjects.map(subject => (
-                <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filters.reviewStatus} onValueChange={(value) => setFilters(prev => ({ ...prev, reviewStatus: value }))}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="unreviewed">Unreviewed</SelectItem>
-              <SelectItem value="reviewed">Reviewed</SelectItem>
-              <SelectItem value="retried">Retried</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSaveFilterDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            Save Filters
-          </Button>
         </div>
 
-        {/* Saved Filter Presets */}
-        {savedFilters.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Saved Filters:</h4>
-            <div className="flex flex-wrap gap-2">
-              {savedFilters.map(filter => (
-                <Button
-                  key={filter.id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => applySavedFilter(filter)}
-                  className="text-xs"
-                >
-                  {filter.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Mistakes List */}
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-3">
           {filteredMistakes.length === 0 ? (
-            <div className="text-center py-8">
-              <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No mistakes found with current filters</p>
-              <p className="text-sm text-gray-400">Great job! Keep up the good work!</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 font-medium">No mistakes found</p>
+              <p className="text-sm text-gray-400">Great job! Keep up the excellent work.</p>
             </div>
           ) : (
             filteredMistakes.map((mistake, index) => (
-              <div key={mistake.id || index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between mb-3">
+              <div 
+                key={mistake.id || index} 
+                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer"
+                onClick={() => {
+                  setSelectedMistake(mistake);
+                  setShowMistakeDialog(true);
+                }}
+              >
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge className={`text-xs ${
-                        mistake.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                        mistake.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
+                      <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
                         {mistake.difficulty}
                       </Badge>
-                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                      <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
                         {mistake.subject}
                       </Badge>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-xs text-gray-500">
                         {formatDate(mistake.created_at)}
                       </span>
                     </div>
@@ -545,26 +489,20 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
                     </h4>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Target className="h-4 w-4" />
-                        <span>Your answer: {mistake.user_answer || 'N/A'}</span>
+                        <X className="h-4 w-4 text-red-500" />
+                        <span>Incorrect</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
                         <span>{formatTime(mistake.time_spent || 0)}</span>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <Target className="h-4 w-4" />
+                        <span>{mistake.topic}</span>
+                      </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedMistake(mistake);
-                      setShowMistakeDialog(true);
-                    }}
-                    className="ml-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <Eye className="h-4 w-4 text-gray-400 ml-2" />
                 </div>
               </div>
             ))
@@ -575,145 +513,84 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
         <Dialog open={showMistakeDialog} onOpenChange={setShowMistakeDialog}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2 text-gray-900">
                 <AlertCircle className="h-5 w-5 text-red-600" />
-                Mistake Review
+                Mistake Analysis
               </DialogTitle>
             </DialogHeader>
             
             {selectedMistake && (
-              <div className="space-y-4">
-                {/* Question Details */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge className={`text-xs ${
-                      selectedMistake.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                      selectedMistake.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedMistake.difficulty}
-                    </Badge>
-                    <Badge className="bg-blue-100 text-blue-800 text-xs">
-                      {selectedMistake.subject}
-                    </Badge>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(selectedMistake.created_at)}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Question:</h4>
-                    <p className="text-gray-700 bg-gray-50 p-3 rounded">
-                      {selectedMistake.question_text || 'Question text not available'}
-                    </p>
+              <div className="space-y-6">
+                {/* Question */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Question</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-gray-700">{selectedMistake.question_text || 'Question text not available'}</p>
                   </div>
                 </div>
 
-                {/* Answer Comparison */}
+                {/* Answer Analysis */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-red-50 rounded-lg">
-                    <h5 className="font-medium text-red-900 mb-1">Your Answer</h5>
-                    <p className="text-red-700">{selectedMistake.user_answer || 'N/A'}</p>
+                  <div className="border border-red-200 bg-red-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-red-900 mb-2 flex items-center gap-2">
+                      <X className="h-4 w-4" />
+                      Your Answer
+                    </h5>
+                    <p className="text-red-700">{selectedMistake.user_answer || 'Incorrect'}</p>
                   </div>
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <h5 className="font-medium text-green-900 mb-1">Correct Answer</h5>
-                    <p className="text-green-700">{selectedMistake.correct_answer || 'N/A'}</p>
+                  <div className="border border-gray-200 bg-gray-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Correct Answer
+                    </h5>
+                    <p className="text-gray-700">{selectedMistake.correct_answer || 'N/A'}</p>
                   </div>
                 </div>
+
+                {/* Explanation */}
+                {selectedMistake.explanation && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Why This Was Wrong</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-gray-700">{selectedMistake.explanation}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Performance Metrics */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-lg font-bold text-blue-800">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-900">
                       {formatTime(selectedMistake.time_spent || 0)}
                     </div>
-                    <div className="text-sm text-blue-600">Time Spent</div>
+                    <div className="text-sm text-gray-600">Time Spent</div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <div className="text-lg font-bold text-purple-800">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-900">
                       {selectedMistake.topic}
                     </div>
-                    <div className="text-sm text-purple-600">Topic</div>
+                    <div className="text-sm text-gray-600">Topic</div>
                   </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg">
-                    <div className="text-lg font-bold text-orange-800">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-900">
                       {selectedMistake.difficulty}
                     </div>
-                    <div className="text-sm text-orange-600">Difficulty</div>
+                    <div className="text-sm text-gray-600">Difficulty</div>
                   </div>
                 </div>
 
-                {/* Learning Tips */}
-                <div className="p-4 bg-yellow-50 rounded-lg">
-                  <h5 className="font-medium text-yellow-900 mb-2">💡 Learning Tips</h5>
-                  <ul className="text-yellow-800 text-sm space-y-1">
-                    {generateLearningTips(selectedMistake).map((tip, index) => (
-                      <li key={index}>• {tip}</li>
+                {/* Learning Insights */}
+                <div className="border-l-4 border-red-500 bg-red-50 p-4 rounded-r-lg">
+                  <h5 className="font-medium text-red-900 mb-2">💡 Learning Insight</h5>
+                  <ul className="text-red-800 text-sm space-y-1">
+                    {generateInsights(selectedMistake).map((insight, index) => (
+                      <li key={index}>• {insight}</li>
                     ))}
                   </ul>
                 </div>
-
-                {/* Related Mistakes */}
-                {(() => {
-                  const relatedMistakes = getRelatedMistakes(selectedMistake);
-                  if (relatedMistakes.length > 0) {
-                    return (
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <h5 className="font-medium text-gray-900 mb-2">Related Mistakes</h5>
-                        <div className="space-y-2">
-                          {relatedMistakes.map((related, index) => (
-                            <div key={related.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                              <span className="text-sm text-gray-700 line-clamp-1">
-                                {related.question_text}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedMistake(related);
-                                }}
-                              >
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
               </div>
             )}
-          </DialogContent>
-        </Dialog>
 
-        {/* Save Filter Dialog */}
-        <Dialog open={showSaveFilterDialog} onOpenChange={setShowSaveFilterDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Save Filter Preset</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Filter Name</label>
-                <input
-                  type="text"
-                  value={newFilterName}
-                  onChange={(e) => setNewFilterName(e.target.value)}
-                  placeholder="e.g., My Weak Math Topics This Month"
-                  className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowSaveFilterDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveCurrentFilter} disabled={!newFilterName.trim()}>
-                  Save
-                </Button>
-              </div>
-            </div>
           </DialogContent>
         </Dialog>
       </CardContent>
@@ -722,3 +599,4 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 };
 
 export default ReviewMistakes;
+
