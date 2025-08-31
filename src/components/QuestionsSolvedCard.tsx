@@ -140,7 +140,10 @@ const QuestionsSolvedCard: React.FC<QuestionsSolvedCardProps> = ({ userName, mar
   const fetchGoals = async () => {
     try {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      if (!user.user) {
+        setLoading(false);
+        return;
+      }
       
       const { data, error } = await supabase
         .from('user_goals')
