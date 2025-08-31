@@ -110,8 +110,44 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
         return [];
       }
 
-      console.log(`Found ${data?.length || 0} mistakes`);
-      return data || [];
+      console.log(`Found ${data?.length || 0} mistakes from question_attempts_v2`);
+      
+      // Also check for mistakes from localStorage quiz results as backup
+      let combinedMistakes = data || [];
+      try {
+        const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
+        const userQuizzes = storedQuizzes.filter((r: any) => r.userName === userName);
+        
+        userQuizzes.forEach((quiz: any) => {
+          if (quiz.questions && quiz.answers) {
+            quiz.questions.forEach((question: any, index: number) => {
+              const userAnswer = quiz.answers[index];
+              if (userAnswer !== question.correctAnswer && userAnswer !== null) {
+                // Add as a mistake
+                combinedMistakes.push({
+                  id: `local-${quiz.date}-${index}`,
+                  user_id: user.user.id,
+                  question_id: question.id?.toString() || `local-q-${index}`,
+                  topic: question.topic || question.skill || quiz.subject,
+                  subject: quiz.subject,
+                  difficulty: question.difficulty || 'medium',
+                  is_correct: false,
+                  time_spent: question.timeSpent || 0,
+                  created_at: quiz.date,
+                  session_type: 'quiz',
+                  session_id: quiz.date,
+                  points_earned: 0
+                });
+              }
+            });
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to merge local quiz mistakes:', e);
+      }
+      
+      console.log(`Total mistakes (DB + localStorage): ${combinedMistakes.length}`);
+      return combinedMistakes;
     },
     enabled: !!userName,
     refetchOnWindowFocus: true,
