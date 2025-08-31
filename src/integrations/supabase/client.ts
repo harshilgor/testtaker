@@ -36,17 +36,5 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 });
 
-// Add connection error handling (safely check if realtime is available)
-try {
-  if (supabase.realtime && typeof supabase.realtime.on === 'function') {
-    supabase.realtime.on('disconnect', () => {
-      console.warn('Supabase realtime connection lost');
-    });
-
-    supabase.realtime.on('reconnect', () => {
-      console.log('Supabase realtime connection restored');
-    });
-  }
-} catch (error) {
-  console.warn('Realtime connection setup failed:', error);
-}
+// Connection monitoring can be handled through auth state changes
+// Realtime connection status is managed internally by Supabase
