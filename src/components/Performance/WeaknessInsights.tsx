@@ -202,8 +202,11 @@ const WeaknessInsights: React.FC<WeaknessInsightsProps> = ({ mistakes, userName,
       const topicBreakdown = allSkills.map(skill => ({
         topic: skill.skill,
         subject: skill.subject,
-        mistakeCount: skill.mistakeCount,
-        avgTime: skill.avgTimeSpent
+        mistakeCount: skill.mistakes.length,
+        avgTime: Math.round(
+          (skill.mistakes.reduce((sum, m) => sum + (m.time_spent || 0), 0)) /
+          (skill.mistakes.length || 1)
+        )
       }));
 
       // Create comprehensive prompt for Gemini
@@ -328,163 +331,8 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
     }
   };
 
-  // Generate comprehensive insights using Gemini AI
-  const generateComprehensiveInsights = async () => {
-    if (!mistakes.length) return;
-    
-    setIsGeneratingComprehensive(true);
-    
-    try {
-      // Prepare comprehensive data for Gemini
-      const mistakeSummary = mistakes.map(m => ({
-        topic: m.topic,
-        subject: m.subject,
-        difficulty: m.difficulty,
-        time_spent: m.time_spent,
-        error_type: m.error_type,
-        repeat_count: m.repeat_count,
-        created_at: m.created_at
-      }));
+  // Duplicate generateComprehensiveInsights removed to fix redeclaration error
 
-      const subjectBreakdown = {
-        math: mistakes.filter(m => m.subject === 'math').length,
-        english: mistakes.filter(m => m.subject === 'english').length
-      };
-
-      const timeAnalysis = {
-        avgTime: Math.round(mistakes.reduce((sum, m) => sum + (m.time_spent || 0), 0) / mistakes.length),
-        fastMistakes: mistakes.filter(m => (m.time_spent || 0) < 30).length,
-        slowMistakes: mistakes.filter(m => (m.time_spent || 0) > 90).length
-      };
-
-      const topicBreakdown = allSkills.map(skill => ({
-        topic: skill.skill,
-        subject: skill.subject,
-        mistakeCount: skill.mistakeCount,
-        avgTime: skill.avgTimeSpent
-      }));
-
-      // Create comprehensive prompt for Gemini
-      const comprehensivePrompt = `You are an expert SAT tutor analyzing a student's comprehensive performance data. 
-
-STUDENT: ${userName}
-TOTAL MISTAKES: ${mistakes.length}
-SUBJECT BREAKDOWN: Math: ${subjectBreakdown.math}, English: ${subjectBreakdown.english}
-TIME ANALYSIS: Average time per question: ${timeAnalysis.avgTime}s, Fast mistakes (<30s): ${timeAnalysis.fastMistakes}, Slow mistakes (>90s): ${timeAnalysis.slowMistakes}
-
-TOPIC BREAKDOWN:
-${topicBreakdown.map(t => `- ${t.topic} (${t.subject}): ${t.mistakeCount} mistakes, avg ${t.avgTime}s`).join('\n')}
-
-MISTAKE DETAILS:
-${mistakeSummary.map(m => `- ${m.topic} (${m.subject}): ${m.difficulty} difficulty, ${m.time_spent}s, repeat: ${m.repeat_count}, error: ${m.error_type || 'unknown'}`).join('\n')}
-
-Please provide a comprehensive analysis in this JSON format:
-
-{
-  "overallAnalysis": "A 3-4 sentence summary of the student's overall performance and main challenges",
-  "keyWeaknesses": [
-    "List 5-6 specific areas where the student struggles most",
-    "Be specific about topics and skills"
-  ],
-  "learningPatterns": [
-    "List 4-5 patterns in how the student approaches questions",
-    "Include time management, error types, and subject preferences"
-  ],
-  "improvementStrategies": [
-    "List 6-8 specific strategies to improve overall performance",
-    "Include both study techniques and test-taking strategies"
-  ],
-  "timeManagementInsights": [
-    "List 3-4 specific insights about the student's time management",
-    "Based on the time data provided"
-  ],
-  "subjectSpecificAdvice": {
-    "math": [
-      "List 4-5 specific strategies for math improvement",
-      "Based on math mistakes and patterns"
-    ],
-    "english": [
-      "List 4-5 specific strategies for English improvement", 
-      "Based on English mistakes and patterns"
-    ]
-  },
-  "confidenceLevel": "low/medium/high based on the overall performance",
-  "estimatedImprovementTime": "Realistic time estimate for significant improvement",
-  "priorityActions": [
-    "List 4-5 immediate actions the student should take",
-    "Prioritized by impact and urgency"
-  ]
-}
-
-Make the analysis specific, actionable, and encouraging. Focus on patterns and specific strategies.`;
-
-      // Call Gemini API for comprehensive analysis
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBhOTKC0-sJXvoXNpCShWPKfJ6_1BG2h2w`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: comprehensivePrompt
-            }]
-          }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (content) {
-        // Try to extract JSON from the response
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          setComprehensiveInsights(parsed);
-        } else {
-          // Fallback parsing
-          setComprehensiveInsights({
-            overallAnalysis: "Based on your performance data, you have several areas for improvement. Focus on your weakest topics and practice time management.",
-            keyWeaknesses: ["Need more specific analysis"],
-            learningPatterns: ["Patterns being analyzed"],
-            improvementStrategies: ["Practice regularly", "Review mistakes", "Time management"],
-            timeManagementInsights: ["Work on pacing"],
-            subjectSpecificAdvice: {
-              math: ["Practice problem-solving"],
-              english: ["Improve reading comprehension"]
-            },
-            confidenceLevel: 'medium',
-            estimatedImprovementTime: '3-4 weeks',
-            priorityActions: ["Start with weakest topics", "Practice daily"]
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error generating comprehensive insights:', error);
-      // Fallback insights
-      setComprehensiveInsights({
-        overallAnalysis: "Analysis complete! Here are your key areas for improvement based on your performance data.",
-        keyWeaknesses: ["Focus on your weakest topics first"],
-        learningPatterns: ["Review your mistake patterns"],
-        improvementStrategies: ["Practice regularly", "Review explanations", "Time management"],
-        timeManagementInsights: ["Work on pacing yourself"],
-        subjectSpecificAdvice: {
-          math: ["Practice problem-solving", "Review formulas"],
-          english: ["Improve reading comprehension", "Practice grammar"]
-        },
-        confidenceLevel: 'medium',
-        estimatedImprovementTime: '3-4 weeks',
-        priorityActions: ["Start with weakest topics", "Practice daily", "Review mistakes"]
-      });
-    } finally {
-      setIsGeneratingComprehensive(false);
-    }
-  };
 
   // Analyze all skills with Gemini AI
   const analyzeAllSkills = async () => {
@@ -492,11 +340,7 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
     
     setIsLoading(true);
     setHasAnalyzed(true);
-    
-    // Generate comprehensive insights first
-    await generateComprehensiveInsights();
-    
-    // Generate comprehensive insights first
+    // Generate comprehensive insights once
     await generateComprehensiveInsights();
     
     const updatedAnalyses = [...skillAnalyses];

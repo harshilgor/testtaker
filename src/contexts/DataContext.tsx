@@ -12,8 +12,8 @@ interface QuizResult {
   score_percentage: number;
   time_taken: number;
   created_at: string;
-  quiz_type: string;
 }
+
 
 interface QuestionAttempt {
   id: string;
@@ -25,8 +25,11 @@ interface QuestionAttempt {
   time_spent: number;
   created_at: string;
   is_correct: boolean;
-  user_answer: string;
+  session_id: string | null;
+  session_type: string;
+  points_earned: number;
 }
+
 
 interface MarathonSession {
   id: string;
@@ -129,7 +132,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           .order('created_at', { ascending: false }),
         
         supabase
-          .from('user_profiles')
+          .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single(),

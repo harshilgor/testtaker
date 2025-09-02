@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,50 +17,39 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
   const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
 
-  // Calculate question counts from instant data - this is now instant!
-  const questionCounts = useMemo(() => {
-    // Safety check to ensure data is available
-    if (!quizResults || !marathonSessions || !mockTests) {
-      return {
-        '7days': 0,
-        '1month': 0,
-        'alltime': 0
-      };
-    }
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const [questionCounts, setQuestionCounts] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
+  const [countsLoading, setCountsLoading] = useState(true);
 
-    const calculateQuestions = (filterDate?: Date) => {
-      let total = 0;
-      
-      // Quiz results
-      const filteredQuizzes = filterDate 
-        ? quizResults.filter(quiz => new Date(quiz.created_at) >= filterDate)
-        : quizResults;
-      total += filteredQuizzes.reduce((sum, quiz) => sum + (quiz.total_questions || 0), 0);
-      
-      // Marathon sessions
-      const filteredMarathons = filterDate 
-        ? marathonSessions.filter(session => new Date(session.created_at) >= filterDate)
-        : marathonSessions;
-      total += filteredMarathons.reduce((sum, session) => sum + (session.total_questions || 0), 0);
-      
-      // Mock tests (assuming 154 questions each)
-      const filteredMocks = filterDate 
-        ? mockTests.filter(test => new Date(test.created_at) >= filterDate)
-        : mockTests;
-      total += filteredMocks.length * 154;
-      
-      return total;
-    };
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        setCountsLoading(true);
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) { setCountsLoading(false); return; }
+        const uid = user.user.id;
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    return {
-      '7days': calculateQuestions(sevenDaysAgo),
-      '1month': calculateQuestions(oneMonthAgo),
-      'alltime': calculateQuestions()
+        const [allResp, weekResp, monthResp] = await Promise.all([
+          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgo),
+          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', oneMonthAgo),
+        ]);
+
+        setQuestionCounts({
+          '7days': weekResp.count || 0,
+          '1month': monthResp.count || 0,
+          'alltime': allResp.count || 0,
+        });
+      } catch (e) {
+        console.error('Failed to load question counts', e);
+      } finally {
+        setCountsLoading(false);
+      }
     };
-  }, [quizResults, marathonSessions, mockTests]);
+    fetchCounts();
+  }, [userName]);
 
   useEffect(() => {
     fetchGoals();
@@ -73,22 +62,20 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
 
       const { data, error } = await supabase
         .from('user_goals')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .eq('goal_type', 'questions_solved')
-        .single();
+        .select('period, target')
+        .eq('user_id', user.user.id);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching goals:', error);
         return;
       }
 
       if (data) {
-        setGoals({
-          '7days': data.weekly_goal || 0,
-          '1month': data.monthly_goal || 0,
-          'alltime': data.yearly_goal || 0
+        const mapped = { '7days': 0, '1month': 0, 'alltime': 0 };
+        data.forEach((g: { period: '7days' | '1month' | 'alltime'; target: number }) => {
+          if (g.period in mapped) (mapped as any)[g.period] = g.target || 0;
         });
+        setGoals(mapped);
       }
     } catch (error) {
       console.error('Error fetching goals:', error);
@@ -104,17 +91,15 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      const goalData = {
-        user_id: user.user.id,
-        goal_type: 'questions_solved',
-        weekly_goal: newGoals['7days'],
-        monthly_goal: newGoals['1month'],
-        yearly_goal: newGoals['alltime'],
-      };
+      const rows = [
+        { user_id: user.user.id, period: '7days', target: newGoals['7days'] },
+        { user_id: user.user.id, period: '1month', target: newGoals['1month'] },
+        { user_id: user.user.id, period: 'alltime', target: newGoals['alltime'] },
+      ];
 
       const { error } = await supabase
         .from('user_goals')
-        .upsert(goalData, { onConflict: 'user_id,goal_type' });
+        .upsert(rows, { onConflict: 'user_id,period' });
 
       if (error) throw error;
 
@@ -171,7 +156,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
         {/* Main Stats */}
         <div className="text-center mb-6">
           <div className="text-3xl font-bold text-gray-900 mb-2">
-            {dataLoading ? '...' : currentCount.toLocaleString()}
+          {countsLoading ? '...' : currentCount.toLocaleString()}
           </div>
           <div className="text-sm text-gray-600">
             {getPeriodLabel(selectedPeriod)}
