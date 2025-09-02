@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, Settings } from 'lucide-react';
+import { FileText, Zap, Clock, BookOpen, Brain, Settings, Trophy, Target } from 'lucide-react';
 import AdminPanel from './AdminPanel';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { useNavigate } from 'react-router-dom';
+import QuestsModal from './Quests/QuestsModal';
+import { supabase } from '@/integrations/supabase/client';
+import { motion } from 'framer-motion';
 
 interface DashboardProps {
   userName: string;
@@ -20,8 +23,44 @@ const Dashboard: React.FC<DashboardProps> = ({
   onQuizSelect
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showQuestsModal, setShowQuestsModal] = useState(false);
+  const [questStats, setQuestStats] = useState({ completed: 0, total: 0 });
+  const [loadingQuests, setLoadingQuests] = useState(true);
   const { isAdmin } = useSecureAdminAccess();
   const navigate = useNavigate();
+
+  // Fetch quest statistics
+  useEffect(() => {
+    const fetchQuestStats = async () => {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) return;
+
+        const { data: quests, error } = await supabase
+          .from('user_quests')
+          .select('completed, quest_type')
+          .eq('user_id', user.user.id)
+          .gte('expires_at', new Date().toISOString());
+
+        if (error) {
+          console.error('Error fetching quest stats:', error);
+          return;
+        }
+
+        const dailyQuests = quests?.filter(q => q.quest_type === 'daily') || [];
+        const completed = dailyQuests.filter(q => q.completed).length;
+        const total = dailyQuests.length;
+
+        setQuestStats({ completed, total });
+      } catch (error) {
+        console.error('Error in fetchQuestStats:', error);
+      } finally {
+        setLoadingQuests(false);
+      }
+    };
+
+    fetchQuestStats();
+  }, []);
 
   if (showAdminPanel) {
     return <AdminPanel />;
@@ -35,9 +74,34 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="min-h-screen flex flex-col px-4 py-6 md:py-8">
       <div className="max-w-6xl mx-auto w-full">
         <div className="text-center mb-8 md:mb-10 relative">
-          <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3">
-            Welcome back, {userName}!
-          </h1>
+          <div className="flex items-center justify-center gap-6 mb-3">
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900">
+              Welcome back, {userName}!
+            </h1>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button
+                onClick={() => setShowQuestsModal(true)}
+                variant="outline"
+                className="border-yellow-500 text-yellow-600 hover:bg-yellow-50 px-6 py-2 font-medium text-base rounded-xl min-h-[48px] flex items-center gap-2 relative"
+              >
+                <Trophy className="h-5 w-5" />
+                Daily Quests
+                {!loadingQuests && questStats.total > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center shadow-lg"
+                  >
+                    {questStats.completed}/{questStats.total}
+                  </motion.div>
+                )}
+              </Button>
+            </motion.div>
+          </div>
           <p className="text-base md:text-lg text-gray-600 px-4">
             Choose your practice mode to get started
           </p>
@@ -155,6 +219,43 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Card>
         </div>
       </div>
+
+      {/* Quests Modal */}
+      <QuestsModal 
+        open={showQuestsModal}
+        onClose={() => setShowQuestsModal(false)}
+        userName={userName}
+        onQuestCompleted={() => {
+          // Refresh quest stats when a quest is completed
+          const fetchQuestStats = async () => {
+            try {
+              const { data: user } = await supabase.auth.getUser();
+              if (!user.user) return;
+
+              const { data: quests, error } = await supabase
+                .from('user_quests')
+                .select('completed, quest_type')
+                .eq('user_id', user.user.id)
+                .gte('expires_at', new Date().toISOString());
+
+              if (error) {
+                console.error('Error fetching quest stats:', error);
+                return;
+              }
+
+              const dailyQuests = quests?.filter(q => q.quest_type === 'daily') || [];
+              const completed = dailyQuests.filter(q => q.completed).length;
+              const total = dailyQuests.length;
+
+              setQuestStats({ completed, total });
+            } catch (error) {
+              console.error('Error in fetchQuestStats:', error);
+            }
+          };
+
+          fetchQuestStats();
+        }}
+      />
     </div>
   );
 };

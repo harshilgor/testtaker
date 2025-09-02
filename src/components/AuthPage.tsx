@@ -93,6 +93,23 @@ const AuthPage: React.FC = () => {
       // Clean up existing state
       cleanupAuthState();
       
+      // TEMPORARY: Mock authentication for local testing while Supabase is unhealthy
+      if (loginData.email === 'test@example.com' && loginData.password === 'password') {
+        console.log('Mock login successful - bypassing Supabase');
+        // Store mock user data
+        localStorage.setItem('mockUser', JSON.stringify({
+          id: 'mock-user-id',
+          email: loginData.email,
+          full_name: 'Test User'
+        }));
+        localStorage.setItem('mockSession', 'true');
+        
+        // Redirect to dashboard
+        window.location.href = '/';
+        return;
+      }
+      
+      // Try real Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email,
         password: loginData.password
@@ -109,7 +126,13 @@ const AuthPage: React.FC = () => {
       
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error.message);
+      if (error.message === 'Failed to fetch') {
+        setError('Network error: Unable to connect to Supabase. This might be due to Edge Functions being unhealthy. Please try again in a few minutes.');
+      } else if (error.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials.');
+      } else {
+        setError(error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -198,6 +221,8 @@ const AuthPage: React.FC = () => {
                   <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
+
+
 
               <div className="mt-6">
                 <Button

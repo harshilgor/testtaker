@@ -14,8 +14,11 @@ import {
   Eye,
   TrendingDown,
   X,
-  CheckCircle
+  CheckCircle,
+  PlayCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import ComprehensiveWeaknessInsights from './ComprehensiveWeaknessInsights';
 
 interface QuestionBankItem {
   id: number;
@@ -58,7 +61,16 @@ interface FilterOptions {
   reviewStatus: string;
 }
 
+interface PracticeData {
+  questions: Mistake[];
+  focusTopics: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  estimatedDuration: number;
+  targetScore: number;
+}
+
 const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: 'all',
     skill: 'all',
@@ -68,6 +80,21 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   });
   const [selectedMistake, setSelectedMistake] = useState<Mistake | null>(null);
   const [showMistakeDialog, setShowMistakeDialog] = useState(false);
+  const [showWeaknessInsights, setShowWeaknessInsights] = useState(false);
+
+  // Handle practice session start from WeaknessInsights
+  const handleStartPractice = (practiceData: PracticeData) => {
+    // Store practice data in localStorage for the quiz component to access
+    localStorage.setItem('weaknessPracticeData', JSON.stringify(practiceData));
+    
+    // Navigate to the quiz page with practice mode
+    navigate('/quiz', { 
+      state: { 
+        mode: 'weakness-practice',
+        practiceData: practiceData
+      }
+    });
+  };
 
   // Fetch user's mistakes from question attempts
   const { data: userAttempts = [], refetch: refetchMistakes } = useQuery({
@@ -376,6 +403,107 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     });
   };
 
+  // Handle "Solve Mistakes" button click
+  const handleSolveMistakes = () => {
+    // If no real mistakes, create demo questions for testing
+    if (filteredMistakes.length === 0) {
+      const demoQuestions = [
+        {
+          id: 1,
+          question: "What is the value of x in the equation 2x + 5 = 13?",
+          options: ["x = 3", "x = 4", "x = 5", "x = 6"],
+          correctAnswer: "B",
+          explanation: "To solve 2x + 5 = 13, subtract 5 from both sides to get 2x = 8, then divide by 2 to get x = 4.",
+          subject: "Math",
+          topic: "Linear Equations",
+          difficulty: "medium",
+          domain: "Algebra"
+        },
+        {
+          id: 2,
+          question: "Which of the following is a synonym for 'ubiquitous'?",
+          options: ["Rare", "Everywhere", "Hidden", "Temporary"],
+          correctAnswer: "B",
+          explanation: "Ubiquitous means existing or being everywhere at the same time; omnipresent.",
+          subject: "English",
+          topic: "Vocabulary",
+          difficulty: "medium",
+          domain: "Reading"
+        },
+        {
+          id: 3,
+          question: "What is the slope of the line passing through points (2, 3) and (4, 7)?",
+          options: ["1", "2", "3", "4"],
+          correctAnswer: "B",
+          explanation: "Using the slope formula: m = (y₂ - y₁)/(x₂ - x₁) = (7 - 3)/(4 - 2) = 4/2 = 2",
+          subject: "Math",
+          topic: "Coordinate Geometry",
+          difficulty: "medium",
+          domain: "Algebra"
+        }
+      ];
+
+      const mistakeQuizData = {
+        type: 'mistakes-review',
+        questions: demoQuestions,
+        title: 'Demo Mistakes Quiz',
+        description: `Practice with ${demoQuestions.length} sample questions`,
+        createdAt: new Date().toISOString(),
+        userName: userName
+      };
+
+      localStorage.setItem('currentMistakeQuiz', JSON.stringify(mistakeQuizData));
+      navigate('/quiz?mode=mistakes');
+      console.log(`🎯 Starting demo mistakes quiz with ${demoQuestions.length} questions`);
+      return;
+    }
+
+    // Convert mistakes to quiz format
+    const mistakeQuestions = filteredMistakes.map(mistake => {
+      const question = questionDetails.find(q => q.id.toString() === mistake.question_id);
+      if (!question) return null;
+
+      return {
+        id: question.id,
+        question: question.question_text || '',
+        options: [
+          question.option_a,
+          question.option_b, 
+          question.option_c,
+          question.option_d
+        ].filter(Boolean),
+        correctAnswer: question.correct_answer || 'A',
+        explanation: question.correct_rationale || '',
+        subject: mistake.subject || 'General',
+        topic: mistake.topic || question.skill || 'General',
+        difficulty: mistake.difficulty || question.difficulty || 'medium',
+        domain: question.domain || 'General'
+      };
+    }).filter(Boolean);
+
+    if (mistakeQuestions.length === 0) {
+      console.warn('No valid mistake questions found');
+      return;
+    }
+
+    // Store the mistake quiz data in localStorage for the quiz page
+    const mistakeQuizData = {
+      type: 'mistakes-review',
+      questions: mistakeQuestions,
+      title: 'Review Your Mistakes',
+      description: `Practice ${mistakeQuestions.length} questions you previously got wrong`,
+      createdAt: new Date().toISOString(),
+      userName: userName
+    };
+
+    localStorage.setItem('currentMistakeQuiz', JSON.stringify(mistakeQuizData));
+    
+    // Navigate to quiz page
+    navigate('/quiz?mode=mistakes');
+    
+    console.log(`🎯 Starting mistakes quiz with ${mistakeQuestions.length} questions`);
+  };
+
   // Generate learning insights based on mistake data
   const generateInsights = (mistake: Mistake) => {
     const insights = [];
@@ -398,8 +526,26 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm">
-      <CardContent className="p-6">
+    <div className={`${showWeaknessInsights ? 'flex gap-6' : ''}`}>
+      {/* Weakness Insights Panel */}
+      {showWeaknessInsights && (
+        <div className="w-1/3">
+          <Card className="bg-white border border-gray-200 shadow-sm h-fit">
+            <CardContent className="p-6">
+                            <ComprehensiveWeaknessInsights
+                mistakes={mistakesWithDetails}
+                userName={userName}
+                onStartPractice={handleStartPractice}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Review Mistakes Panel */}
+      <div className={`${showWeaknessInsights ? 'w-2/3' : 'w-full'}`}>
+        <Card className="bg-white border border-gray-200 shadow-sm">
+          <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -411,8 +557,26 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <p className="text-sm text-gray-500">Identify patterns and improve your performance</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">{filteredMistakes.length} mistakes</span>
+            <Button
+              onClick={() => setShowWeaknessInsights(!showWeaknessInsights)}
+              variant="outline"
+              className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+              size="sm"
+            >
+              <Target className="h-4 w-4" />
+              {showWeaknessInsights ? 'Hide AI Analysis' : 'Target My Weakness'}
+            </Button>
+            <Button
+              onClick={handleSolveMistakes}
+              disabled={filteredMistakes.length === 0}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
+              size="sm"
+            >
+              <PlayCircle className="h-4 w-4" />
+              Solve Mistakes
+            </Button>
           </div>
         </div>
 
@@ -629,8 +793,10 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

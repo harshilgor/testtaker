@@ -174,6 +174,8 @@ const QuizView: React.FC<QuizViewProps> = ({
           // Don't throw error, continue to save locally
         } else {
           console.log('Quiz results saved successfully');
+        // Dispatch event to refresh question counts
+        window.dispatchEvent(new CustomEvent('quiz-completed'));
         }
 
         // Record individual question attempts for performance tracking

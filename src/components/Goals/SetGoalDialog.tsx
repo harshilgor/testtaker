@@ -6,16 +6,20 @@ import { Input } from '@/components/ui/input';
 interface SetGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialTargets: { '7days': number; '1month': number; 'alltime': number };
-  onSave: (targets: { '7days': number; '1month': number; 'alltime': number }) => void;
+  goalType: string;
+  currentGoals: { '7days': number; '1month': number; 'alltime': number };
+  onSave: (goals: { '7days': number; '1month': number; 'alltime': number }) => void;
+  userName: string;
 }
 
-const SetGoalDialog: React.FC<SetGoalDialogProps> = ({ open, onOpenChange, initialTargets, onSave }) => {
-  const [targets, setTargets] = useState(initialTargets);
+const SetGoalDialog: React.FC<SetGoalDialogProps> = ({ open, onOpenChange, goalType, currentGoals, onSave, userName }) => {
+  const [targets, setTargets] = useState(currentGoals || { '7days': 0, '1month': 0, 'alltime': 0 });
 
   useEffect(() => {
-    setTargets(initialTargets);
-  }, [initialTargets]);
+    if (currentGoals) {
+      setTargets(currentGoals);
+    }
+  }, [currentGoals]);
 
   const handleChange = (key: '7days' | '1month' | 'alltime', value: string) => {
     const num = Math.max(0, parseInt(value || '0', 10));
@@ -44,7 +48,10 @@ const SetGoalDialog: React.FC<SetGoalDialogProps> = ({ open, onOpenChange, initi
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => onSave(targets)}>Save</Button>
+          <Button onClick={() => {
+            onSave(targets);
+            onOpenChange(false);
+          }}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

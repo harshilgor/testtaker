@@ -3,8 +3,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://kpcprhkubqhslazlhgad.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
+// Use your actual Supabase credentials
+const SUPABASE_URL = 'https://kpcprhkubqhslazlhgad.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -27,10 +28,61 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
+// Test connection on startup
+console.log('🔌 Initializing Supabase client...');
+console.log('📍 URL:', SUPABASE_URL);
+console.log('🔑 Key:', SUPABASE_PUBLISHABLE_KEY.substring(0, 20) + '...');
+
+// Test the connection with better error handling
+const testConnection = async () => {
+  try {
+    console.log('🧪 Testing Supabase connection...');
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('❌ Supabase connection error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      });
+    } else {
+      console.log('✅ Supabase connected successfully');
+      console.log('📊 Session data:', data);
+    }
+  } catch (err) {
+    console.error('💥 Unexpected error testing Supabase connection:', err);
+  }
+};
+
+// Test connection after a short delay to ensure client is fully initialized
+setTimeout(testConnection, 1000);
+
+// Test basic network connectivity to Supabase
+fetch(SUPABASE_URL + '/rest/v1/', {
+  method: 'GET',
+  headers: {
+    'apikey': SUPABASE_PUBLISHABLE_KEY,
+    'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+  }
+})
+.then(response => {
+  console.log('🌐 Network test to Supabase:', response.status, response.statusText);
+  if (response.ok) {
+    console.log('✅ Network connectivity to Supabase is working');
+  } else {
+    console.log('⚠️ Network connectivity to Supabase returned status:', response.status);
+  }
+})
+.catch(error => {
+  console.error('❌ Network connectivity test failed:', error);
+  console.error('This suggests a network, CORS, or firewall issue');
+});
+
 // Add error handling for connection issues
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT') {
-    console.log('User signed out, clearing local data');
+    console.log('👋 User signed out, clearing local data');
     // Clear any cached data when user signs out
     localStorage.removeItem('quizResults');
   }

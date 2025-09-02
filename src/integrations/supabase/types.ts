@@ -109,6 +109,42 @@ export type Database = {
           },
         ]
       }
+      leaderboard_stats_v2: {
+        Row: {
+          display_name: string
+          id: string
+          last_updated: string | null
+          marathon_questions_count: number
+          mock_test_count: number
+          quiz_count: number
+          total_points: number
+          user_id: string
+          visibility: string | null
+        }
+        Insert: {
+          display_name: string
+          id?: string
+          last_updated?: string | null
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id: string
+          visibility?: string | null
+        }
+        Update: {
+          display_name?: string
+          id?: string
+          last_updated?: string | null
+          marathon_questions_count?: number
+          mock_test_count?: number
+          quiz_count?: number
+          total_points?: number
+          user_id?: string
+          visibility?: string | null
+        }
+        Relationships: []
+      }
       marathon_sessions: {
         Row: {
           adaptive_learning: boolean | null
@@ -252,6 +288,7 @@ export type Database = {
             | Database["public"]["Enums"]["leaderboard_visibility"]
             | null
           preferences: Json | null
+          public_username: string | null
           updated_at: string
           username: string | null
         }
@@ -265,6 +302,7 @@ export type Database = {
             | Database["public"]["Enums"]["leaderboard_visibility"]
             | null
           preferences?: Json | null
+          public_username?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -278,6 +316,7 @@ export type Database = {
             | Database["public"]["Enums"]["leaderboard_visibility"]
             | null
           preferences?: Json | null
+          public_username?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -549,6 +588,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_goals: {
         Row: {
           created_at: string
@@ -571,6 +640,87 @@ export type Database = {
           id?: string
           period?: string
           target?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_quests: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string | null
+          current_progress: number
+          difficulty: string
+          expires_at: string
+          id: string
+          points_reward: number
+          quest_description: string
+          quest_id: string
+          quest_title: string
+          quest_type: string
+          target_count: number
+          target_topic: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_progress?: number
+          difficulty: string
+          expires_at: string
+          id?: string
+          points_reward?: number
+          quest_description: string
+          quest_id: string
+          quest_title: string
+          quest_type: string
+          target_count?: number
+          target_topic: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_progress?: number
+          difficulty?: string
+          expires_at?: string
+          id?: string
+          points_reward?: number
+          quest_description?: string
+          quest_id?: string
+          quest_title?: string
+          quest_type?: string
+          target_count?: number
+          target_topic?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
         }
@@ -664,6 +814,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: number
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       get_questions_for_quiz: {
         Args: {
           p_difficulty?: string
@@ -719,6 +873,30 @@ export type Database = {
           test_name: string
         }[]
       }
+      get_secure_questions_for_quiz: {
+        Args: {
+          p_difficulty?: string
+          p_domain?: string
+          p_exclude_ids?: number[]
+          p_limit?: number
+          p_section?: string
+          p_skill?: string
+        }
+        Returns: {
+          difficulty: string
+          domain: string
+          id: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+          question_type: string
+          section: string
+          skill: string
+          test_name: string
+        }[]
+      }
       get_unused_questions_for_session: {
         Args: {
           p_difficulty?: string
@@ -749,9 +927,23 @@ export type Database = {
           test_name: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       import_questions_batch: {
         Args: { questions_data: Json }
         Returns: number
+      }
+      increment_user_points: {
+        Args: {
+          p_points: number
+          p_user_id: string
+        }
+        Returns: undefined
       }
       mark_question_used_in_session: {
         Args: {
@@ -806,6 +998,7 @@ export type Database = {
     }
     Enums: {
       leaderboard_visibility: "public" | "private"
+      user_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -934,6 +1127,7 @@ export const Constants = {
   public: {
     Enums: {
       leaderboard_visibility: ["public", "private"],
+      user_role: ["admin", "user"],
     },
   },
 } as const

@@ -12,18 +12,18 @@ import QuestionAttemptStats from './Performance/QuestionAttemptStats';
 import QuizHistorySection from './Performance/QuizHistorySection';
 import StreakDisplay from './StreakDisplay';
 import { useOptimizedStreak } from '@/hooks/useOptimizedStreak';
-import PerformanceOverview from './Performance/PerformanceOverview';
+import PerformanceOverviewOptimized from './Performance/PerformanceOverviewOptimized';
 import RecentSessions from './Performance/RecentSessions';
 import PerformanceTrends from './Performance/PerformanceTrends';
 import PerformanceSummary from './Performance/PerformanceSummary';
 
 
 import StreakNotification from './StreakNotification';
-import QuestionsSolvedCard from './QuestionsSolvedCard';
+import QuestionsSolvedCardOptimized from './QuestionsSolvedCardOptimized';
 import StreakCalendar from './StreakCalendar';
 import SATGoalDialog from './Goals/SATGoalDialog';
 import { useToast } from '@/hooks/use-toast';
-import ReviewMistakes from './Performance/ReviewMistakes';
+
 import StudyTimeCard from './Performance/StudyTimeCard';
 
 interface PerformanceDashboardProps {
@@ -590,14 +590,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           <StudyTimeCard userName={userName} />
 
           {/* Questions Solved */}
-          <QuestionsSolvedCard userName={userName} marathonStats={marathonStats} />
+          <QuestionsSolvedCardOptimized userName={userName} marathonStats={marathonStats} />
         </div>
 
         {/* Two Column Layout - Weakest Topics & Recent Sessions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Your Weakest Topics */}
           <div className="lg:col-span-2 h-full">
-            <PerformanceOverview userName={userName} />
+            <PerformanceOverviewOptimized userName={userName} />
           </div>
           
           {/* Recent Sessions */}
@@ -608,10 +608,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
 
 
-        {/* Review Mistakes Section */}
-        <div className="mb-8">
-          <ReviewMistakes userName={userName} />
-        </div>
+
 
         {/* Performance Trends Section - 2/3 + 1/3 Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

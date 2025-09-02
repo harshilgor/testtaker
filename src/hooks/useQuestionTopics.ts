@@ -33,6 +33,8 @@ export const useQuestionTopics = (subject: Subject) => {
           return;
         }
 
+        console.log(`🔍 Topics Debug for ${subject}:`, data?.length, 'rows found');
+
         // Group by skill and count questions
         const skillCounts: Record<string, { domain: string; count: number }> = {};
         
@@ -55,6 +57,8 @@ export const useQuestionTopics = (subject: Subject) => {
           count: info.count
         }));
 
+        console.log(`📋 Final topics for ${subject}:`, topicsList.length, 'topics generated');
+        console.log('Sample topics:', topicsList.slice(0, 3));
         setTopics(topicsList);
       } catch (error) {
         console.error('Error loading topics:', error);

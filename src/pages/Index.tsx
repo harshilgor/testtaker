@@ -8,11 +8,12 @@ import Dashboard from '@/components/Dashboard';
 import Leaderboard from '@/components/Leaderboard';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
 import TrendsPage from '@/components/TrendsPage';
+import LearnPage from '@/pages/Learn';
 import Navigation from '@/components/Navigation';
 import StreakPopup from '@/components/StreakPopup';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-export type Screen = 'landing' | 'auth' | 'dashboard' | 'leaderboard' | 'performance-dashboard' | 'trends';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -69,6 +70,25 @@ const Index = () => {
     setCurrentScreen('trends');
   };
 
+
+  if (currentScreen === 'learn') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          userName={userName}
+          onSignOut={handleSignOut}
+        />
+        <div className="pt-16">
+          <LearnPage
+            userName={userName}
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (currentScreen === 'leaderboard') {
     return (

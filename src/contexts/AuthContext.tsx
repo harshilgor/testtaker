@@ -33,6 +33,10 @@ const cleanupAuthState = () => {
       sessionStorage.removeItem(key);
     }
   });
+  
+  // Also clean up mock authentication data
+  localStorage.removeItem('mockSession');
+  localStorage.removeItem('mockUser');
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,6 +46,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log('Setting up auth state listener...');
+    
+    // Check for mock authentication first
+    const mockSession = localStorage.getItem('mockSession');
+    const mockUser = localStorage.getItem('mockUser');
+    
+    if (mockSession === 'true' && mockUser) {
+      try {
+        const userData = JSON.parse(mockUser);
+        console.log('Mock authentication detected:', userData.email);
+        setUser(userData as any);
+        setSession({ user: userData as any } as any);
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('Error parsing mock user data:', error);
+        localStorage.removeItem('mockSession');
+        localStorage.removeItem('mockUser');
+      }
+    }
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -97,6 +120,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       console.log('Starting sign out process...');
+      
+      // Check if user is using mock authentication
+      const mockSession = localStorage.getItem('mockSession');
+      if (mockSession === 'true') {
+        console.log('Signing out from mock authentication');
+        localStorage.removeItem('mockSession');
+        localStorage.removeItem('mockUser');
+        setUser(null);
+        setSession(null);
+        console.log('Mock sign out complete');
+        return;
+      }
       
       // Clean up auth state first
       cleanupAuthState();

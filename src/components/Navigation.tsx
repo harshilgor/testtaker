@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Home, BarChart3, Trophy, Activity, Menu, X } from 'lucide-react';
+import { Home, BarChart3, Trophy, Activity, BookOpen, Menu, X } from 'lucide-react';
 import { Screen } from '@/pages/Index';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -29,6 +29,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const navigationItems = [
     { screen: 'dashboard' as Screen, icon: Home, label: 'Home' },
+    { screen: 'learn' as Screen, icon: BookOpen, label: 'Learn' },
     { screen: 'performance-dashboard' as Screen, icon: Activity, label: 'Performance' },
     { screen: 'leaderboard' as Screen, icon: Trophy, label: 'Leaderboard' }
   ];
