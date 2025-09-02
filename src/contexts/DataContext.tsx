@@ -34,18 +34,29 @@ interface QuestionAttempt {
 interface MarathonSession {
   id: string;
   user_id: string;
-  total_questions: number;
-  correct_answers: number;
-  time_taken: number;
+  subjects: string[];
+  difficulty: string | null;
+  timed_mode: boolean | null;
+  adaptive_learning: boolean | null;
+  show_answer_used: number | null;
+  incorrect_answers: number | null;
+  correct_answers: number | null;
+  time_goal_minutes: number | null;
+  total_questions: number | null;
+  end_time: string | null;
+  start_time: string;
   created_at: string;
 }
 
 interface UserProfile {
   id: string;
-  full_name: string;
-  email: string;
-  total_score: number;
+  display_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  username: string | null;
+  public_username: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface DataState {
@@ -138,11 +149,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           .single(),
         
         supabase
-          .from('daily_streaks')
+          .from('user_streaks')
           .select('*')
           .eq('user_id', user.id)
-          .order('streak_date', { ascending: false })
-          .limit(365), // Last year of data
+          .order('updated_at', { ascending: false }),
         
         supabase
           .from('mock_test_results')
