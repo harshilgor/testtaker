@@ -31,16 +31,36 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        const [allResp, weekResp, monthResp] = await Promise.all([
+        // Query both tables for all time periods
+        const [
+          allV2Resp, weekV2Resp, monthV2Resp,
+          allV1Resp, weekV1Resp, monthV1Resp
+        ] = await Promise.all([
+          // question_attempts_v2 queries
           supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid),
           supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgo),
           supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', oneMonthAgo),
+          // question_attempts queries
+          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgo),
+          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', oneMonthAgo),
         ]);
 
+        // Sum counts from both tables
+        const allTimeCount = (allV2Resp.count || 0) + (allV1Resp.count || 0);
+        const weekCount = (weekV2Resp.count || 0) + (weekV1Resp.count || 0);
+        const monthCount = (monthV2Resp.count || 0) + (monthV1Resp.count || 0);
+
+        console.log('Question counts breakdown:', {
+          v2: { all: allV2Resp.count, week: weekV2Resp.count, month: monthV2Resp.count },
+          v1: { all: allV1Resp.count, week: weekV1Resp.count, month: monthV1Resp.count },
+          totals: { all: allTimeCount, week: weekCount, month: monthCount }
+        });
+
         setQuestionCounts({
-          '7days': weekResp.count || 0,
-          '1month': monthResp.count || 0,
-          'alltime': allResp.count || 0,
+          '7days': weekCount,
+          '1month': monthCount,
+          'alltime': allTimeCount,
         });
       } catch (e) {
         console.error('Failed to load question counts', e);
