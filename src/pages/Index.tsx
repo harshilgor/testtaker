@@ -28,22 +28,16 @@ const Index = () => {
     }
   }, [loading]);
 
-  // Temporary bypass for debugging - remove this after testing
-  if (window.location.search.includes('bypass=true')) {
-    console.log('Bypassing auth for debugging');
-    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
-  }
-
   // Add timeout for loading state to prevent infinite loading
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
-        console.log('Loading timeout reached, showing fallback...');
+        console.log('Loading timeout reached, allowing fallback...');
         setLoadingTimeout(true);
       }
-    }, 2000); // Reduced to 2 second timeout for better UX
+    }, 2000); // 2 second timeout for better UX
     
     return () => clearTimeout(timer);
   }, [loading]);
@@ -57,17 +51,14 @@ const Index = () => {
     );
   }
 
-  // If loading times out, show landing page
-  if (loadingTimeout) {
-    console.log('Loading timed out, showing landing page...');
-    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
-  }
-
   if (!user || !session) {
     if (currentScreen === 'auth') {
       return <AuthPage />;
     }
-    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
+    return <LandingScreen onGetStarted={() => {
+      console.log('Get Started button clicked, switching to auth screen');
+      setCurrentScreen('auth');
+    }} />;
   }
 
   const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
