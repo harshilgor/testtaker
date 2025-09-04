@@ -341,7 +341,14 @@ Provide insights in this JSON format:
 
 Be encouraging but honest. Focus on actionable insights.`;
 
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('Gemini API key not configured');
+      }
+      
+      const response = await fetch(`${baseUrl}?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

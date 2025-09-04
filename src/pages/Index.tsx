@@ -43,7 +43,7 @@ const Index = () => {
         console.log('Loading timeout reached, showing fallback...');
         setLoadingTimeout(true);
       }
-    }, 5000); // 5 second timeout
+    }, 2000); // Reduced to 2 second timeout for better UX
     
     return () => clearTimeout(timer);
   }, [loading]);
