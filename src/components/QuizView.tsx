@@ -12,23 +12,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Subject } from '@/types/common';
+import { QuizQuestion } from '@/types/question';
 import { useQueryClient } from '@tanstack/react-query';
 
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  subject: string;
-  topic: string;
-  difficulty: string;
-  imageUrl?: string;
-  hasImage?: boolean;
-}
-
 interface QuizViewProps {
-  questions: Question[];
+  questions: QuizQuestion[];
   selectedTopics: string[];
   feedbackPreference: 'immediate' | 'end';
   onBack: () => void;

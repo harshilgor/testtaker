@@ -3,27 +3,10 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string; // This is the rationale for the CORRECT answer
-  subject: string;
-  topic: string;
-  difficulty: string;
-  imageUrl?: string;
-  hasImage?: boolean;
-  // Optional fields for incorrect answers
-  incorrect_rationale_a?: string;
-  incorrect_rationale_b?: string;
-  incorrect_rationale_c?: string;
-  incorrect_rationale_d?: string;
-}
+import { QuizQuestion } from '@/types/question';
 
 interface QuizAnswerPanelProps {
-  question: Question;
+  question: QuizQuestion;
   selectedAnswer: number | null;
   onAnswerSelect: (answerIndex: number) => void;
   isFlagged: boolean;
@@ -131,7 +114,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
               if (!isCorrect && selectedAnswer !== null) {
                 // Get the rationale for the incorrect answer they chose.
                 const optionLetter = String.fromCharCode(65 + selectedAnswer).toLowerCase();
-                const rationaleKey = `incorrect_rationale_${optionLetter}` as keyof Question;
+            const rationaleKey = `incorrect_rationale_${optionLetter}` as keyof QuizQuestion;
                 const incorrectRationaleText = (question[rationaleKey] as string) || "A specific explanation for this incorrect option was not provided.";
 
                 return (
@@ -251,7 +234,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
           if (!isCorrect && selectedAnswer !== null) {
             // Get the rationale for the incorrect answer they chose.
             const optionLetter = String.fromCharCode(65 + selectedAnswer).toLowerCase();
-            const rationaleKey = `incorrect_rationale_${optionLetter}` as keyof Question;
+            const rationaleKey = `incorrect_rationale_${optionLetter}` as keyof QuizQuestion;
             const incorrectRationaleText = (question[rationaleKey] as string) || "A specific explanation for this incorrect option was not provided.";
 
             return (
