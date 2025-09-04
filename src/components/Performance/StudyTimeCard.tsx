@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Clock, Target, TrendingUp, Calendar, Award, Settings } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useData } from '@/contexts/DataContext';
 
 interface StudyTimeCardProps {
   userName: string;
@@ -42,236 +41,131 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName }) => {
     };
   });
 
-  // Fetch study data
-  const { data: marathonSessions = [] } = useQuery({
-    queryKey: ['marathon-sessions-study', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
+  // Use cached, centralized data for instant loading
+  const { marathonSessions = [], quizResults = [], mockTests = [], loading: dataLoading } = useData();
 
-      const { data, error } = await supabase
-        .from('marathon_sessions')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false });
+  // Helpers to compute exact durations (in minutes)
+  const marathonMinutes = (session: any): number => {
+    const start = session.start_time ? new Date(session.start_time) : (session.created_at ? new Date(session.created_at) : null);
+    const end = session.end_time ? new Date(session.end_time) : (session.created_at ? new Date(session.created_at) : null);
+    if (!start || !end) return 0;
+    const diffMs = Math.max(0, end.getTime() - start.getTime());
+    return diffMs / 60000; // ms to minutes
+  };
 
-      if (error) {
-        console.error('Error fetching marathon sessions:', error);
-        return [];
-      }
+  const quizMinutes = (quiz: any): number => {
+    // quiz_results has time_taken in seconds
+    const seconds = typeof quiz.time_taken === 'number' ? quiz.time_taken : 0;
+    return seconds / 60;
+  };
 
-      return data || [];
-    },
-    enabled: !!userName,
-  });
+  const mockMinutes = (mock: any): number => {
+    // Prefer exact time_taken (seconds). Fallback: estimate modestly if missing
+    const seconds = typeof mock.time_taken === 'number' ? mock.time_taken : 0;
+    if (seconds > 0) return seconds / 60;
+    // Fallback estimate: 64 questions x 90s = 5760s = 96m
+    return 96;
+  };
 
-  const { data: quizResults = [] } = useQuery({
-    queryKey: ['quiz-results-study', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching quiz results:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
-  });
-
-  const { data: attempts = [] } = useQuery({
-    queryKey: ['attempts-study', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('created_at, time_spent')
-        .eq('user_id', user.user.id);
-
-      if (error) {
-        console.error('Error fetching attempts:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
-  });
-
-  // Calculate study statistics
-  const calculateStudyStats = (): StudyStats => {
+  // All stats derived in a single memoized pass for performance
+  const stats: StudyStats = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Calculate today's study time
+    // Accumulators
     let todayMinutes = 0;
-    
-    // From marathon sessions (1.5 minutes per question)
-    marathonSessions.forEach((session: any) => {
-      const sessionDate = new Date(session.created_at);
-      if (sessionDate >= today) {
-        todayMinutes += (session.total_questions || 0) * 1.5;
-      }
-    });
-
-    // From quiz results (2 minutes per question)
-    quizResults.forEach((quiz: any) => {
-      const quizDate = new Date(quiz.created_at);
-      if (quizDate >= today) {
-        todayMinutes += (quiz.total_questions || 0) * 2;
-      }
-    });
-
-    // From individual attempts
-    attempts.forEach((attempt: any) => {
-      const attemptDate = new Date(attempt.created_at);
-      if (attemptDate >= today) {
-        todayMinutes += (attempt.time_spent || 0) / 60;
-      }
-    });
-
-    // Calculate weekly study time
     let weeklyMinutes = 0;
-    marathonSessions.forEach((session: any) => {
-      const sessionDate = new Date(session.created_at);
-      if (sessionDate >= weekStart) {
-        weeklyMinutes += (session.total_questions || 0) * 1.5;
-      }
-    });
-
-    quizResults.forEach((quiz: any) => {
-      const quizDate = new Date(quiz.created_at);
-      if (quizDate >= weekStart) {
-        weeklyMinutes += (quiz.total_questions || 0) * 2;
-      }
-    });
-
-    attempts.forEach((attempt: any) => {
-      const attemptDate = new Date(attempt.created_at);
-      if (attemptDate >= weekStart) {
-        weeklyMinutes += (attempt.time_spent || 0) / 60;
-      }
-    });
-
-    // Calculate monthly study time
     let monthlyMinutes = 0;
-    marathonSessions.forEach((session: any) => {
-      const sessionDate = new Date(session.created_at);
-      if (sessionDate >= monthStart) {
-        monthlyMinutes += (session.total_questions || 0) * 1.5;
-      }
-    });
 
-    quizResults.forEach((quiz: any) => {
-      const quizDate = new Date(quiz.created_at);
-      if (quizDate >= monthStart) {
-        monthlyMinutes += (quiz.total_questions || 0) * 2;
-      }
-    });
+    // Marathon
+    for (const s of marathonSessions) {
+      const endOrCreated = new Date(s.end_time || s.created_at);
+      const minutes = marathonMinutes(s);
+      if (endOrCreated >= today) todayMinutes += minutes;
+      if (endOrCreated >= weekStart) weeklyMinutes += minutes;
+      if (endOrCreated >= monthStart) monthlyMinutes += minutes;
+    }
 
-    attempts.forEach((attempt: any) => {
-      const attemptDate = new Date(attempt.created_at);
-      if (attemptDate >= monthStart) {
-        monthlyMinutes += (attempt.time_spent || 0) / 60;
-      }
-    });
+    // Quiz
+    for (const q of quizResults) {
+      const qDate = new Date(q.created_at);
+      const minutes = quizMinutes(q);
+      if (qDate >= today) todayMinutes += minutes;
+      if (qDate >= weekStart) weeklyMinutes += minutes;
+      if (qDate >= monthStart) monthlyMinutes += minutes;
+    }
 
-    // Calculate daily average (last 7 days)
+    // Mock tests
+    for (const m of mockTests) {
+      const mDate = new Date(m.completed_at || m.created_at || m.updated_at || Date.now());
+      const minutes = mockMinutes(m);
+      if (mDate >= today) todayMinutes += minutes;
+      if (mDate >= weekStart) weeklyMinutes += minutes;
+      if (mDate >= monthStart) monthlyMinutes += minutes;
+    }
+
+    // Daily average over last 7 days
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
-    
+
     let sevenDayMinutes = 0;
-    marathonSessions.forEach((session: any) => {
-      const sessionDate = new Date(session.created_at);
-      if (sessionDate >= sevenDaysAgo) {
-        sevenDayMinutes += (session.total_questions || 0) * 1.5;
-      }
-    });
 
-    quizResults.forEach((quiz: any) => {
-      const quizDate = new Date(quiz.created_at);
-      if (quizDate >= sevenDaysAgo) {
-        sevenDayMinutes += (quiz.total_questions || 0) * 2;
-      }
-    });
+    for (const s of marathonSessions) {
+      const d = new Date(s.end_time || s.created_at);
+      if (d >= sevenDaysAgo) sevenDayMinutes += marathonMinutes(s);
+    }
+    for (const q of quizResults) {
+      const d = new Date(q.created_at);
+      if (d >= sevenDaysAgo) sevenDayMinutes += quizMinutes(q);
+    }
+    for (const m of mockTests) {
+      const d = new Date(m.completed_at || m.created_at || m.updated_at || Date.now());
+      if (d >= sevenDaysAgo) sevenDayMinutes += mockMinutes(m);
+    }
 
-    attempts.forEach((attempt: any) => {
-      const attemptDate = new Date(attempt.created_at);
-      if (attemptDate >= sevenDaysAgo) {
-        sevenDayMinutes += (attempt.time_spent || 0) / 60;
-      }
-    });
-
-    // Calculate streak (simplified)
+    // Streak (last 7 days): count days with >= 50% of daily goal minutes
     let currentStreak = 0;
     let bestStreak = 0;
-    
-    const last7Days = [];
+    let temp = 0;
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
-      last7Days.push(date);
-    }
 
-    let tempStreak = 0;
-    last7Days.forEach(date => {
       let dayMinutes = 0;
-      
-      marathonSessions.forEach((session: any) => {
-        const sessionDate = new Date(session.created_at);
-        if (sessionDate.toDateString() === date.toDateString()) {
-          dayMinutes += (session.total_questions || 0) * 1.5;
-        }
-      });
-
-      quizResults.forEach((quiz: any) => {
-        const quizDate = new Date(quiz.created_at);
-        if (quizDate.toDateString() === date.toDateString()) {
-          dayMinutes += (quiz.total_questions || 0) * 2;
-        }
-      });
-
-      attempts.forEach((attempt: any) => {
-        const attemptDate = new Date(attempt.created_at);
-        if (attemptDate.toDateString() === date.toDateString()) {
-          dayMinutes += (attempt.time_spent || 0) / 60;
-        }
-      });
+      for (const s of marathonSessions) {
+        const d = new Date(s.end_time || s.created_at);
+        if (d.toDateString() === date.toDateString()) dayMinutes += marathonMinutes(s);
+      }
+      for (const q of quizResults) {
+        const d = new Date(q.created_at);
+        if (d.toDateString() === date.toDateString()) dayMinutes += quizMinutes(q);
+      }
+      for (const m of mockTests) {
+        const d = new Date(m.completed_at || m.created_at || m.updated_at || Date.now());
+        if (d.toDateString() === date.toDateString()) dayMinutes += mockMinutes(m);
+      }
 
       if (dayMinutes >= studyGoal.dailyHours * 60 * 0.5) {
-        tempStreak++;
-        currentStreak = Math.max(currentStreak, tempStreak);
+        temp++;
+        currentStreak = Math.max(currentStreak, temp);
       } else {
-        tempStreak = 0;
+        temp = 0;
       }
-    });
-
-    bestStreak = Math.max(bestStreak, currentStreak);
+      bestStreak = Math.max(bestStreak, currentStreak);
+    }
 
     return {
       today: Math.round(todayMinutes),
       dailyAverage: Math.round(sevenDayMinutes / 7),
-      thisWeek: Math.round(weeklyMinutes / 60 * 10) / 10,
-      thisMonth: Math.round(monthlyMinutes / 60 * 10) / 10,
+      thisWeek: Math.round((weeklyMinutes / 60) * 10) / 10,
+      thisMonth: Math.round((monthlyMinutes / 60) * 10) / 10,
       currentStreak,
       bestStreak
     };
-  };
-
-  const stats = calculateStudyStats();
+  }, [marathonSessions, quizResults, mockTests, studyGoal.dailyHours]);
 
   // Calculate progress percentages
   const dailyProgress = Math.min(100, (stats.today / (studyGoal.dailyHours * 60)) * 100);

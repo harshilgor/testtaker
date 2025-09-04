@@ -34,6 +34,45 @@ interface QuestsModalProps {
   onQuestCompleted?: () => void;
 }
 
+// Helper: random pick N from array
+const pickRandom = <T,>(arr: T[], n: number): T[] => {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+};
+
+// Helper: get distinct attempted topics
+const getAttemptedTopics = (attempts: any[]): Set<string> => {
+  const s = new Set<string>();
+  attempts.forEach(a => {
+    const t = (a as any).topic || (a as any).subject || 'General';
+    if (t) s.add(String(t));
+  });
+  return s;
+};
+
+// Fetch a pool of available skills/topics from question_bank (skill preferred, fallback domain/topic)
+const fetchAllTopics = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('question_bank')
+      .select('skill, domain, topic')
+      .limit(1000);
+    if (error || !data) return [];
+    const topics = new Set<string>();
+    data.forEach((row: any) => {
+      const t = row.skill || row.topic || row.domain;
+      if (t) topics.add(String(t));
+    });
+    return Array.from(topics);
+  } catch {
+    return [];
+  }
+};
+
 const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQuestCompleted }) => {
   const { questionAttempts, quizResults, marathonSessions, loading } = useData();
   const [userQuests, setUserQuests] = useState<Quest[]>([]);
@@ -158,6 +197,54 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     loadQuests();
   }, [loading, questionAttempts, weakTopicsAnalysis]);
 
+  // New: realtime progress sync – increments quest progress on every correct attempt
+  useEffect(() => {
+    let channel: any;
+    (async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user) return;
+      const userId = user.user.id;
+
+      channel = supabase
+        .channel('quests-progress-sync')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'question_attempts_v2',
+          filter: `user_id=eq.${userId}`
+        }, async (payload: any) => {
+          try {
+            const attempt = payload.new as any;
+            if (!attempt?.is_correct) return; // only count correct answers toward quests
+            const attemptTopic = String(attempt.topic || attempt.subject || '');
+            if (!attemptTopic) return;
+
+            // Find matching active quests locally
+            const matching = userQuests.filter(q => !q.completed && q.expiresAt > new Date() && q.progress < q.target && q.topic.toLowerCase() === attemptTopic.toLowerCase());
+            if (matching.length === 0) return;
+
+            // Increment each matching quest by 1 (cap at target)
+            for (const q of matching) {
+              const newProgress = Math.min(q.target, q.progress + 1);
+              await supabase.from('user_quests').update({ current_progress: newProgress }).eq('id', q.id);
+            }
+
+            // Optimistic local update
+            setUserQuests(prev => prev.map(q => {
+              const match = q.topic.toLowerCase() === attemptTopic.toLowerCase() && !q.completed && q.expiresAt > new Date();
+              if (!match) return q;
+              return { ...q, progress: Math.min(q.target, q.progress + 1) };
+            }));
+          } catch (e) {
+            console.warn('Quest progress sync failed:', e);
+          }
+        })
+        .subscribe();
+    })();
+
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [userQuests]);
+
   const generateTargetedQuests = async (userId: string) => {
     // Clear existing active quests
     await supabase
@@ -168,121 +255,39 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
     const questsToCreate: any[] = [];
     
-    if (weakTopicsAnalysis.length === 0) {
-      // New user - seed with foundational quests
-      const seedQuests = [
-        {
-          quest_title: 'Solve 10 Reading & Writing Questions',
-          target_topic: 'Reading and Writing',
-          target_count: 10,
-          difficulty: 'Easy',
-          points_reward: 15
-        },
-        {
-          quest_title: 'Solve 30 Math Questions',
-          target_topic: 'Math',
-          target_count: 30,
-          difficulty: 'Medium',
-          points_reward: 30
-        },
-        {
-          quest_title: 'Improve Algebra Fundamentals',
-          target_topic: 'Algebra',
-          target_count: 20,
-          difficulty: 'Medium',
-          points_reward: 22
-        },
-        {
-          quest_title: 'Practice Geometry Problems',
-          target_topic: 'Geometry',
-          target_count: 15,
-          difficulty: 'Medium',
-          points_reward: 18
-        },
-        {
-          quest_title: 'Master Reading Comprehension',
-          target_topic: 'Reading Comprehension',
-          target_count: 12,
-          difficulty: 'Medium',
-          points_reward: 20
-        },
-        {
-          quest_title: 'Improve Grammar Skills',
-          target_topic: 'Grammar',
-          target_count: 18,
-          difficulty: 'Easy',
-          points_reward: 16
-        },
-        {
-          quest_title: 'Solve Word Problems',
-          target_topic: 'Word Problems',
-          target_count: 8,
-          difficulty: 'Hard',
-          points_reward: 24
-        },
-        {
-          quest_title: 'Practice Data Analysis',
-          target_topic: 'Data Analysis',
-          target_count: 10,
-          difficulty: 'Medium',
-          points_reward: 19
-        },
-        {
-          quest_title: 'Improve Vocabulary',
-          target_topic: 'Vocabulary',
-          target_count: 20,
-          difficulty: 'Easy',
-          points_reward: 17
-        },
-        {
-          quest_title: 'Master Trigonometry',
-          target_topic: 'Trigonometry',
-          target_count: 12,
-          difficulty: 'Hard',
-          points_reward: 26
-        },
-        {
-          quest_title: 'Practice Essay Writing',
-          target_topic: 'Essay Writing',
-          target_count: 5,
-          difficulty: 'Hard',
-          points_reward: 30
-        },
-        {
-          quest_title: 'Solve Statistics Problems',
-          target_topic: 'Statistics',
-          target_count: 14,
-          difficulty: 'Medium',
-          points_reward: 21
-        }
-      ];
+    // Determine user stage
+    const attemptedTopics = getAttemptedTopics(questionAttempts || []);
+    const hasAnyActivity = attemptedTopics.size > 0;
+    const hasManyTopics = attemptedTopics.size >= 8;
 
-      seedQuests.forEach((q, index) => {
-        // Daily quests (first 5) expire at 11:59 PM today, weekly quests expire in 14 days
+    if (!hasAnyActivity) {
+      // New user – random seed quests from a broad pool
+      const allTopics = await fetchAllTopics();
+      const seeds = pickRandom(allTopics, 8);
+      const seedDefs = seeds.map((t, idx) => ({
+        quest_title: `Practice ${t}`,
+        target_topic: t,
+        target_count: idx < 2 ? 10 : 8,
+        difficulty: idx < 2 ? 'Easy' : 'Medium',
+        points_reward: idx < 2 ? 15 : 12
+      }));
+
+      seedDefs.forEach((q, index) => {
+        // First 5 are daily (expire 11:59 PM), others weekly (14 days)
         let expiresAt: string;
         if (index < 5) {
-          // Set to 11:59 PM of current day
           const today = new Date();
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-          // Weekly quests expire in 14 days
           expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
         }
-        
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        
-        // Create description based on whether title specifies the target
-        let description = "Practice in Quiz, Marathon, or Mock Test";
-        if (!q.quest_title.includes(q.target_count.toString())) {
-          description = `Goal: Answer ${q.target_count} ${q.target_topic} questions correctly\n${description}`;
-        }
-        
         questsToCreate.push({
           user_id: userId,
           quest_id: questId,
           quest_title: q.quest_title,
-          quest_description: description,
+          quest_description: `Goal: Answer ${q.target_count} ${q.target_topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
           target_topic: q.target_topic,
           difficulty: q.difficulty,
           quest_type: index < 5 ? 'daily' : 'weekly',
@@ -293,37 +298,60 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           expires_at: expiresAt
         });
       });
+    } else if (!hasManyTopics) {
+      // Some activity – prioritize unattempted skills
+      const allTopics = await fetchAllTopics();
+      const unattempted = allTopics.filter(t => !attemptedTopics.has(t));
+      const picks = pickRandom(unattempted, 7);
+      picks.forEach((topic, index) => {
+        const goal = index < 3 ? 8 : 6;
+        const difficulty = 'Medium';
+        let expiresAt: string;
+        if (index < 5) {
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+          expiresAt = today.toISOString();
     } else {
-      // Experienced user - targeted improvement quests (limit to 12 total)
+          expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        }
+        const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        questsToCreate.push({
+          user_id: userId,
+          quest_id: questId,
+          quest_title: `Explore ${topic}`,
+          quest_description: `Goal: Answer ${goal} ${topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
+          target_topic: topic,
+          difficulty,
+          quest_type: index < 5 ? 'daily' : 'weekly',
+          target_count: goal,
+          current_progress: 0,
+          points_reward: 12,
+          completed: false,
+          expires_at: expiresAt
+        });
+      });
+    } else {
+      // Lots of activity – focus weakest accuracy areas (existing logic)
       weakTopicsAnalysis.slice(0, 7).forEach((weakArea, index) => {
         const isUrgent = weakArea.accuracy < 50;
         const target = isUrgent ? 10 : 8;
         const difficulty = isUrgent ? 'Hard' : 'Medium';
         const points = isUrgent ? 18 : 12;
-        
-        // Daily quests (first 5) expire at 11:59 PM today, others expire in 3-7 days
         let expiresAt: string;
         if (index < 5) {
-          // Set to 11:59 PM of current day
           const today = new Date();
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-          // Other quests expire in 3-7 days
-          const daysToComplete = isUrgent ? 3 : 7;
+        const daysToComplete = isUrgent ? 3 : 7;
           expiresAt = new Date(Date.now() + daysToComplete * 24 * 60 * 60 * 1000).toISOString();
         }
-        
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        
-        // Create description - improvement quests always need goal since title doesn't specify count
-        const description = `Goal: Answer ${target} ${weakArea.topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`;
-        
         questsToCreate.push({
           user_id: userId,
           quest_id: questId,
           quest_title: `Improve ${weakArea.topic}`,
-          quest_description: description,
+          quest_description: `Goal: Answer ${target} ${weakArea.topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
           target_topic: weakArea.topic,
           difficulty,
           quest_type: index < 5 ? 'daily' : 'weekly',
@@ -718,81 +746,81 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
                   {/* Regular Quests - Remaining quests */}
                   {activeQuests.slice(5).map((quest) => (
-                    <motion.div
-                      key={quest.id}
-                      variants={cardVariants}
-                      whileHover={{ y: -2, boxShadow: "0 10px 25px rgba(0,0,0,0.06)" }}
-                      className="group"
-                    >
-                      <Card className="relative border border-gray-200 hover:border-yellow-300 transition-all duration-300 bg-white/80 backdrop-blur-sm">
-                        <CardContent className="p-4">
-                          {/* Claim button top-right */}
-                          {quest.progress >= quest.target && !quest.completed && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <motion.button
-                                  variants={buttonVariants}
-                                  whileHover="hover"
-                                  whileTap="tap"
-                                  onClick={() => handleCompleteQuest(quest.id)}
-                                  aria-label="Claim reward"
-                                  className="absolute top-3 right-3 bg-black hover:bg-neutral-800 text-white px-3 py-1.5 rounded-md font-medium text-xs shadow-md"
-                                >
-                                  Claim
-                                </motion.button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Claim your reward (+{quest.points} pts)</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
+                  <motion.div
+                    key={quest.id}
+                    variants={cardVariants}
+                    whileHover={{ y: -2, boxShadow: "0 10px 25px rgba(0,0,0,0.06)" }}
+                    className="group"
+                  >
+                    <Card className="relative border border-gray-200 hover:border-yellow-300 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                      <CardContent className="p-4">
+                        {/* Claim button top-right */}
+                        {quest.progress >= quest.target && !quest.completed && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <motion.button
+                                variants={buttonVariants}
+                                whileHover="hover"
+                                whileTap="tap"
+                                onClick={() => handleCompleteQuest(quest.id)}
+                                aria-label="Claim reward"
+                                className="absolute top-3 right-3 bg-black hover:bg-neutral-800 text-white px-3 py-1.5 rounded-md font-medium text-xs shadow-md"
+                              >
+                                Claim
+                              </motion.button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Claim your reward (+{quest.points} pts)</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
 
-                          <div className="flex items-start justify-between mb-2 pr-20">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-semibold text-gray-900 text-sm md:text-base truncate">{quest.title}</h4>
-                                <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50 font-medium text-[10px] md:text-xs">
-                                  +{quest.points} pts
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-gray-700 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                {quest.description}
-                              </div>
+                        <div className="flex items-start justify-between mb-2 pr-20">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900 text-sm md:text-base truncate">{quest.title}</h4>
+                              <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50 font-medium text-[10px] md:text-xs">
+                              +{quest.points} pts
+                            </Badge>
+                          </div>
+                            <div className="text-xs text-gray-700 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {quest.description}
                             </div>
                           </div>
+                          </div>
                           
-                          {/* Meta row (removed subject tag) */}
-                          <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
+                        {/* Meta row (removed subject tag) */}
+                        <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {getTimeRemaining(quest.expiresAt)}
                             </span>
-                            <span className="font-medium">{quest.progress}/{quest.target}</span>
-                          </div>
-                          
-                          {/* Progress bar (smaller) */}
-                          <div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
-                                transition={{ duration: 0.6, ease: "easeOut" }}
-                                className={`h-2 rounded-full ${
-                                quest.subject === 'Math' 
-                                  ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                                  : 'bg-gradient-to-r from-purple-500 to-purple-600'
-                              }`}
-                              />
-                            </div>
-                            {quest.progress < quest.target && (
-                              <p className="text-[11px] text-gray-500 mt-1 text-center">
-                                {Math.max(0, quest.target - quest.progress)} more correct answers needed
-                              </p>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                          <span className="font-medium">{quest.progress}/{quest.target}</span>
+                        </div>
+                        
+                        {/* Progress bar (smaller) */}
+                        <div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
+                              transition={{ duration: 0.6, ease: "easeOut" }}
+                              className={`h-2 rounded-full ${
+                              quest.subject === 'Math' 
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                                : 'bg-gradient-to-r from-purple-500 to-purple-600'
+                            }`}
+                            />
+                        </div>
+                          {quest.progress < quest.target && (
+                            <p className="text-[11px] text-gray-500 mt-1 text-center">
+                              {Math.max(0, quest.target - quest.progress)} more correct answers needed
+                        </p>
+                          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  </motion.div>
                   ))}
                 </>
               )}

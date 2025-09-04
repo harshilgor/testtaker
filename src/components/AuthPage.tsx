@@ -93,21 +93,7 @@ const AuthPage: React.FC = () => {
       // Clean up existing state
       cleanupAuthState();
       
-      // TEMPORARY: Mock authentication for local testing while Supabase is unhealthy
-      if (loginData.email === 'test@example.com' && loginData.password === 'password') {
-        console.log('Mock login successful - bypassing Supabase');
-        // Store mock user data
-        localStorage.setItem('mockUser', JSON.stringify({
-          id: 'mock-user-id',
-          email: loginData.email,
-          full_name: 'Test User'
-        }));
-        localStorage.setItem('mockSession', 'true');
-        
-        // Redirect to dashboard
-        window.location.href = '/';
-        return;
-      }
+
       
       // Try real Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -130,6 +116,10 @@ const AuthPage: React.FC = () => {
         setError('Network error: Unable to connect to Supabase. This might be due to Edge Functions being unhealthy. Please try again in a few minutes.');
       } else if (error.message.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please check your credentials.');
+      } else if (error.message.includes('fetch')) {
+        setError('Connection failed: Unable to reach Supabase. Please check your internet connection and try again.');
+      } else if (error.message.includes('timeout')) {
+        setError('Request timeout: Supabase is taking too long to respond. Please try again.');
       } else {
         setError(error.message);
       }
@@ -204,11 +194,13 @@ const AuthPage: React.FC = () => {
             <CardTitle className="text-center">Welcome Back</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
+                    <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+          
+
 
               {error && (
                 <Alert className="mt-4" variant="destructive">

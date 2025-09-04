@@ -18,7 +18,7 @@ interface PacingData {
 }
 
 const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ userName }) => {
-  // Fetch recent data for pacing analysis
+  // Fetch recent data for pacing analysis (last 30 days)
   const { data: recentAttempts = [] } = useQuery({
     queryKey: ['recent-attempts-pacing', userName],
     queryFn: async () => {
@@ -35,11 +35,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ userName }) => 
         .gte('created_at', since.toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching recent attempts:', error);
-        return [];
-      }
-
+      if (error) return [];
       return data || [];
     },
     enabled: !!userName,
@@ -56,76 +52,155 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ userName }) => 
 
       const { data, error } = await supabase
         .from('quiz_results')
-        .select('*')
+        .select('created_at, subject, total_questions, time_taken')
         .eq('user_id', user.user.id)
         .gte('created_at', since.toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching recent quizzes:', error);
-        return [];
-      }
-
+      if (error) return [];
       return data || [];
     },
     enabled: !!userName,
   });
 
-  // Calculate pacing data
-  const pacingData = useMemo((): PacingData[] => {
-    // Math section
-    const mathAttempts = recentAttempts.filter(a => 
-      a.subject?.toLowerCase().includes('math')
-    );
-    const mathQuizzes = recentQuizzes.filter(q => 
-      q.subject?.toLowerCase().includes('math')
-    );
-    
-    const mathTotalTime = mathAttempts.reduce((sum, a) => sum + (a.time_spent || 0), 0);
-    const mathTotalQuestions = mathAttempts.length + 
-      mathQuizzes.reduce((sum, q) => sum + (q.total_questions || 0), 0);
-    
-    const mathAvgTime = mathTotalQuestions > 0 ? mathTotalTime / mathTotalQuestions : 0;
-    const mathAvgTimeFormatted = mathAvgTime > 0 ? 
-      `${Math.floor(mathAvgTime / 60)}:${String(Math.floor(mathAvgTime % 60)).padStart(2, '0')}` : 
-      '0:00';
+  const { data: recentMarathons = [] } = useQuery({
+    queryKey: ['recent-marathons-pacing', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
 
-    // Reading & Writing section
-    const rwAttempts = recentAttempts.filter(a => 
-      a.subject?.toLowerCase().includes('reading') || 
-      a.subject?.toLowerCase().includes('writing') ||
-      a.subject?.toLowerCase().includes('verbal')
-    );
-    const rwQuizzes = recentQuizzes.filter(q => 
-      q.subject?.toLowerCase().includes('reading') || 
-      q.subject?.toLowerCase().includes('writing') ||
-      q.subject?.toLowerCase().includes('verbal')
-    );
-    
-    const rwTotalTime = rwAttempts.reduce((sum, a) => sum + (a.time_spent || 0), 0);
-    const rwTotalQuestions = rwAttempts.length + 
-      rwQuizzes.reduce((sum, q) => sum + (q.total_questions || 0), 0);
-    
-    const rwAvgTime = rwTotalQuestions > 0 ? rwTotalTime / rwTotalQuestions : 0;
-    const rwAvgTimeFormatted = rwAvgTime > 0 ? 
-      `${Math.floor(rwAvgTime / 60)}:${String(Math.floor(rwAvgTime % 60)).padStart(2, '0')}` : 
-      '0:00';
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('marathon_sessions')
+        .select('created_at, start_time, end_time, subjects, total_questions')
+        .eq('user_id', user.user.id)
+        .gte('created_at', since.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  const { data: recentMocks = [] } = useQuery({
+    queryKey: ['recent-mocks-pacing', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('mock_test_results')
+        .select('completed_at, created_at, time_taken')
+        .eq('user_id', user.user.id)
+        .or(`completed_at.gte.${since.toISOString()},created_at.gte.${since.toISOString()}`)
+        .order('completed_at', { ascending: false });
+
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Calculate pacing data across all modes
+  const pacingData = useMemo((): PacingData[] => {
+    // Helpers
+    const isMath = (s?: string) => (s || '').toLowerCase().includes('math');
+    const isRW = (s?: string) => {
+      const v = (s || '').toLowerCase();
+      return v.includes('reading') || v.includes('writing') || v.includes('verbal');
+    };
+
+    // Accumulators in seconds and counts
+    let mathSeconds = 0; let mathQuestions = 0;
+    let rwSeconds = 0; let rwQuestions = 0;
+
+    // Attempts: exact per-question timing by subject
+    recentAttempts.forEach((a: any) => {
+      const sec = a.time_spent || 0;
+      if (isMath(a.subject)) {
+        mathSeconds += sec; mathQuestions += 1;
+      } else if (isRW(a.subject)) {
+        rwSeconds += sec; rwQuestions += 1;
+      }
+    });
+
+    // Quizzes: use time_taken / total_questions, bucket by subject
+    recentQuizzes.forEach((q: any) => {
+      const totalQ = q.total_questions || 0;
+      const totalSec = q.time_taken || 0; // seconds
+      if (!totalQ || !totalSec) return;
+      if (isMath(q.subject)) {
+        mathSeconds += totalSec; mathQuestions += totalQ;
+      } else if (isRW(q.subject)) {
+        rwSeconds += totalSec; rwQuestions += totalQ;
+      }
+    });
+
+    // Marathon sessions: use (end - start) and distribute seconds/questions to subjects
+    recentMarathons.forEach((m: any) => {
+      const start = m.start_time ? new Date(m.start_time) : (m.created_at ? new Date(m.created_at) : null);
+      const end = m.end_time ? new Date(m.end_time) : null;
+      const seconds = (start && end) ? Math.max(0, (end.getTime() - start.getTime()) / 1000) : 0;
+      const totalQ = m.total_questions || 0;
+      const subjects: string[] = Array.isArray(m.subjects) ? m.subjects : [];
+      const hasMath = subjects.some(s => isMath(s));
+      const hasRW = subjects.some(s => isRW(s));
+
+      if (hasMath && !hasRW) {
+        mathSeconds += seconds; mathQuestions += totalQ;
+      } else if (!hasMath && hasRW) {
+        rwSeconds += seconds; rwQuestions += totalQ;
+      } else if (hasMath && hasRW) {
+        // Split evenly when both subjects selected
+        mathSeconds += seconds / 2; rwSeconds += seconds / 2;
+        mathQuestions += totalQ / 2; rwQuestions += totalQ / 2;
+      } else {
+        // Unknown: ignore to avoid skewing
+      }
+    });
+
+    // Mock tests: split by typical SAT sections (20 Math, 44 RW) if no finer data
+    recentMocks.forEach((m: any) => {
+      const sec = m.time_taken || 0; // seconds
+      if (sec > 0) {
+        // Distribute by 20/44 questions
+        const mathQ = 20; const rwQ = 44; const totalQ = mathQ + rwQ;
+        const mathShare = sec * (mathQ / totalQ);
+        const rwShare = sec * (rwQ / totalQ);
+        mathSeconds += mathShare; rwSeconds += rwShare;
+        mathQuestions += mathQ; rwQuestions += rwQ;
+      }
+    });
+
+    // Compute averages (seconds per question)
+    const mathAvgSec = mathQuestions > 0 ? mathSeconds / mathQuestions : 0;
+    const rwAvgSec = rwQuestions > 0 ? rwSeconds / rwQuestions : 0;
+
+    const format = (sec: number) => sec > 0
+      ? `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+      : '0:00';
 
     return [
       {
         subject: 'Math',
-        avgTime: mathAvgTimeFormatted,
+        avgTime: format(mathAvgSec),
         targetTime: '~1:25',
-        hasData: mathTotalQuestions > 0
+        hasData: mathQuestions > 0
       },
       {
         subject: 'Reading & Writing',
-        avgTime: rwAvgTimeFormatted,
+        avgTime: format(rwAvgSec),
         targetTime: '~1:15',
-        hasData: rwTotalQuestions > 0
+        hasData: rwQuestions > 0
       }
     ];
-  }, [recentAttempts, recentQuizzes]);
+  }, [recentAttempts, recentQuizzes, recentMarathons, recentMocks]);
 
   return (
     <Card className="bg-white border-0 shadow-sm h-full">

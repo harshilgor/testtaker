@@ -17,7 +17,6 @@ import {
   XCircle,
   CheckCircle,
   Timer,
-  Eye,
   Search,
   AlertCircle,
   Loader2,
@@ -26,6 +25,7 @@ import {
   Rocket,
   Target as TargetIcon
 } from 'lucide-react';
+import geminiAnalysisService from '@/services/geminiAnalysisService';
 
 interface Mistake {
   id: string;
@@ -81,177 +81,80 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
 
   // Get all unique skills from mistakes
   const allSkills = useMemo(() => {
-    if (!mistakes.length) return [];
-    
+    if (!mistakes.length) return [] as Array<{ skill: string; subject: 'math' | 'english'; mistakes: Mistake[] }>;
     const skillMap = new Map<string, { subject: 'math' | 'english', mistakes: Mistake[] }>();
-    
     mistakes.forEach(mistake => {
       const key = mistake.topic;
       if (!skillMap.has(key)) {
-        skillMap.set(key, { subject: mistake.subject as 'math' | 'english', mistakes: [] });
+        skillMap.set(key, { subject: (mistake.subject as 'math' | 'english') || 'english', mistakes: [] });
       }
       skillMap.get(key)!.mistakes.push(mistake);
     });
-    
-    return Array.from(skillMap.entries()).map(([skill, data]) => ({
-      skill,
-      subject: data.subject,
-      mistakes: data.mistakes
-    }));
+    return Array.from(skillMap.entries()).map(([skill, data]) => ({ skill, subject: data.subject, mistakes: data.mistakes }));
   }, [mistakes]);
 
-  // Generate comprehensive insights using Gemini AI
+  // Generate comprehensive insights using Gemini (via Supabase Edge Function)
   const generateComprehensiveInsights = async () => {
     if (!mistakes.length) return;
-    
     setIsGeneratingComprehensive(true);
-    
     try {
-      // Prepare comprehensive data for Gemini
-      const mistakeSummary = mistakes.map(m => ({
-        topic: m.topic,
-        subject: m.subject,
-        difficulty: m.difficulty,
-        time_spent: m.time_spent,
-        error_type: m.error_type,
-        repeat_count: m.repeat_count,
-        created_at: m.created_at
-      }));
+      // Majority subject for context
+      const mathCount = mistakes.filter(m => (m.subject || '').toLowerCase().includes('math')).length;
+      const englishCount = mistakes.length - mathCount;
+      const subject: 'math' | 'english' = mathCount >= englishCount ? 'math' : 'english';
 
-      const subjectBreakdown = {
-        math: mistakes.filter(m => m.subject === 'math').length,
-        english: mistakes.filter(m => m.subject === 'english').length
-      };
+      const avgTime = Math.round(mistakes.reduce((s, m) => s + (m.time_spent || 0), 0) / mistakes.length);
 
-      const timeAnalysis = {
-        avgTime: Math.round(mistakes.reduce((sum, m) => sum + (m.time_spent || 0), 0) / mistakes.length),
-        fastMistakes: mistakes.filter(m => (m.time_spent || 0) < 30).length,
-        slowMistakes: mistakes.filter(m => (m.time_spent || 0) > 90).length
-      };
+      // Send ALL incorrect questions with text to Gemini via Edge Function
+      const request = {
+        topic: 'overall',
+        subject,
+        mistakes: mistakes.map(m => ({
+          question_text: m.question_text,
+          time_spent: m.time_spent,
+          difficulty: m.difficulty,
+          error_type: m.error_type,
+          created_at: m.created_at
+        })),
+        avgTimeSpent: avgTime,
+        mistakeCount: mistakes.length,
+        userName
+      } as any;
 
-      const topicBreakdown = allSkills.map(skill => ({
-        topic: skill.skill,
-        subject: skill.subject,
-        mistakeCount: skill.mistakes.length,
-        avgTime: Math.round(skill.mistakes.reduce((sum, m) => sum + (m.time_spent || 0), 0) / skill.mistakes.length)
-      }));
+      const analysis = await geminiAnalysisService.analyzeWeakness(request);
 
-      // Create comprehensive prompt for Gemini
-      const comprehensivePrompt = `You are an expert SAT tutor analyzing a student's comprehensive performance data. 
-
-STUDENT: ${userName}
-TOTAL MISTAKES: ${mistakes.length}
-SUBJECT BREAKDOWN: Math: ${subjectBreakdown.math}, English: ${subjectBreakdown.english}
-TIME ANALYSIS: Average time per question: ${timeAnalysis.avgTime}s, Fast mistakes (<30s): ${timeAnalysis.fastMistakes}, Slow mistakes (>90s): ${timeAnalysis.slowMistakes}
-
-TOPIC BREAKDOWN:
-${topicBreakdown.map(t => `- ${t.topic} (${t.subject}): ${t.mistakeCount} mistakes, avg ${t.avgTime}s`).join('\n')}
-
-MISTAKE DETAILS:
-${mistakeSummary.map(m => `- ${m.topic} (${m.subject}): ${m.difficulty} difficulty, ${m.time_spent}s, repeat: ${m.repeat_count}, error: ${m.error_type || 'unknown'}`).join('\n')}
-
-Please provide a comprehensive analysis in this JSON format:
-
-{
-  "overallAnalysis": "A 3-4 sentence summary of the student's overall performance and main challenges",
-  "keyWeaknesses": [
-    "List 5-6 specific areas where the student struggles most",
-    "Be specific about topics and skills"
-  ],
-  "learningPatterns": [
-    "List 4-5 patterns in how the student approaches questions",
-    "Include time management, error types, and subject preferences"
-  ],
-  "improvementStrategies": [
-    "List 6-8 specific strategies to improve overall performance",
-    "Include both study techniques and test-taking strategies"
-  ],
-  "timeManagementInsights": [
-    "List 3-4 specific insights about the student's time management",
-    "Based on the time data provided"
-  ],
-  "subjectSpecificAdvice": {
-    "math": [
-      "List 4-5 specific strategies for math improvement",
-      "Based on math mistakes and patterns"
-    ],
-    "english": [
-      "List 4-5 specific strategies for English improvement", 
-      "Based on English mistakes and patterns"
-    ]
-  },
-  "confidenceLevel": "low/medium/high based on the overall performance",
-  "estimatedImprovementTime": "Realistic time estimate for significant improvement",
-  "priorityActions": [
-    "List 4-5 immediate actions the student should take",
-    "Prioritized by impact and urgency"
-  ]
-}
-
-Make the analysis specific, actionable, and encouraging. Focus on patterns and specific strategies.`;
-
-      // Call Gemini API for comprehensive analysis
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBhOTKC0-sJXvoXNpCShWPKfJ6_1BG2h2w`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Map Edge Function response into our UI model (bullet points)
+      const mapped: ComprehensiveInsights = {
+        overallAnalysis: analysis.overallInsight,
+        keyWeaknesses: analysis.rootCauses,
+        learningPatterns: analysis.specificReasons,
+        improvementStrategies: analysis.practiceStrategies,
+        timeManagementInsights: [
+          avgTime < 30 ? 'You tend to rush questions.' : avgTime > 90 ? 'You spend too long per question.' : 'Your pacing is generally reasonable.'
+        ],
+        subjectSpecificAdvice: {
+          math: subject === 'math' ? analysis.practiceStrategies.slice(0, 5) : [],
+          english: subject === 'english' ? analysis.practiceStrategies.slice(0, 5) : []
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: comprehensivePrompt
-            }]
-          }]
-        })
-      });
+        confidenceLevel: analysis.confidenceLevel,
+        estimatedImprovementTime: analysis.estimatedImprovementTime,
+        priorityActions: analysis.practiceStrategies.slice(0, 5)
+      };
 
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (content) {
-        // Try to extract JSON from the response
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          setComprehensiveInsights(parsed);
-        } else {
-          // Fallback parsing
-          setComprehensiveInsights({
-            overallAnalysis: "Based on your performance data, you have several areas for improvement. Focus on your weakest topics and practice time management.",
-            keyWeaknesses: ["Need more specific analysis"],
-            learningPatterns: ["Patterns being analyzed"],
-            improvementStrategies: ["Practice regularly", "Review mistakes", "Time management"],
-            timeManagementInsights: ["Work on pacing"],
-            subjectSpecificAdvice: {
-              math: ["Practice problem-solving"],
-              english: ["Improve reading comprehension"]
-            },
-            confidenceLevel: 'medium',
-            estimatedImprovementTime: '3-4 weeks',
-            priorityActions: ["Start with weakest topics", "Practice daily"]
-          });
-        }
-      }
+      setComprehensiveInsights(mapped);
     } catch (error) {
       console.error('Error generating comprehensive insights:', error);
-      // Fallback insights
+      // Minimal safe fallback
       setComprehensiveInsights({
-        overallAnalysis: "Analysis complete! Here are your key areas for improvement based on your performance data.",
-        keyWeaknesses: ["Focus on your weakest topics first"],
-        learningPatterns: ["Review your mistake patterns"],
-        improvementStrategies: ["Practice regularly", "Review explanations", "Time management"],
-        timeManagementInsights: ["Work on pacing yourself"],
-        subjectSpecificAdvice: {
-          math: ["Practice problem-solving", "Review formulas"],
-          english: ["Improve reading comprehension", "Practice grammar"]
-        },
+        overallAnalysis: 'Analysis complete! Here are your key areas for improvement based on your performance data.',
+        keyWeaknesses: ['Focus on your weakest topics first'],
+        learningPatterns: ['Review your mistake patterns'],
+        improvementStrategies: ['Practice regularly', 'Review explanations', 'Time management'],
+        timeManagementInsights: ['Work on pacing yourself'],
+        subjectSpecificAdvice: { math: [], english: [] },
         confidenceLevel: 'medium',
         estimatedImprovementTime: '3-4 weeks',
-        priorityActions: ["Start with weakest topics", "Practice daily", "Review mistakes"]
+        priorityActions: ['Start with weakest topics', 'Practice daily', 'Review mistakes']
       });
     } finally {
       setIsGeneratingComprehensive(false);
@@ -261,10 +164,7 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
   // Analyze all skills with Gemini AI
   const analyzeAllSkills = async () => {
     if (hasAnalyzed) return;
-    
     setHasAnalyzed(true);
-    
-    // Generate comprehensive insights
     await generateComprehensiveInsights();
   };
 
@@ -289,16 +189,16 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="space-y-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <Brain className="h-5 w-5 text-orange-600" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-gray-900">AI Weakness Analysis</h3>
             <p className="text-sm text-gray-500 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-blue-500" />
-              Comprehensive insights from Gemini AI
+              <Sparkles className="h-4 w-4 text-blue-500 flex-shrink-0" />
+              <span className="truncate">Comprehensive insights from Gemini AI</span>
             </p>
           </div>
         </div>
@@ -306,7 +206,8 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
         <Button
           onClick={analyzeAllSkills}
           disabled={isGeneratingComprehensive || hasAnalyzed}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+          size="sm"
         >
           {isGeneratingComprehensive ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -315,7 +216,9 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
           ) : (
             <TargetIcon className="h-4 w-4 mr-2" />
           )}
-          {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Target My Weakness'}
+          <span className="truncate">
+            {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Target My Weakness'}
+          </span>
         </Button>
       </div>
 
@@ -324,31 +227,31 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
         <Card className="mb-6 border-2 border-blue-200 bg-blue-50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Brain className="h-4 w-4 text-blue-600" />
-              Gemini AI Comprehensive Analysis
+              <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <span className="truncate">Gemini AI Comprehensive Analysis</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Overall Analysis */}
             <div className="p-3 bg-white rounded-lg border border-blue-200">
               <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
-                <TargetIcon className="h-4 w-4" />
-                Overall Performance Analysis
+                <TargetIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Overall Performance Analysis</span>
               </h4>
-              <p className="text-sm text-blue-700">{comprehensiveInsights.overallAnalysis}</p>
+              <p className="text-sm text-blue-700 break-words">{comprehensiveInsights.overallAnalysis}</p>
             </div>
 
             {/* Key Weaknesses */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-red-500" />
-                Key Weaknesses
+                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <span className="truncate">Key Weaknesses</span>
               </h4>
               <ul className="space-y-1">
                 {comprehensiveInsights.keyWeaknesses.map((weakness, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                    <span className="text-red-500 mt-1">•</span>
-                    <span>{weakness}</span>
+                    <span className="text-red-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{weakness}</span>
                   </li>
                 ))}
               </ul>
@@ -357,14 +260,14 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
             {/* Learning Patterns */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-purple-500" />
-                Learning Patterns
+                <BarChart3 className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                <span className="truncate">Learning Patterns</span>
               </h4>
               <ul className="space-y-1">
                 {comprehensiveInsights.learningPatterns.map((pattern, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                    <span className="text-purple-500 mt-1">•</span>
-                    <span>{pattern}</span>
+                    <span className="text-purple-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{pattern}</span>
                   </li>
                 ))}
               </ul>
@@ -373,14 +276,14 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
             {/* Improvement Strategies */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                <ArrowRight className="h-4 w-4 text-green-500" />
-                Improvement Strategies
+                <ArrowRight className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span className="truncate">Improvement Strategies</span>
               </h4>
               <ul className="space-y-1">
                 {comprehensiveInsights.improvementStrategies.map((strategy, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                    <span className="text-green-500 mt-1">•</span>
-                    <span>{strategy}</span>
+                    <span className="text-green-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{strategy}</span>
                   </li>
                 ))}
               </ul>
@@ -389,45 +292,45 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
             {/* Time Management */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                <Timer className="h-4 w-4 text-orange-500" />
-                Time Management Insights
+                <Timer className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                <span className="truncate">Time Management Insights</span>
               </h4>
               <ul className="space-y-1">
                 {comprehensiveInsights.timeManagementInsights.map((insight, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                    <span className="text-orange-500 mt-1">•</span>
-                    <span>{insight}</span>
+                    <span className="text-orange-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{insight}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Subject-Specific Advice */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                  <span className="text-blue-500">📊</span>
-                  Math Strategies
+                  <span className="text-blue-500 flex-shrink-0">📊</span>
+                  <span className="truncate">Math Strategies</span>
                 </h4>
                 <ul className="space-y-1">
                   {comprehensiveInsights.subjectSpecificAdvice.math.map((advice, index) => (
                     <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">•</span>
-                      <span>{advice}</span>
+                      <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
+                      <span className="break-words">{advice}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                  <span className="text-green-500">📚</span>
-                  English Strategies
+                  <span className="text-green-500 flex-shrink-0">📚</span>
+                  <span className="truncate">English Strategies</span>
                 </h4>
                 <ul className="space-y-1">
                   {comprehensiveInsights.subjectSpecificAdvice.english.map((advice, index) => (
                     <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                      <span className="text-green-500 mt-1">•</span>
-                      <span>{advice}</span>
+                      <span className="text-green-500 mt-1 flex-shrink-0">•</span>
+                      <span className="break-words">{advice}</span>
                     </li>
                   ))}
                 </ul>
@@ -437,30 +340,30 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
             {/* Priority Actions */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
-                <Rocket className="h-4 w-4 text-red-500" />
-                Priority Actions
+                <Rocket className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <span className="truncate">Priority Actions</span>
               </h4>
               <ul className="space-y-1">
                 {comprehensiveInsights.priorityActions.map((action, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
-                    <span className="text-red-500 mt-1">•</span>
-                    <span>{action}</span>
+                    <span className="text-red-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{action}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Confidence and Timeline */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-2 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 text-xs mb-1">AI Confidence</h4>
+                <h4 className="font-medium text-gray-900 text-xs mb-1 truncate">AI Confidence</h4>
                 <Badge className={`text-xs ${getConfidenceColor(comprehensiveInsights.confidenceLevel)}`}>
                   {getConfidenceIcon(comprehensiveInsights.confidenceLevel)} {comprehensiveInsights.confidenceLevel}
                 </Badge>
               </div>
               <div className="p-2 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 text-xs mb-1">Improvement Time</h4>
-                <p className="text-xs text-gray-700">{comprehensiveInsights.estimatedImprovementTime}</p>
+                <h4 className="font-medium text-gray-900 text-xs mb-1 truncate">Improvement Time</h4>
+                <p className="text-xs text-gray-700 truncate">{comprehensiveInsights.estimatedImprovementTime}</p>
               </div>
             </div>
           </CardContent>
@@ -471,18 +374,18 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-blue-500" />
-            Performance Summary
+            <BarChart3 className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <span className="truncate">Performance Summary</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 text-sm mb-1">Total Mistakes</h4>
+              <h4 className="font-medium text-gray-900 text-sm mb-1 truncate">Total Mistakes</h4>
               <p className="text-2xl font-bold text-gray-900">{mistakes.length}</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 text-sm mb-1">Skills Analyzed</h4>
+              <h4 className="font-medium text-gray-900 text-sm mb-1 truncate">Skills Analyzed</h4>
               <p className="text-2xl font-bold text-gray-900">{allSkills.length}</p>
             </div>
           </div>

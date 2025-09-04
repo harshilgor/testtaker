@@ -23,40 +23,45 @@ interface GeminiAnalysisResponse {
 }
 
 class GeminiAnalysisService {
-  private apiKey: string;
-  private baseUrl: string;
+  private supabaseUrl: string;
+  private supabaseAnonKey: string;
 
   constructor() {
-    this.apiKey = 'AIzaSyBhOTKC0-sJXvoXNpCShWPKfJ6_1BG2h2w';
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+    this.supabaseUrl = 'https://kpcprhkubqhslazlhgad.supabase.co';
+    this.supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
   }
 
   async analyzeWeakness(request: GeminiAnalysisRequest): Promise<GeminiAnalysisResponse> {
     try {
+      // Build a comprehensive prompt for Gemini
       const prompt = this.buildAnalysisPrompt(request);
       
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+      // Call the Supabase Edge Function
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/gemini-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.supabaseAnonKey}`,
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
+          prompt: prompt
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        throw new Error(`Edge Function error: ${response.status}`);
       }
 
       const data = await response.json();
-      return this.parseGeminiResponse(data, request);
+      
+      if (data.analysis) {
+        // Parse the Gemini response and convert to our format
+        return this.parseGeminiResponse(data.analysis, request);
+      } else {
+        throw new Error('No analysis in response');
+      }
     } catch (error) {
-      console.error('Error calling Gemini API:', error);
+      console.error('Error calling Edge Function:', error);
       // Fallback to rule-based analysis
       return this.generateFallbackAnalysis(request);
     }
@@ -68,6 +73,9 @@ class GeminiAnalysisService {
     const timeAnalysis = this.analyzeTimePattern(avgTimeSpent);
     const mistakePatterns = this.analyzeMistakePatterns(mistakes);
     
+    // Include actual question texts for better analysis
+    const questionTexts = mistakes.slice(0, 5).map(m => m.question_text || 'Question text not available').join('\n\n');
+    
     return `You are an expert SAT tutor analyzing a student's performance. 
 
 STUDENT: ${userName}
@@ -77,30 +85,42 @@ TOTAL MISTAKES: ${mistakeCount}
 AVERAGE TIME SPENT: ${avgTimeSpent} seconds
 TIME PATTERN: ${timeAnalysis}
 
+SAMPLE QUESTIONS STUDENT GOT WRONG:
+${questionTexts}
+
 MISTAKE PATTERNS:
 ${mistakePatterns}
 
-Please provide a detailed analysis in the following JSON format:
+Please provide a detailed analysis in the following EXACT JSON format (no additional text, just the JSON):
 
 {
   "rootCauses": [
-    "List 4-5 fundamental reasons why this student struggles with this topic",
-    "Focus on conceptual gaps, learning habits, and test-taking strategies"
+    "Fundamental reason 1 - be specific and actionable",
+    "Fundamental reason 2 - focus on conceptual gaps",
+    "Fundamental reason 3 - learning habits or strategies",
+    "Fundamental reason 4 - test-taking approach"
   ],
   "specificReasons": [
-    "List 5-6 specific, actionable reasons for the mistakes",
-    "Be very specific about what the student is doing wrong"
+    "Specific mistake pattern 1 - what exactly is going wrong",
+    "Specific mistake pattern 2 - common errors made",
+    "Specific mistake pattern 3 - time management issues",
+    "Specific mistake pattern 4 - comprehension problems",
+    "Specific mistake pattern 5 - calculation or reasoning errors"
   ],
   "practiceStrategies": [
-    "List 6-8 specific strategies to improve",
-    "Include both study techniques and test-taking strategies"
+    "Strategy 1 - specific study technique",
+    "Strategy 2 - practice method",
+    "Strategy 3 - test-taking approach",
+    "Strategy 4 - review technique",
+    "Strategy 5 - time management tip",
+    "Strategy 6 - conceptual understanding method"
   ],
-  "overallInsight": "A 2-3 sentence summary of the main issue and how to address it",
-  "confidenceLevel": "low/medium/high based on the student's performance patterns",
-  "estimatedImprovementTime": "Realistic time estimate (e.g., '2-3 weeks', '1 month')"
+  "overallInsight": "A 2-3 sentence summary of the main issue and how to address it specifically for ${subject} ${topic}",
+  "confidenceLevel": "medium",
+  "estimatedImprovementTime": "2-3 weeks"
 }
 
-Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest. Focus on actionable insights that the student can implement immediately.`;
+Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest. Focus on actionable insights that the student can implement immediately. Return ONLY the JSON object, no additional text.`;
   }
 
   private analyzeTimePattern(avgTime: number): string {
@@ -136,9 +156,10 @@ Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest
     return patterns.join('\n');
   }
 
-  private parseGeminiResponse(data: any, request: GeminiAnalysisRequest): GeminiAnalysisResponse {
+  private parseGeminiResponse(content: string, request: GeminiAnalysisRequest): GeminiAnalysisResponse {
     try {
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      console.log('Raw Gemini response:', content);
+      
       if (!content) {
         throw new Error('No content in Gemini response');
       }
@@ -147,11 +168,12 @@ Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        console.log('Parsed JSON:', parsed);
         return {
-          rootCauses: parsed.rootCauses || [],
-          specificReasons: parsed.specificReasons || [],
-          practiceStrategies: parsed.practiceStrategies || [],
-          overallInsight: parsed.overallInsight || '',
+          rootCauses: Array.isArray(parsed.rootCauses) ? parsed.rootCauses : [],
+          specificReasons: Array.isArray(parsed.specificReasons) ? parsed.specificReasons : [],
+          practiceStrategies: Array.isArray(parsed.practiceStrategies) ? parsed.practiceStrategies : [],
+          overallInsight: parsed.overallInsight || 'Analysis complete based on your performance patterns.',
           confidenceLevel: parsed.confidenceLevel || 'medium',
           estimatedImprovementTime: parsed.estimatedImprovementTime || '2-3 weeks'
         };

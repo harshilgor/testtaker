@@ -117,7 +117,7 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
   const handleQuizComplete = () => {
     const correctAnswers = answers.filter((answer, index) => {
       if (answer === null) return false;
-      const correctAnswerIndex = questions[index].correctAnswer.charCodeAt(0) - 'A'.charCodeAt(0);
+        const correctAnswerIndex = questions[index].correctAnswer.charCodeAt(0) - 'A'.charCodeAt(0);
       return answer === correctAnswerIndex;
     }).length;
 
@@ -156,7 +156,7 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
                   <Brain className="h-10 w-10 text-blue-600" />
                 )}
               </div>
-              
+
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz Completed!</h2>
               <p className="text-gray-600 mb-6">Great job completing the practice session!</p>
               
@@ -215,35 +215,35 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
     );
   }
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+      {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Button onClick={onBack} variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div>
+                Back
+              </Button>
+              <div>
               <h1 className="text-xl font-semibold text-gray-900">{quizTitle}</h1>
               <p className="text-sm text-gray-500">{quizDescription}</p>
+              </div>
             </div>
-          </div>
           
-          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-sm text-gray-500">Question</div>
               <div className="text-lg font-semibold text-gray-900">
                 {currentQuestionIndex + 1} / {questions.length}
-              </div>
             </div>
+          </div>
             <div className="text-right">
               <div className="text-sm text-gray-500">Time</div>
               <div className="text-lg font-semibold text-gray-900">{formatTime(timeSpent)}</div>
-            </div>
           </div>
         </div>
+      </div>
 
         {/* Practice Mode Info */}
         {practiceMode && (
@@ -305,14 +305,14 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
                 </Badge>
               </div>
               <h2 className="text-lg font-medium text-gray-900 mb-4">{currentQuestion.question}</h2>
-            </div>
+              </div>
 
-            {/* Answer Options */}
+              {/* Answer Options */}
             <div className="space-y-3 mb-6">
               {currentQuestion.options.map((option, index) => (
                 <Button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
+                      key={index}
+                      onClick={() => handleAnswerSelect(index)}
                   variant={selectedAnswer === index ? "default" : "outline"}
                   className={`w-full justify-start h-auto p-4 ${
                     selectedAnswer === index 
@@ -327,7 +327,7 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
                   <span className="text-left">{option}</span>
                 </Button>
               ))}
-            </div>
+                        </div>
 
             {/* Submit Button */}
             {!showResult && (
@@ -347,16 +347,16 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
               }`}>
                 <div className="flex items-center gap-2 mb-2">
                   {isCorrect ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                          <CheckCircle className="h-5 w-5 text-green-600" />
                   ) : (
-                    <X className="h-5 w-5 text-red-600" />
-                  )}
+                          <X className="h-5 w-5 text-red-600" />
+                        )}
                   <span className={`font-medium ${
                     isCorrect ? 'text-green-800' : 'text-red-800'
                   }`}>
                     {isCorrect ? 'Correct!' : 'Incorrect'}
                   </span>
-                </div>
+                      </div>
                 <p className={`text-sm ${
                   isCorrect ? 'text-green-700' : 'text-red-700'
                 }`}>
@@ -368,22 +368,22 @@ const MistakesQuizView: React.FC<MistakesQuizViewProps> = ({
             {/* Navigation Buttons */}
             {showResult && (
               <div className="flex gap-3 mt-4">
-                <Button
-                  onClick={handlePrevious}
-                  disabled={currentQuestionIndex === 0}
-                  variant="outline"
+              <Button
+                onClick={handlePrevious}
+                disabled={currentQuestionIndex === 0}
+                variant="outline"
                   className="flex-1"
-                >
-                  Previous
-                </Button>
-                <Button
-                  onClick={handleNext}
+              >
+                Previous
+              </Button>
+                  <Button
+                    onClick={handleNext}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                >
+                  >
                   {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
-                </Button>
+                  </Button>
               </div>
-            )}
+                )}
           </CardContent>
         </Card>
       </div>

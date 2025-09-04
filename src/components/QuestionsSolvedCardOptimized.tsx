@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,120 +17,88 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
   const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
 
-  const [questionCounts, setQuestionCounts] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
-  const [countsLoading, setCountsLoading] = useState(true);
+  // Boundaries for periods
+  const now = useMemo(() => new Date(), []);
+  const sevenDaysAgo = useMemo(() => new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), [now]);
+  const oneMonthAgo = useMemo(() => new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), [now]);
 
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        setCountsLoading(true);
-        const { data: user } = await supabase.auth.getUser();
-        if (!user.user) { setCountsLoading(false); return; }
-        const uid = user.user.id;
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Helper to include record based on period
+  const isInPeriod = (dateStr: string | null | undefined, period: '7days' | '1month' | 'alltime') => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (period === '7days') return d >= sevenDaysAgo;
+    if (period === '1month') return d >= oneMonthAgo;
+    return true; // alltime
+  };
 
-        // Query both tables for all time periods
-        const [
-          allV2Resp, weekV2Resp, monthV2Resp,
-          allV1Resp, weekV1Resp, monthV1Resp
-        ] = await Promise.all([
-          // question_attempts_v2 queries
-          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid),
-          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgo),
-          supabase.from('question_attempts_v2').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', oneMonthAgo),
-          // question_attempts queries
-          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid),
-          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', sevenDaysAgo),
-          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', oneMonthAgo),
-        ]);
+  // Compute totals across all modes, memoized and side-effect free
+  const counts = useMemo(() => {
+    const safeQuizzes = quizResults || [];
+    const safeMarathons = marathonSessions || [];
+    const safeMocks = mockTests || [];
 
-        // Sum counts from both tables
-        const allTimeCount = (allV2Resp.count || 0) + (allV1Resp.count || 0);
-        const weekCount = (weekV2Resp.count || 0) + (weekV1Resp.count || 0);
-        const monthCount = (monthV2Resp.count || 0) + (monthV1Resp.count || 0);
+    const computeFor = (period: '7days' | '1month' | 'alltime') => {
+      const quizTotal = safeQuizzes
+        .filter(q => isInPeriod(q.created_at, period))
+        .reduce((sum, q) => sum + (q.total_questions || 0), 0);
 
-        console.log('Question counts breakdown:', {
-          v2: { all: allV2Resp.count, week: weekV2Resp.count, month: monthV2Resp.count },
-          v1: { all: allV1Resp.count, week: weekV1Resp.count, month: monthV1Resp.count },
-          totals: { all: allTimeCount, week: weekCount, month: monthCount }
-        });
+      const marathonTotal = safeMarathons
+        .filter(m => isInPeriod(m.created_at, period))
+        .reduce((sum, m) => sum + (m.total_questions || 0), 0);
 
-        setQuestionCounts({
-          '7days': weekCount,
-          '1month': monthCount,
-          'alltime': allTimeCount,
-        });
-      } catch (e) {
-        console.error('Failed to load question counts', e);
-      } finally {
-        setCountsLoading(false);
-      }
+      // Mock tests don't have total_questions; estimate per test based on SAT sections
+      const mockPerTestQuestions = 20 + 44; // Math + English
+      const mockTotal = safeMocks
+        .filter(m => isInPeriod((m.completed_at || m.created_at) as string, period))
+        .reduce((sum) => sum + mockPerTestQuestions, 0);
+
+      return quizTotal + marathonTotal + mockTotal;
     };
-    fetchCounts();
-  }, [userName]);
 
+    return {
+      sevenDays: computeFor('7days'),
+      oneMonth: computeFor('1month'),
+      allTime: computeFor('alltime'),
+    };
+  }, [quizResults, marathonSessions, mockTests, sevenDaysAgo, oneMonthAgo]);
+
+  // Goals
   useEffect(() => {
-    fetchGoals();
-  }, [userName]);
-
   const fetchGoals = async () => {
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
-
       const { data, error } = await supabase
         .from('user_goals')
         .select('period, target')
         .eq('user_id', user.user.id);
-
-      if (error) {
-        console.error('Error fetching goals:', error);
-        return;
-      }
-
-      if (data) {
-        const mapped = { '7days': 0, '1month': 0, 'alltime': 0 };
-        data.forEach((g: { period: '7days' | '1month' | 'alltime'; target: number }) => {
-          if (g.period in mapped) (mapped as any)[g.period] = g.target || 0;
+        if (error) return;
+        const mapped = { '7days': 0, '1month': 0, 'alltime': 0 } as { '7days': number; '1month': number; 'alltime': number };
+        (data || []).forEach((g: { period: '7days' | '1month' | 'alltime'; target: number }) => {
+          mapped[g.period] = g.target || 0;
         });
         setGoals(mapped);
-      }
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-    }
-  };
-
-  const handleGoalSave = async (period: '7days' | '1month' | 'alltime', value: number) => {
-    setGoals(prev => ({ ...prev, [period]: value }));
-  };
+      } catch {}
+    };
+    fetchGoals();
+  }, [userName]);
 
   const handleBulkGoalSave = async (newGoals: { '7days': number; '1month': number; 'alltime': number }) => {
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
-
       const rows = [
         { user_id: user.user.id, period: '7days', target: newGoals['7days'] },
         { user_id: user.user.id, period: '1month', target: newGoals['1month'] },
         { user_id: user.user.id, period: 'alltime', target: newGoals['alltime'] },
       ];
-
-      const { error } = await supabase
-        .from('user_goals')
-        .upsert(rows, { onConflict: 'user_id,period' });
-
-      if (error) throw error;
-
+      await supabase.from('user_goals').upsert(rows, { onConflict: 'user_id,period' });
       setGoals(newGoals);
-    } catch (error) {
-      console.error('Error saving goal:', error);
-    }
+    } catch {}
   };
 
   const getProgress = (period: '7days' | '1month' | 'alltime') => {
-    const current = questionCounts[period];
+    const current = period === '7days' ? counts.sevenDays : period === '1month' ? counts.oneMonth : counts.allTime;
     const goal = goals[period];
     return goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   };
@@ -144,9 +112,13 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
     }
   };
 
-  const currentCount = questionCounts[selectedPeriod];
+  const currentCount = useMemo(() => (
+    selectedPeriod === '7days' ? counts.sevenDays : selectedPeriod === '1month' ? counts.oneMonth : counts.allTime
+  ), [selectedPeriod, counts]);
+
   const currentGoal = goals[selectedPeriod];
   const progress = getProgress(selectedPeriod);
+  const isLoading = dataLoading;
 
   return (
     <Card className="h-full">
@@ -175,14 +147,23 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
 
         {/* Main Stats */}
         <div className="text-center mb-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24 mx-auto"></div>
+            </div>
+          ) : (
+            <>
           <div className="text-3xl font-bold text-gray-900 mb-2">
-          {countsLoading ? '...' : currentCount.toLocaleString()}
+                {currentCount.toLocaleString()}
           </div>
           <div className="text-sm text-gray-600">
             {getPeriodLabel(selectedPeriod)}
           </div>
+            </>
+          )}
           
-          {currentGoal > 0 && (
+          {currentGoal > 0 && !isLoading && (
             <div className="mt-3">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Goal Progress</span>

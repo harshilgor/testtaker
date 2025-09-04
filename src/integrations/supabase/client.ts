@@ -3,9 +3,18 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Use your actual Supabase credentials
-const SUPABASE_URL = 'https://kpcprhkubqhslazlhgad.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
+// Use environment variables for Supabase credentials
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://kpcprhkubqhslazlhgad.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
+
+// Validate environment variables
+if (!SUPABASE_URL || SUPABASE_URL === 'your_supabase_project_url_here') {
+  console.error('❌ VITE_SUPABASE_URL is not set in environment variables');
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY === 'your_supabase_anon_key_here') {
+  console.error('❌ VITE_SUPABASE_ANON_KEY is not set in environment variables');
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +24,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    flowType: 'pkce', // Add PKCE flow for better compatibility
   },
   realtime: {
     params: {
@@ -37,6 +47,21 @@ console.log('🔑 Key:', SUPABASE_PUBLISHABLE_KEY.substring(0, 20) + '...');
 const testConnection = async () => {
   try {
     console.log('🧪 Testing Supabase connection...');
+    
+    // First test basic connectivity
+    const response = await fetch(SUPABASE_URL + '/rest/v1/', {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    // Then test auth connection
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -51,33 +76,46 @@ const testConnection = async () => {
       console.log('📊 Session data:', data);
     }
   } catch (err) {
-    console.error('💥 Unexpected error testing Supabase connection:', err);
+    console.error('💥 Supabase connection test failed:', err);
+    console.error('This usually means:');
+    console.error('1. Your Supabase project is paused/deleted');
+    console.error('2. Your credentials are incorrect');
+    console.error('3. There are network/firewall issues');
+    console.error('4. Edge Functions are unhealthy');
   }
 };
 
 // Test connection after a short delay to ensure client is fully initialized
 setTimeout(testConnection, 1000);
 
-// Test basic network connectivity to Supabase
-fetch(SUPABASE_URL + '/rest/v1/', {
-  method: 'GET',
-  headers: {
-    'apikey': SUPABASE_PUBLISHABLE_KEY,
-    'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+// Test database connectivity
+const testDatabaseConnection = async () => {
+  try {
+    console.log('🗄️ Testing database connection...');
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('count', { count: 'exact', head: true })
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Database connection error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+    } else {
+      console.log('✅ Database connection successful');
+      console.log('📊 Data response:', data);
+    }
+  } catch (err) {
+    console.error('💥 Unexpected database error:', err);
   }
-})
-.then(response => {
-  console.log('🌐 Network test to Supabase:', response.status, response.statusText);
-  if (response.ok) {
-    console.log('✅ Network connectivity to Supabase is working');
-  } else {
-    console.log('⚠️ Network connectivity to Supabase returned status:', response.status);
-  }
-})
-.catch(error => {
-  console.error('❌ Network connectivity test failed:', error);
-  console.error('This suggests a network, CORS, or firewall issue');
-});
+};
+
+// Test database after connection test
+setTimeout(testDatabaseConnection, 2000);
 
 // Add error handling for connection issues
 supabase.auth.onAuthStateChange((event, session) => {

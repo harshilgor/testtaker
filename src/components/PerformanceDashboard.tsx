@@ -23,6 +23,7 @@ import QuestionsSolvedCardOptimized from './QuestionsSolvedCardOptimized';
 import StreakCalendar from './StreakCalendar';
 import SATGoalDialog from './Goals/SATGoalDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useData } from '@/contexts/DataContext';
 
 import StudyTimeCard from './Performance/StudyTimeCard';
 
@@ -78,6 +79,7 @@ interface QuizStats {
 
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack, onNavigateToTrends }) => {
   const { toast } = useToast();
+  const { quizResults: dataQuizResults, marathonSessions: dataMarathonSessions, mockTests: dataMockTests, loading: dataLoading } = useData();
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
@@ -258,19 +260,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   }, [userName]);
 
   useEffect(() => {
-    if (marathonSessions.length > 0) {
-      const totalQuestions = marathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
-      const correctAnswers = marathonSessions.reduce((sum, session) => sum + (session.correct_answers || 0), 0);
+    if (dataMarathonSessions && dataMarathonSessions.length > 0) {
+      const totalQuestions = dataMarathonSessions.reduce((sum, session) => sum + (session.total_questions || 0), 0);
+      const correctAnswers = dataMarathonSessions.reduce((sum, session) => sum + (session.correct_answers || 0), 0);
       
       setMarathonStats({
         totalQuestions,
         correctAnswers,
         averageAccuracy: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
-        totalSessions: marathonSessions.length,
+        totalSessions: dataMarathonSessions.length,
         bestStreak: 0
       });
     }
-  }, [marathonSessions]);
+  }, [dataMarathonSessions]);
 
   useEffect(() => {
     // Calculate quiz stats from both localStorage and database

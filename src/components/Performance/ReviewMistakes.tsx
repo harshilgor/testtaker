@@ -15,7 +15,9 @@ import {
   TrendingDown,
   X,
   CheckCircle,
-  PlayCircle
+  PlayCircle,
+  Bookmark,
+  BookmarkCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ComprehensiveWeaknessInsights from './ComprehensiveWeaknessInsights';
@@ -59,6 +61,7 @@ interface FilterOptions {
   difficulty: string;
   subject: string;
   reviewStatus: string;
+  bookmarked: boolean;
 }
 
 interface PracticeData {
@@ -76,11 +79,46 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     skill: 'all',
     difficulty: 'all',
     subject: 'all',
-    reviewStatus: 'all'
+    reviewStatus: 'all',
+    bookmarked: false
   });
   const [selectedMistake, setSelectedMistake] = useState<Mistake | null>(null);
   const [showMistakeDialog, setShowMistakeDialog] = useState(false);
   const [showWeaknessInsights, setShowWeaknessInsights] = useState(false);
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set());
+
+  // Load bookmarked questions from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`bookmarked_questions_${userName}`);
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      const ids = Array.isArray(parsed) ? parsed.map((id) => String(id)) : [];
+      setBookmarkedQuestions(new Set(ids));
+    }
+  }, [userName]);
+
+  // Save bookmarked questions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(`bookmarked_questions_${userName}`, JSON.stringify([...bookmarkedQuestions]));
+  }, [bookmarkedQuestions, userName]);
+
+  // Toggle bookmark for a question
+  const toggleBookmark = (questionId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening the question dialog
+    const id = String(questionId);
+    setBookmarkedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if a question is bookmarked
+  const isBookmarked = (questionId: string) => bookmarkedQuestions.has(String(questionId));
 
   // Handle practice session start from WeaknessInsights
   const handleStartPractice = (practiceData: PracticeData) => {
@@ -297,6 +335,19 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const filteredMistakes = useMemo(() => {
     let filtered = mistakesWithDetails;
 
+    // Apply bookmarked filter first
+    if (filters.bookmarked) {
+      filtered = filtered.filter(mistake => bookmarkedQuestions.has(String(mistake.question_id)));
+      // Deduplicate by question_id so a question appears only once
+      const seen = new Set<string>();
+      filtered = filtered.filter(m => {
+        const id = String(m.question_id);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+    }
+
     // Filter by date range
     if (filters.dateRange !== 'all') {
       const now = new Date();
@@ -343,7 +394,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     }
 
     return filtered;
-  }, [mistakesWithDetails, filters]);
+  }, [mistakesWithDetails, filters, bookmarkedQuestions]);
 
   // Calculate mistake statistics
   const mistakeStats = useMemo(() => {
@@ -649,6 +700,30 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Bookmarked Filter Button */}
+          <Button
+            onClick={() => setFilters(prev => ({ ...prev, bookmarked: !prev.bookmarked }))}
+            variant={filters.bookmarked ? "default" : "outline"}
+            className={`flex items-center gap-2 ${
+              filters.bookmarked 
+                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                : "border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
+            size="sm"
+          >
+            {filters.bookmarked ? (
+              <BookmarkCheck className="h-4 w-4" />
+            ) : (
+              <Bookmark className="h-4 w-4" />
+            )}
+            Bookmarked
+            {filters.bookmarked && (
+              <Badge variant="secondary" className="ml-1 bg-white text-blue-600">
+                {bookmarkedQuestions.size}
+              </Badge>
+            )}
+          </Button>
         </div>
 
         {/* Mistakes List */}
@@ -658,8 +733,15 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-8 w-8 text-gray-400" />
               </div>
-              <p className="text-gray-500 font-medium">No mistakes found</p>
-              <p className="text-sm text-gray-400">Great job! Keep up the excellent work.</p>
+              <p className="text-gray-500 font-medium">
+                {filters.bookmarked ? 'No bookmarked questions found' : 'No mistakes found'}
+              </p>
+              <p className="text-sm text-gray-400">
+                {filters.bookmarked 
+                  ? 'Bookmark questions you want to review later.' 
+                  : 'Great job! Keep up the excellent work.'
+                }
+              </p>
             </div>
           ) : (
             filteredMistakes.map((mistake, index) => (
@@ -702,7 +784,25 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
                       </div>
                     </div>
                   </div>
-                  <Eye className="h-4 w-4 text-gray-400 ml-2" />
+                  <div className="flex items-center gap-2">
+                    {/* Bookmark Button */}
+                    <Button
+                      onClick={(e) => toggleBookmark(mistake.question_id, e)}
+                      variant="ghost"
+                      size="sm"
+                      className={`p-2 h-8 w-8 ${
+                        isBookmarked(mistake.question_id)
+                          ? "text-blue-600 hover:text-blue-700"
+                          : "text-gray-400 hover:text-gray-600"
+                      }`}
+                    >
+                      {isBookmarked(mistake.question_id) ? (
+                        <BookmarkCheck className="h-4 w-4" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))

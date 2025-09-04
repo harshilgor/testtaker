@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,13 +34,33 @@ const Index = () => {
     return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
   }
 
-  if (loading) {
+  // Add timeout for loading state to prevent infinite loading
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.log('Loading timeout reached, showing fallback...');
+        setLoadingTimeout(true);
+      }
+    }, 5000); // 5 second timeout
+    
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  if (loading && !loadingTimeout) {
     console.log('App is in loading state, showing spinner...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingSpinner size="lg" text="Loading your account..." />
       </div>
     );
+  }
+
+  // If loading times out, show landing page
+  if (loadingTimeout) {
+    console.log('Loading timed out, showing landing page...');
+    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
   }
 
   if (!user || !session) {
