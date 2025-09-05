@@ -580,7 +580,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               size="sm"
             >
               <Target className="h-4 w-4" />
-              {showWeaknessInsights ? 'Hide AI Analysis' : 'Target My Weakness'}
+              {showWeaknessInsights ? 'Hide AI Analysis' : 'AI Analysis'}
             </Button>
             <Button
               onClick={handleSolveMistakes}

@@ -203,23 +203,37 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
           </div>
         </div>
         
-        <Button
-          onClick={analyzeAllSkills}
-          disabled={isGeneratingComprehensive || hasAnalyzed}
-          className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-          size="sm"
-        >
-          {isGeneratingComprehensive ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : hasAnalyzed ? (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          ) : (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={analyzeAllSkills}
+            disabled={isGeneratingComprehensive || hasAnalyzed}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+            size="sm"
+          >
+            {isGeneratingComprehensive ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : hasAnalyzed ? (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            ) : (
+              <Brain className="h-4 w-4 mr-2" />
+            )}
+            <span className="truncate">
+              {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'AI Analysis'}
+            </span>
+          </Button>
+          
+          <Button
+            onClick={() => {
+              // TODO: Implement targeted weakness practice functionality
+              console.log('Target My Weakness clicked - implement targeted practice');
+            }}
+            className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto"
+            size="sm"
+          >
             <TargetIcon className="h-4 w-4 mr-2" />
-          )}
-          <span className="truncate">
-            {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Target My Weakness'}
-          </span>
-        </Button>
+            <span className="truncate">Target My Weakness</span>
+          </Button>
+        </div>
       </div>
 
       {/* Comprehensive AI Insights */}
