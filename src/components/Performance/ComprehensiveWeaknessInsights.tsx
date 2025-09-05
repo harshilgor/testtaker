@@ -25,7 +25,9 @@ import {
   Rocket,
   Target as TargetIcon
 } from 'lucide-react';
-import geminiAnalysisService from '@/services/geminiAnalysisService';
+import openaiAnalysisService from '@/services/openaiAnalysisService';
+import targetedQuestionService from '@/services/targetedQuestionService';
+import WeaknessTrainingZone from './WeaknessTrainingZone';
 
 interface Mistake {
   id: string;
@@ -78,6 +80,16 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
   const [comprehensiveInsights, setComprehensiveInsights] = useState<ComprehensiveInsights | null>(null);
   const [isGeneratingComprehensive, setIsGeneratingComprehensive] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  
+  // Targeted questions state
+  const [targetedQuestions, setTargetedQuestions] = useState<any[]>([]);
+  const [weaknessInsights, setWeaknessInsights] = useState<string[]>([]);
+  const [overallStrategy, setOverallStrategy] = useState<string>('');
+  const [estimatedTime, setEstimatedTime] = useState<string>('');
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [showTrainingZone, setShowTrainingZone] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
 
   // Get all unique skills from mistakes
   const allSkills = useMemo(() => {
@@ -93,10 +105,11 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
     return Array.from(skillMap.entries()).map(([skill, data]) => ({ skill, subject: data.subject, mistakes: data.mistakes }));
   }, [mistakes]);
 
-  // Generate comprehensive insights using Gemini (via Supabase Edge Function)
+  // Generate comprehensive insights using OpenAI (via Supabase Edge Function)
   const generateComprehensiveInsights = async () => {
     if (!mistakes.length) return;
     setIsGeneratingComprehensive(true);
+    setAnalysisError(null);
     try {
       // Majority subject for context
       const mathCount = mistakes.filter(m => (m.subject || '').toLowerCase().includes('math')).length;
@@ -105,45 +118,46 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
 
       const avgTime = Math.round(mistakes.reduce((s, m) => s + (m.time_spent || 0), 0) / mistakes.length);
 
-      // Send ALL incorrect questions with text to Gemini via Edge Function
+      // Send ALL incorrect questions with text to OpenAI via Edge Function
       const request = {
-        topic: 'overall',
-        subject,
         mistakes: mistakes.map(m => ({
           question_text: m.question_text,
           time_spent: m.time_spent,
           difficulty: m.difficulty,
           error_type: m.error_type,
-          created_at: m.created_at
+          created_at: m.created_at,
+          topic: m.topic,
+          subject: m.subject
         })),
-        avgTimeSpent: avgTime,
-        mistakeCount: mistakes.length,
-        userName
-      } as any;
+        userName,
+        totalMistakes: mistakes.length,
+        avgTimeSpent: avgTime
+      };
 
-      const analysis = await geminiAnalysisService.analyzeWeakness(request);
+      const analysis = await openaiAnalysisService.analyzeWeaknesses(request);
 
-      // Map Edge Function response into our UI model (bullet points)
+      // Map OpenAI response into our UI model (bullet points)
       const mapped: ComprehensiveInsights = {
         overallAnalysis: analysis.overallInsight,
-        keyWeaknesses: analysis.rootCauses,
-        learningPatterns: analysis.specificReasons,
-        improvementStrategies: analysis.practiceStrategies,
+        keyWeaknesses: analysis.weaknesses,
+        learningPatterns: analysis.explanations,
+        improvementStrategies: analysis.recommendations,
         timeManagementInsights: [
           avgTime < 30 ? 'You tend to rush questions.' : avgTime > 90 ? 'You spend too long per question.' : 'Your pacing is generally reasonable.'
         ],
         subjectSpecificAdvice: {
-          math: subject === 'math' ? analysis.practiceStrategies.slice(0, 5) : [],
-          english: subject === 'english' ? analysis.practiceStrategies.slice(0, 5) : []
+          math: subject === 'math' ? analysis.recommendations.slice(0, 5) : [],
+          english: subject === 'english' ? analysis.recommendations.slice(0, 5) : []
         },
         confidenceLevel: analysis.confidenceLevel,
         estimatedImprovementTime: analysis.estimatedImprovementTime,
-        priorityActions: analysis.practiceStrategies.slice(0, 5)
+        priorityActions: analysis.recommendations.slice(0, 5)
       };
 
       setComprehensiveInsights(mapped);
     } catch (error) {
       console.error('Error generating comprehensive insights:', error);
+      setAnalysisError('Failed to generate AI analysis. Please try again.');
       // Minimal safe fallback
       setComprehensiveInsights({
         overallAnalysis: 'Analysis complete! Here are your key areas for improvement based on your performance data.',
@@ -161,11 +175,50 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
     }
   };
 
-  // Analyze all skills with Gemini AI
+  // Analyze all skills with OpenAI AI
   const analyzeAllSkills = async () => {
     if (hasAnalyzed) return;
     setHasAnalyzed(true);
     await generateComprehensiveInsights();
+  };
+
+  // Generate targeted practice questions
+  const generateTargetedQuestions = async () => {
+    if (!mistakes.length) return;
+    setIsGeneratingQuestions(true);
+    setQuestionsError(null);
+    
+    try {
+      const request = {
+        mistakes: mistakes.map(m => ({
+          question_text: m.question_text,
+          time_spent: m.time_spent,
+          difficulty: m.difficulty,
+          error_type: m.error_type,
+          created_at: m.created_at,
+          topic: m.topic,
+          subject: m.subject,
+          user_answer: m.user_answer,
+          correct_answer: m.correct_answer
+        })),
+        userName,
+        totalMistakes: mistakes.length
+      };
+
+      const response = await targetedQuestionService.generateTargetedQuestions(request);
+      
+      setTargetedQuestions(response.questions);
+      setWeaknessInsights(response.weaknessInsights);
+      setOverallStrategy(response.overallStrategy);
+      setEstimatedTime(response.estimatedTime);
+      setShowTrainingZone(true);
+      
+    } catch (error) {
+      console.error('Error generating targeted questions:', error);
+      setQuestionsError('Failed to generate targeted questions. Please try again.');
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
   };
 
   const getConfidenceColor = (level: 'low' | 'medium' | 'high') => {
@@ -198,7 +251,7 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
             <h3 className="text-lg font-semibold text-gray-900">AI Weakness Analysis</h3>
             <p className="text-sm text-gray-500 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-blue-500 flex-shrink-0" />
-              <span className="truncate">Comprehensive insights from Gemini AI</span>
+              <span className="truncate">Comprehensive insights from OpenAI GPT-4o</span>
             </p>
           </div>
         </div>
@@ -223,18 +276,32 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
           </Button>
           
           <Button
-            onClick={() => {
-              // TODO: Implement targeted weakness practice functionality
-              console.log('Target My Weakness clicked - implement targeted practice');
-            }}
-            className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto"
+            onClick={generateTargetedQuestions}
+            disabled={isGeneratingQuestions || !mistakes.length}
+            className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto disabled:bg-gray-400"
             size="sm"
           >
-            <TargetIcon className="h-4 w-4 mr-2" />
-            <span className="truncate">Target My Weakness</span>
+            {isGeneratingQuestions ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <TargetIcon className="h-4 w-4 mr-2" />
+            )}
+            <span className="truncate">
+              {isGeneratingQuestions ? 'Generating Questions...' : 'Target My Weakness'}
+            </span>
           </Button>
         </div>
       </div>
+
+      {/* Error Display */}
+      {(analysisError || questionsError) && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <span className="text-sm text-red-700">{analysisError || questionsError}</span>
+          </div>
+        </div>
+      )}
 
       {/* Comprehensive AI Insights */}
       {comprehensiveInsights && (
@@ -242,7 +309,7 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
-              <span className="truncate">Gemini AI Comprehensive Analysis</span>
+              <span className="truncate">OpenAI GPT-4o Comprehensive Analysis</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -453,6 +520,25 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
           </div>
         </CardContent>
       </Card>
+
+      {/* Weakness Training Zone */}
+      {showTrainingZone && (
+        <div className="mt-6">
+          <WeaknessTrainingZone
+            questions={targetedQuestions}
+            weaknessInsights={weaknessInsights}
+            overallStrategy={overallStrategy}
+            estimatedTime={estimatedTime}
+            onQuestionComplete={(questionIndex, isCorrect) => {
+              console.log(`Question ${questionIndex + 1}: ${isCorrect ? 'Correct' : 'Incorrect'}`);
+            }}
+            onAllQuestionsComplete={(results) => {
+              console.log('Training completed:', results);
+              // TODO: Store results in database for progress tracking
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
