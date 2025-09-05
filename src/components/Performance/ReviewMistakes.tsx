@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useData } from '@/contexts/DataContext';
 import { 
   AlertCircle,
   Filter,
@@ -74,6 +75,7 @@ interface PracticeData {
 
 const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const navigate = useNavigate();
+  const { questionAttempts, isInitialized } = useData();
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: 'all',
     skill: 'all',
@@ -134,109 +136,57 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     });
   };
 
-  // Fetch user's mistakes from question attempts
-  const { data: userAttempts = [], refetch: refetchMistakes } = useQuery({
-    queryKey: ['user-mistakes', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) {
-        console.log('No authenticated user found');
-        return [];
-      }
+  // Use cached data from DataContext for instant loading
+  const userAttempts = useMemo(() => {
+    if (!isInitialized || !questionAttempts.length) {
+      return [];
+    }
+    
+    // Filter to only incorrect attempts (mistakes)
+    const mistakes = questionAttempts.filter(attempt => !attempt.is_correct);
+    console.log(`🚀 Using cached data: ${mistakes.length} mistakes loaded instantly`);
+    return mistakes;
+  }, [questionAttempts, isInitialized]);
 
-      console.log('Fetching user mistakes for user:', user.user.id);
+  // Use cached question details for instant loading
+  const questionDetails = useMemo(() => {
+    if (!userAttempts.length) {
+      return [];
+    }
 
-      // First, let's check if there are ANY attempts for this user
-      const { data: allAttempts, error: allError } = await supabase
-        .from('question_attempts_v2')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .limit(10);
-
-      if (allError) {
-        console.error('Error fetching all attempts:', allError);
-        return [];
-      }
-
-      console.log(`Total attempts for user: ${allAttempts?.length || 0}`);
-      console.log('Sample attempts:', allAttempts);
-
-      // Now get incorrect attempts
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .eq('is_correct', false)
-        .order('created_at', { ascending: false })
-        .limit(1000);
-
-      if (error) {
-        console.error('Error fetching mistakes:', error);
-        return [];
-      }
-
-      console.log(`Found ${data?.length || 0} mistakes from question_attempts_v2`);
-      
-      // Also check for mistakes from localStorage quiz results as backup
-      let combinedMistakes = data || [];
-      try {
-        const storedQuizzes = JSON.parse(localStorage.getItem('quizResults') || '[]');
-        const userQuizzes = storedQuizzes.filter((r: any) => r.userName === userName);
+    // Try to get question details from localStorage cache first
+    try {
+      const cachedQuestions = localStorage.getItem('question_bank_cache');
+      if (cachedQuestions) {
+        const parsed = JSON.parse(cachedQuestions);
+        const questionIds = [...new Set(userAttempts.map(a => a.question_id).filter(Boolean))];
+        const cachedDetails = questionIds
+          .map(id => parsed.find((q: any) => q.id === parseInt(id)))
+          .filter(Boolean);
         
-        userQuizzes.forEach((quiz: any) => {
-          if (quiz.questions && quiz.answers) {
-            quiz.questions.forEach((question: any, index: number) => {
-              const userAnswer = quiz.answers[index];
-              if (userAnswer !== question.correctAnswer && userAnswer !== null) {
-                // Add as a mistake
-                combinedMistakes.push({
-                  id: `local-${quiz.date}-${index}`,
-                  user_id: user.user.id,
-                  question_id: question.id?.toString() || `local-q-${index}`,
-                  topic: question.topic || question.skill || quiz.subject,
-                  subject: quiz.subject,
-                  difficulty: question.difficulty || 'medium',
-                  is_correct: false,
-                  time_spent: question.timeSpent || 0,
-                  created_at: quiz.date,
-                  session_type: 'quiz',
-                  session_id: quiz.date,
-                  points_earned: 0
-                });
-              }
-            });
-          }
-        });
-      } catch (e) {
-        console.warn('Failed to merge local quiz mistakes:', e);
+        if (cachedDetails.length > 0) {
+          console.log(`🚀 Using cached question details: ${cachedDetails.length} questions loaded instantly`);
+          return cachedDetails;
+        }
       }
-      
-      console.log(`Total mistakes (DB + localStorage): ${combinedMistakes.length}`);
-      return combinedMistakes;
-    },
-    enabled: !!userName,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-  });
+    } catch (error) {
+      console.warn('Failed to load cached question details:', error);
+    }
 
-  // Fetch question details for the mistakes
-  const { data: questionDetails = [] } = useQuery({
+    // Fallback: return empty array for now, will be populated by background fetch
+    return [];
+  }, [userAttempts]);
+
+  // Background fetch for question details (non-blocking)
+  const { data: freshQuestionDetails = [] } = useQuery({
     queryKey: ['question-details', userAttempts],
     queryFn: async () => {
-      if (!userAttempts.length) {
-        console.log('No user attempts to fetch question details for');
-        return [];
-      }
+      if (!userAttempts.length) return [];
 
       const questionIds = [...new Set(userAttempts.map(a => a.question_id).filter(Boolean))];
-      
-      if (!questionIds.length) {
-        console.log('No question IDs found in user attempts');
-        return [];
-      }
+      if (!questionIds.length) return [];
 
-      console.log('Fetching question details for question IDs:', questionIds);
+      console.log('🔄 Background fetching question details for:', questionIds.length, 'questions');
 
       const { data, error } = await supabase
         .from('question_bank')
@@ -248,52 +198,65 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
         return [];
       }
 
-      console.log(`Found ${data?.length || 0} question details`);
-      console.log('Sample question details:', data?.slice(0, 2));
+      // Cache the results for instant loading next time
+      try {
+        const existingCache = JSON.parse(localStorage.getItem('question_bank_cache') || '[]');
+        const newCache = [...existingCache, ...(data || [])];
+        // Remove duplicates
+        const uniqueCache = newCache.filter((item: any, index: number, self: any[]) => 
+          index === self.findIndex((t: any) => t.id === item.id)
+        );
+        localStorage.setItem('question_bank_cache', JSON.stringify(uniqueCache));
+        console.log('💾 Question details cached for instant loading');
+      } catch (error) {
+        console.warn('Failed to cache question details:', error);
+      }
+
       return data || [];
     },
     enabled: userAttempts.length > 0,
+    staleTime: 10 * 60 * 1000 // 10 minutes
   });
 
-  // Realtime: auto-refresh when user's attempts change
-  useEffect(() => {
-    let channel: any;
-    (async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user) return;
-
-      channel = supabase
-        .channel('review-mistakes-realtime')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'question_attempts_v2',
-          filter: `user_id=eq.${user.user.id}`
-        }, () => {
-          refetchMistakes();
-        })
-        .subscribe();
-    })();
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, [userName, refetchMistakes]);
+  // Note: Real-time updates are handled by DataContext, no need for separate subscription
 
   // Combine attempts with question details and add review status
   const mistakesWithDetails = useMemo(() => {
     console.log('Calculating mistakes with details...');
     console.log('User attempts:', userAttempts.length);
-    console.log('Question details:', questionDetails.length);
+    console.log('Cached question details:', questionDetails.length);
+    console.log('Fresh question details:', freshQuestionDetails.length);
     
-    if (!userAttempts.length || !questionDetails.length) {
-      console.log('No user attempts or question details available');
+    if (!userAttempts.length) {
+      console.log('No user attempts available');
       return [];
     }
 
-    const questionMap = new Map(questionDetails.map(q => [q.id.toString(), q]));
+    // Merge cached and fresh question details
+    const allQuestionDetails = [...questionDetails, ...freshQuestionDetails];
+    const uniqueQuestionDetails = allQuestionDetails.filter((item, index, self) => 
+      index === self.findIndex(t => t.id === item.id)
+    );
+
+    if (!uniqueQuestionDetails.length) {
+      console.log('No question details available yet, will show basic info');
+      // Return basic mistakes without full question details
+      return userAttempts.map(attempt => ({
+        ...attempt,
+        question_text: `Question ${attempt.question_id}`,
+        correct_answer: 'Loading...',
+        explanation: 'Loading question details...',
+        options: ['Loading...', 'Loading...', 'Loading...', 'Loading...'],
+        user_answer: 'Incorrect',
+        topic: attempt.topic,
+        difficulty: attempt.difficulty,
+        review_status: 'unreviewed' as const,
+        repeat_count: 0,
+        error_type: 'general'
+      } as Mistake));
+    }
+
+    const questionMap = new Map(uniqueQuestionDetails.map(q => [q.id.toString(), q]));
     console.log('Question map size:', questionMap.size);
     
     const mistakes = userAttempts.map(attempt => {
@@ -329,7 +292,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     
     console.log('Final mistakes with details:', mistakes.length);
     return mistakes;
-  }, [userAttempts, questionDetails]);
+  }, [userAttempts, questionDetails, freshQuestionDetails]);
 
   // Filter mistakes based on selected filters
   const filteredMistakes = useMemo(() => {
