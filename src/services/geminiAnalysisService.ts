@@ -73,54 +73,55 @@ class GeminiAnalysisService {
     const timeAnalysis = this.analyzeTimePattern(avgTimeSpent);
     const mistakePatterns = this.analyzeMistakePatterns(mistakes);
     
-    // Include actual question texts for better analysis
-    const questionTexts = mistakes.slice(0, 5).map(m => m.question_text || 'Question text not available').join('\n\n');
+    // Include ALL question texts for comprehensive analysis
+    const allQuestionTexts = mistakes.map((m, index) => 
+      `Question ${index + 1}: ${m.question_text || 'Question text not available'}\nTime spent: ${m.time_spent}s, Difficulty: ${m.difficulty}, Error type: ${m.error_type || 'Not specified'}`
+    ).join('\n\n');
     
-    return `You are an expert SAT tutor analyzing a student's performance. 
+    return `You are an expert SAT tutor analyzing a student's comprehensive performance data. 
 
 STUDENT: ${userName}
-TOPIC: ${topic}
 SUBJECT: ${subject}
 TOTAL MISTAKES: ${mistakeCount}
 AVERAGE TIME SPENT: ${avgTimeSpent} seconds
 TIME PATTERN: ${timeAnalysis}
 
-SAMPLE QUESTIONS STUDENT GOT WRONG:
-${questionTexts}
+ALL QUESTIONS STUDENT GOT WRONG:
+${allQuestionTexts}
 
 MISTAKE PATTERNS:
 ${mistakePatterns}
 
-Please provide a detailed analysis in the following EXACT JSON format (no additional text, just the JSON):
+Please provide a comprehensive analysis in the following EXACT JSON format (no additional text, just the JSON):
 
 {
   "rootCauses": [
-    "Fundamental reason 1 - be specific and actionable",
-    "Fundamental reason 2 - focus on conceptual gaps",
-    "Fundamental reason 3 - learning habits or strategies",
-    "Fundamental reason 4 - test-taking approach"
+    "Summary of common errors: High-level overview of the most frequent types of mistakes",
+    "Specific areas of weakness: Detailed examples of concepts or topics showing lack of understanding",
+    "Performance patterns: Recurring trends or habits in errors (rushed answers, keyword misunderstandings, etc.)",
+    "Actionable insights: Specific recommendations on how to address these weaknesses and improve performance"
   ],
   "specificReasons": [
-    "Specific mistake pattern 1 - what exactly is going wrong",
-    "Specific mistake pattern 2 - common errors made",
-    "Specific mistake pattern 3 - time management issues",
-    "Specific mistake pattern 4 - comprehension problems",
-    "Specific mistake pattern 5 - calculation or reasoning errors"
+    "Detailed analysis of mistake pattern 1 with specific examples",
+    "Detailed analysis of mistake pattern 2 with specific examples", 
+    "Detailed analysis of mistake pattern 3 with specific examples",
+    "Detailed analysis of mistake pattern 4 with specific examples",
+    "Detailed analysis of mistake pattern 5 with specific examples"
   ],
   "practiceStrategies": [
-    "Strategy 1 - specific study technique",
-    "Strategy 2 - practice method",
-    "Strategy 3 - test-taking approach",
-    "Strategy 4 - review technique",
-    "Strategy 5 - time management tip",
-    "Strategy 6 - conceptual understanding method"
+    "Specific study technique to address the most common error type",
+    "Practice method to improve understanding of weak concepts",
+    "Test-taking approach to avoid recurring mistakes",
+    "Review technique to reinforce correct understanding",
+    "Time management strategy based on performance patterns",
+    "Conceptual understanding method for difficult topics"
   ],
-  "overallInsight": "A 2-3 sentence summary of the main issue and how to address it specifically for ${subject} ${topic}",
-  "confidenceLevel": "medium",
-  "estimatedImprovementTime": "2-3 weeks"
+  "overallInsight": "A comprehensive 2-3 sentence summary analyzing the student's overall performance patterns, most critical weaknesses, and the most important action to take for improvement in ${subject}",
+  "confidenceLevel": "high",
+  "estimatedImprovementTime": "2-4 weeks with focused practice"
 }
 
-Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest. Focus on actionable insights that the student can implement immediately. Return ONLY the JSON object, no additional text.`;
+Analyze ALL ${mistakeCount} mistakes comprehensively. Be specific about patterns, provide concrete examples from the questions, and give actionable advice. Focus on the most impactful improvements the student can make. Return ONLY the JSON object, no additional text.`;
   }
 
   private analyzeTimePattern(avgTime: number): string {
@@ -310,93 +311,6 @@ Make the analysis specific to ${subject} and ${topic}. Be encouraging but honest
     };
   }
 
-  async generateOverallInsights(mistakes: any[], userName: string): Promise<Array<{
-    type: 'warning' | 'tip' | 'focus';
-    icon: string;
-    title: string;
-    message: string;
-  }>> {
-    try {
-      const prompt = `Analyze this student's performance data and provide 3 key insights:
-
-STUDENT: ${userName}
-TOTAL MISTAKES: ${mistakes.length}
-RECENT MISTAKES (last 7 days): ${mistakes.filter(m => {
-        const mistakeDate = new Date(m.created_at);
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return mistakeDate >= weekAgo;
-      }).length}
-
-Provide insights in this JSON format:
-{
-  "insights": [
-    {
-      "type": "warning/tip/focus",
-      "title": "Insight title",
-      "message": "Detailed message about the insight"
-    }
-  ]
-}
-
-Be encouraging but honest. Focus on actionable insights.`;
-
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) {
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            return parsed.insights || [];
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error generating overall insights:', error);
-    }
-
-    // Fallback insights
-    return [
-      {
-        type: 'warning' as const,
-        icon: '⚠️',
-        title: 'Recent Struggles',
-        message: `${mistakes.filter(m => {
-          const mistakeDate = new Date(m.created_at);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return mistakeDate >= weekAgo;
-        }).length} mistakes this week - consider reviewing fundamentals`
-      },
-      {
-        type: 'tip' as const,
-        icon: '💡',
-        title: 'Practice Strategy',
-        message: 'Focus on your weakest topics first and review explanations thoroughly'
-      },
-      {
-        type: 'focus' as const,
-        icon: '🎯',
-        title: 'Improvement Focus',
-        message: 'Set specific goals for each study session to track your progress'
-      }
-    ];
-  }
 }
 
 export const geminiAnalysisService = new GeminiAnalysisService();

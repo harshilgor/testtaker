@@ -241,33 +241,81 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
               <p className="text-sm text-blue-700 break-words">{comprehensiveInsights.overallAnalysis}</p>
             </div>
 
-            {/* Key Weaknesses */}
+            {/* Summary of Common Errors */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                <span className="truncate">Key Weaknesses</span>
+                <span className="truncate">Summary of Common Errors</span>
               </h4>
               <ul className="space-y-1">
-                {comprehensiveInsights.keyWeaknesses.map((weakness, index) => (
+                {comprehensiveInsights.keyWeaknesses.slice(0, 1).map((error, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
                     <span className="text-red-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{error}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Specific Areas of Weakness */}
+            <div>
+              <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                <span className="truncate">Specific Areas of Weakness</span>
+              </h4>
+              <ul className="space-y-1">
+                {comprehensiveInsights.keyWeaknesses.slice(1, 2).map((weakness, index) => (
+                  <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
+                    <span className="text-orange-500 mt-1 flex-shrink-0">•</span>
                     <span className="break-words">{weakness}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Learning Patterns */}
+            {/* Performance Patterns */}
             <div>
               <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                <span className="truncate">Learning Patterns</span>
+                <span className="truncate">Performance Patterns</span>
               </h4>
               <ul className="space-y-1">
-                {comprehensiveInsights.learningPatterns.map((pattern, index) => (
+                {comprehensiveInsights.keyWeaknesses.slice(2, 3).map((pattern, index) => (
                   <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
                     <span className="text-purple-500 mt-1 flex-shrink-0">•</span>
                     <span className="break-words">{pattern}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Actionable Insights */}
+            <div>
+              <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <span className="truncate">Actionable Insights</span>
+              </h4>
+              <ul className="space-y-1">
+                {comprehensiveInsights.keyWeaknesses.slice(3, 4).map((insight, index) => (
+                  <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
+                    <span className="text-green-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{insight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Detailed Mistake Analysis */}
+            <div>
+              <h4 className="font-medium text-gray-700 text-sm mb-2 flex items-center gap-2">
+                <Search className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <span className="truncate">Detailed Mistake Analysis</span>
+              </h4>
+              <ul className="space-y-1">
+                {comprehensiveInsights.learningPatterns.map((analysis, index) => (
+                  <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
+                    <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
+                    <span className="break-words">{analysis}</span>
                   </li>
                 ))}
               </ul>
