@@ -14,6 +14,7 @@ import MarathonPage from "./pages/MarathonPage";
 import SATMockTestPage from "./pages/SATMockTestPage";
 import AdvancedInsights from "./pages/AdvancedInsights";
 import SkillLearnPage from "./pages/SkillLearnPage";
+import TargetWeakness from "./pages/TargetWeakness";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/sat-mock-test" element={<SATMockTestPage />} />
                 <Route path="/advanced-insights" element={<AdvancedInsights />} />
                 <Route path="/learn/skill" element={<SkillLearnPage />} />
+                <Route path="/target-weakness" element={<TargetWeakness />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

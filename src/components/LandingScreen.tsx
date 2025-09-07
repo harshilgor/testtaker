@@ -13,6 +13,13 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
+  const handleGetStarted = (e: React.MouseEvent) => {
+    console.log('Button clicked!', e);
+    e.preventDefault();
+    e.stopPropagation();
+    onGetStarted();
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -40,8 +47,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 🧠 Powered by Advanced AI
               </span>
               <Button 
-                onClick={onGetStarted} 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-lg font-medium text-sm sm:text-base whitespace-nowrap"
+                onClick={handleGetStarted} 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-lg font-medium text-sm sm:text-base whitespace-nowrap cursor-pointer"
               >
                 Login / Sign Up
               </Button>
@@ -62,9 +69,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </p>
           
           <Button 
-            onClick={onGetStarted} 
+            onClick={handleGetStarted} 
             size="lg" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-6 sm:mb-8 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-6 sm:mb-8 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto cursor-pointer"
           >
             Start Learning Today
           </Button>
@@ -174,9 +181,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </p>
           
           <Button 
-            onClick={onGetStarted} 
+            onClick={handleGetStarted} 
             size="lg" 
-            className="bg-white text-blue-600 hover:bg-gray-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-3 sm:mb-4 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto"
+            className="bg-white text-blue-600 hover:bg-gray-50 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mb-3 sm:mb-4 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto cursor-pointer"
           >
             Start now
           </Button>

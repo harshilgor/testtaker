@@ -77,7 +77,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const navigate = useNavigate();
   const { questionAttempts, isInitialized } = useData();
   const [filters, setFilters] = useState<FilterOptions>({
-    dateRange: 'all',
+    dateRange: 'latest',
     skill: 'all',
     difficulty: 'all',
     subject: 'all',
@@ -88,6 +88,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   const [showMistakeDialog, setShowMistakeDialog] = useState(false);
   const [showWeaknessInsights, setShowWeaknessInsights] = useState(false);
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set());
+  const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
 
   // Load bookmarked questions from localStorage on component mount
   useEffect(() => {
@@ -103,6 +104,21 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   useEffect(() => {
     localStorage.setItem(`bookmarked_questions_${userName}`, JSON.stringify([...bookmarkedQuestions]));
   }, [bookmarkedQuestions, userName]);
+
+  // Load solved questions from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`solved_questions_${userName}`);
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      const ids = Array.isArray(parsed) ? parsed.map((id) => String(id)) : [];
+      setSolvedQuestions(new Set(ids));
+    }
+  }, [userName]);
+
+  // Save solved questions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(`solved_questions_${userName}`, JSON.stringify([...solvedQuestions]));
+  }, [solvedQuestions, userName]);
 
   // Toggle bookmark for a question
   const toggleBookmark = (questionId: string, event: React.MouseEvent) => {
@@ -313,27 +329,32 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 
     // Filter by date range
     if (filters.dateRange !== 'all') {
-      const now = new Date();
-      const cutoffDate = new Date();
-      
-      switch (filters.dateRange) {
-        case 'today':
-          cutoffDate.setHours(0, 0, 0, 0);
-          break;
-        case 'week':
-          cutoffDate.setDate(now.getDate() - 7);
-          break;
-        case 'month':
-          cutoffDate.setMonth(now.getMonth() - 1);
-          break;
-        case '3months':
-          cutoffDate.setMonth(now.getMonth() - 3);
-          break;
+      if (filters.dateRange === 'latest') {
+        // For "latest", we'll sort by date and take the most recent ones
+        // This will be handled after all filtering is done
+      } else {
+        const now = new Date();
+        const cutoffDate = new Date();
+        
+        switch (filters.dateRange) {
+          case 'today':
+            cutoffDate.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            cutoffDate.setDate(now.getDate() - 7);
+            break;
+          case 'month':
+            cutoffDate.setMonth(now.getMonth() - 1);
+            break;
+          case '3months':
+            cutoffDate.setMonth(now.getMonth() - 3);
+            break;
+        }
+        
+        filtered = filtered.filter(mistake => 
+          new Date(mistake.created_at) >= cutoffDate
+        );
       }
-      
-      filtered = filtered.filter(mistake => 
-        new Date(mistake.created_at) >= cutoffDate
-      );
     }
 
     // Filter by skill/topic
@@ -354,6 +375,13 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     // Filter by review status
     if (filters.reviewStatus !== 'all') {
       filtered = filtered.filter(mistake => mistake.review_status === filters.reviewStatus);
+    }
+
+    // Handle "latest" filter - sort by date and take the 10 most recent
+    if (filters.dateRange === 'latest') {
+      filtered = filtered
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10);
     }
 
     return filtered;
@@ -580,7 +608,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               size="sm"
             >
               <Target className="h-4 w-4" />
-              {showWeaknessInsights ? 'Hide AI Analysis' : 'AI Analysis'}
+              {showWeaknessInsights ? 'Hide Practice' : 'Practice'}
             </Button>
             <Button
               onClick={handleSolveMistakes}
@@ -633,6 +661,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="latest">Latest</SelectItem>
               <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="week">This Week</SelectItem>

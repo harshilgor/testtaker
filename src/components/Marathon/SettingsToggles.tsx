@@ -26,7 +26,7 @@ const SettingsToggles: React.FC<SettingsTogglesProps> = ({
             </div>
             <div>
               <Label className="text-base font-semibold text-gray-900">Adaptive Learning</Label>
-              <p className="text-sm text-gray-600">AI-powered question selection based on your performance</p>
+              <p className="text-sm text-gray-600">Identifies your weak areas and provides targeted practice to strengthen those skills</p>
             </div>
           </div>
           <Switch 
@@ -46,22 +46,22 @@ const SettingsToggles: React.FC<SettingsTogglesProps> = ({
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Smart Question Selection</p>
-                  <p className="text-xs text-gray-600">Focuses 60-70% on your weak areas, 20-30% on reinforcement</p>
+                  <p className="text-sm font-medium text-gray-900">Weakness Detection</p>
+                  <p className="text-xs text-gray-600">Analyzes your performance to identify specific skills that need improvement</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Real-Time Adaptation</p>
-                  <p className="text-xs text-gray-600">Learns from accuracy, time taken, and error patterns</p>
+                  <p className="text-sm font-medium text-gray-900">Targeted Practice</p>
+                  <p className="text-xs text-gray-600">Provides more questions on challenging topics to reinforce learning</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Predictive Intelligence</p>
-                  <p className="text-xs text-gray-600">Uses historical data to predict fatigue and adjust difficulty</p>
+                  <p className="text-sm font-medium text-gray-900">Skill Reinforcement</p>
+                  <p className="text-xs text-gray-600">Continuously adapts to help you master difficult concepts through repetition</p>
                 </div>
               </div>
             </div>

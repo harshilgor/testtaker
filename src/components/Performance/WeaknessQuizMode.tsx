@@ -5,73 +5,76 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Target, 
   Clock, 
-  Brain, 
   CheckCircle, 
   XCircle, 
   ArrowRight,
   RefreshCw,
   Trophy,
-  AlertCircle
+  AlertCircle,
+  BookOpen
 } from 'lucide-react';
 
-interface GeneratedQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  explanation: string;
-  topic: string;
+interface QuizQuestion {
+  id: number;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: string;
+  correct_rationale: string;
+  skill: string;
   difficulty: string;
-  subject: string;
-  reasoning: string;
+  domain: string;
+  test: string;
 }
 
-interface WeaknessTrainingZoneProps {
-  questions: GeneratedQuestion[];
-  weaknessInsights: string[];
-  overallStrategy: string;
+interface WeaknessQuizModeProps {
+  questions: QuizQuestion[];
+  weaknessTopics: string[];
+  totalQuestions: number;
   estimatedTime: string;
-  onQuestionComplete?: (questionIndex: number, isCorrect: boolean) => void;
-  onAllQuestionsComplete?: (results: { correct: number; total: number }) => void;
+  onQuizComplete?: (results: { correct: number; total: number; timeSpent: number }) => void;
 }
 
-const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
+const WeaknessQuizMode: React.FC<WeaknessQuizModeProps> = ({
   questions,
-  weaknessInsights,
-  overallStrategy,
+  weaknessTopics,
+  totalQuestions,
   estimatedTime,
-  onQuestionComplete,
-  onAllQuestionsComplete
+  onQuizComplete
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [questionResults, setQuestionResults] = useState<boolean[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [startTime] = useState(Date.now());
 
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const totalCorrect = questionResults.filter(result => result).length;
 
   const handleAnswerSelect = (answer: string) => {
-    if (showExplanation) return; // Don't allow changing answer after submission
+    if (showExplanation) return;
     setSelectedAnswer(answer);
   };
 
   const handleSubmitAnswer = () => {
     if (!selectedAnswer) return;
     
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
     const newResults = [...questionResults, isCorrect];
     setQuestionResults(newResults);
     setShowExplanation(true);
     
-    onQuestionComplete?.(currentQuestionIndex, isCorrect);
-    
     if (isLastQuestion) {
       setIsCompleted(true);
-      onAllQuestionsComplete?.({
+      const timeSpent = Math.round((Date.now() - startTime) / 1000);
+      onQuizComplete?.({
         correct: newResults.filter(result => result).length,
-        total: newResults.length
+        total: newResults.length,
+        timeSpent
       });
     }
   };
@@ -101,10 +104,11 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
     }
   };
 
-  const getSubjectColor = (subject: string) => {
-    switch (subject.toLowerCase()) {
+  const getTestColor = (test: string) => {
+    switch (test.toLowerCase()) {
       case 'math': return 'bg-blue-100 text-blue-800';
-      case 'english': return 'bg-purple-100 text-purple-800';
+      case 'reading': return 'bg-purple-100 text-purple-800';
+      case 'writing': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -114,58 +118,64 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
       <Card className="border-2 border-orange-200 bg-orange-50">
         <CardContent className="p-6 text-center">
           <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-orange-900 mb-2">No Questions Generated</h3>
-          <p className="text-orange-700">Unable to generate targeted practice questions at this time.</p>
+          <h3 className="text-lg font-semibold text-orange-900 mb-2">No Questions Available</h3>
+          <p className="text-orange-700">Unable to find questions for your weak areas at this time.</p>
         </CardContent>
       </Card>
     );
   }
 
   if (isCompleted) {
+    const timeSpent = Math.round((Date.now() - startTime) / 1000);
+    const minutes = Math.floor(timeSpent / 60);
+    const seconds = timeSpent % 60;
+    
     return (
       <Card className="border-2 border-green-200 bg-green-50">
         <CardHeader>
           <CardTitle className="text-center flex items-center justify-center gap-2">
             <Trophy className="h-6 w-6 text-green-600" />
-            <span className="text-green-900">Training Complete!</span>
+            <span className="text-green-900">Quiz Complete!</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center">
             <div className="text-3xl font-bold text-green-600 mb-2">
-              {totalCorrect}/{questions.length}
+              {totalCorrect}/{totalQuestions}
             </div>
             <p className="text-green-700">
-              You got {totalCorrect} out of {questions.length} questions correct!
+              You got {totalCorrect} out of {totalQuestions} questions correct!
             </p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-white rounded-lg">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-3 bg-white rounded-lg text-center">
               <div className="text-sm text-gray-600">Accuracy</div>
               <div className="text-lg font-semibold">
-                {Math.round((totalCorrect / questions.length) * 100)}%
+                {Math.round((totalCorrect / totalQuestions) * 100)}%
               </div>
             </div>
-            <div className="p-3 bg-white rounded-lg">
+            <div className="p-3 bg-white rounded-lg text-center">
               <div className="text-sm text-gray-600">Time</div>
-              <div className="text-lg font-semibold">{estimatedTime}</div>
+              <div className="text-lg font-semibold">
+                {minutes}:{seconds.toString().padStart(2, '0')}
+              </div>
+            </div>
+            <div className="p-3 bg-white rounded-lg text-center">
+              <div className="text-sm text-gray-600">Topics</div>
+              <div className="text-lg font-semibold">{weaknessTopics.length}</div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <h4 className="font-medium text-green-900">Key Insights:</h4>
-            {weaknessInsights.map((insight, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-sm text-green-700">{insight}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="p-3 bg-white rounded-lg">
-            <h4 className="font-medium text-green-900 mb-2">Strategy:</h4>
-            <p className="text-sm text-green-700">{overallStrategy}</p>
+            <h4 className="font-medium text-green-900">Weakness Topics Practiced:</h4>
+            <div className="flex flex-wrap gap-2">
+              {weaknessTopics.map((topic, index) => (
+                <Badge key={index} variant="outline" className="border-green-300 text-green-700">
+                  {topic}
+                </Badge>
+              ))}
+            </div>
           </div>
 
           <Button 
@@ -185,7 +195,7 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Target className="h-5 w-5 text-orange-600" />
-          <span className="text-orange-900">Weakness Training Zone</span>
+          <span className="text-orange-900">Target My Weakness Quiz</span>
         </CardTitle>
         <div className="flex items-center gap-4 text-sm text-orange-700">
           <div className="flex items-center gap-1">
@@ -193,8 +203,8 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
             <span>{estimatedTime}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Brain className="h-4 w-4" />
-            <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
+            <BookOpen className="h-4 w-4" />
+            <span>Question {currentQuestionIndex + 1} of {totalQuestions}</span>
           </div>
         </div>
       </CardHeader>
@@ -202,36 +212,40 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
       <CardContent className="space-y-6">
         {/* Question Header */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className={getSubjectColor(currentQuestion.subject)}>
-            {currentQuestion.subject}
+          <Badge className={getTestColor(currentQuestion.test)}>
+            {currentQuestion.test}
           </Badge>
           <Badge className={getDifficultyColor(currentQuestion.difficulty)}>
             {currentQuestion.difficulty}
           </Badge>
           <Badge variant="outline" className="border-orange-300 text-orange-700">
-            {currentQuestion.topic}
+            {currentQuestion.skill}
           </Badge>
         </div>
 
         {/* Question Text */}
         <div className="p-4 bg-white rounded-lg border border-orange-200">
           <h3 className="font-medium text-gray-900 mb-3">Question:</h3>
-          <p className="text-gray-700 leading-relaxed">{currentQuestion.question}</p>
+          <p className="text-gray-700 leading-relaxed">{currentQuestion.question_text}</p>
         </div>
 
         {/* Answer Options */}
         <div className="space-y-2">
           <h4 className="font-medium text-gray-900">Choose your answer:</h4>
-          {currentQuestion.options.map((option, index) => {
-            const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-            const isSelected = selectedAnswer === optionLetter;
-            const isCorrect = optionLetter === currentQuestion.correctAnswer;
+          {[
+            { letter: 'A', text: currentQuestion.option_a },
+            { letter: 'B', text: currentQuestion.option_b },
+            { letter: 'C', text: currentQuestion.option_c },
+            { letter: 'D', text: currentQuestion.option_d }
+          ].map((option, index) => {
+            const isSelected = selectedAnswer === option.letter;
+            const isCorrect = option.letter === currentQuestion.correct_answer;
             const isWrong = showExplanation && isSelected && !isCorrect;
             
             return (
               <button
                 key={index}
-                onClick={() => handleAnswerSelect(optionLetter)}
+                onClick={() => handleAnswerSelect(option.letter)}
                 disabled={showExplanation}
                 className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
                   showExplanation
@@ -261,8 +275,8 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
                     {showExplanation && isWrong && <XCircle className="h-4 w-4 text-white" />}
                     {!showExplanation && isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
                   </div>
-                  <span className="font-medium">{optionLetter}.</span>
-                  <span>{option}</span>
+                  <span className="font-medium">{option.letter}.</span>
+                  <span>{option.text}</span>
                 </div>
               </button>
             );
@@ -285,12 +299,7 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
           <div className="space-y-4">
             <div className="p-4 bg-white rounded-lg border border-orange-200">
               <h4 className="font-medium text-gray-900 mb-2">Explanation:</h4>
-              <p className="text-gray-700 mb-3">{currentQuestion.explanation}</p>
-              
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <h5 className="font-medium text-blue-900 mb-1">Why you might have struggled:</h5>
-                <p className="text-sm text-blue-700">{currentQuestion.reasoning}</p>
-              </div>
+              <p className="text-gray-700">{currentQuestion.correct_rationale}</p>
             </div>
 
             {/* Next Button */}
@@ -306,15 +315,17 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
               <Button 
                 onClick={() => {
                   setIsCompleted(true);
-                  onAllQuestionsComplete?.({
-                    correct: questionResults.filter(result => result).length + (selectedAnswer === currentQuestion.correctAnswer ? 1 : 0),
-                    total: questions.length
+                  const timeSpent = Math.round((Date.now() - startTime) / 1000);
+                  onQuizComplete?.({
+                    correct: questionResults.filter(result => result).length + (selectedAnswer === currentQuestion.correct_answer ? 1 : 0),
+                    total: totalQuestions,
+                    timeSpent
                   });
                 }}
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
                 <Trophy className="h-4 w-4 mr-2" />
-                Complete Training
+                Complete Quiz
               </Button>
             )}
           </div>
@@ -324,4 +335,8 @@ const WeaknessTrainingZone: React.FC<WeaknessTrainingZoneProps> = ({
   );
 };
 
-export default WeaknessTrainingZone;
+export default WeaknessQuizMode;
+
+
+
+

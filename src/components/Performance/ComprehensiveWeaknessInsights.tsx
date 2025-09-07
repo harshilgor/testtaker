@@ -26,8 +26,7 @@ import {
   Target as TargetIcon
 } from 'lucide-react';
 import openaiAnalysisService from '@/services/openaiAnalysisService';
-import targetedQuestionService from '@/services/targetedQuestionService';
-import WeaknessTrainingZone from './WeaknessTrainingZone';
+import { useNavigate } from 'react-router-dom';
 
 interface Mistake {
   id: string;
@@ -77,19 +76,12 @@ interface ComprehensiveInsights {
 }
 
 const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps> = ({ mistakes, userName, onStartPractice }) => {
+  const navigate = useNavigate();
   const [comprehensiveInsights, setComprehensiveInsights] = useState<ComprehensiveInsights | null>(null);
   const [isGeneratingComprehensive, setIsGeneratingComprehensive] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   
-  // Targeted questions state
-  const [targetedQuestions, setTargetedQuestions] = useState<any[]>([]);
-  const [weaknessInsights, setWeaknessInsights] = useState<string[]>([]);
-  const [overallStrategy, setOverallStrategy] = useState<string>('');
-  const [estimatedTime, setEstimatedTime] = useState<string>('');
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [showTrainingZone, setShowTrainingZone] = useState(false);
-  const [questionsError, setQuestionsError] = useState<string | null>(null);
 
   // Get all unique skills from mistakes
   const allSkills = useMemo(() => {
@@ -182,44 +174,6 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
     await generateComprehensiveInsights();
   };
 
-  // Generate targeted practice questions
-  const generateTargetedQuestions = async () => {
-    if (!mistakes.length) return;
-    setIsGeneratingQuestions(true);
-    setQuestionsError(null);
-    
-    try {
-      const request = {
-        mistakes: mistakes.map(m => ({
-          question_text: m.question_text,
-          time_spent: m.time_spent,
-          difficulty: m.difficulty,
-          error_type: m.error_type,
-          created_at: m.created_at,
-          topic: m.topic,
-          subject: m.subject,
-          user_answer: m.user_answer,
-          correct_answer: m.correct_answer
-        })),
-        userName,
-        totalMistakes: mistakes.length
-      };
-
-      const response = await targetedQuestionService.generateTargetedQuestions(request);
-      
-      setTargetedQuestions(response.questions);
-      setWeaknessInsights(response.weaknessInsights);
-      setOverallStrategy(response.overallStrategy);
-      setEstimatedTime(response.estimatedTime);
-      setShowTrainingZone(true);
-      
-    } catch (error) {
-      console.error('Error generating targeted questions:', error);
-      setQuestionsError('Failed to generate targeted questions. Please try again.');
-    } finally {
-      setIsGeneratingQuestions(false);
-    }
-  };
 
   const getConfidenceColor = (level: 'low' | 'medium' | 'high') => {
     switch (level) {
@@ -271,34 +225,47 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
               <Brain className="h-4 w-4 mr-2" />
             )}
             <span className="truncate">
-              {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'AI Analysis'}
+              {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Practice'}
             </span>
           </Button>
           
           <Button
-            onClick={generateTargetedQuestions}
-            disabled={isGeneratingQuestions || !mistakes.length}
+            onClick={() => {
+              // Navigate to the new Target My Weakness page with mistakes data
+              navigate('/target-weakness', { 
+                state: { 
+                  mistakes: mistakes.map(m => ({
+                    question_text: m.question_text,
+                    time_spent: m.time_spent,
+                    difficulty: m.difficulty,
+                    error_type: m.error_type,
+                    created_at: m.created_at,
+                    topic: m.topic,
+                    subject: m.subject,
+                    user_answer: m.user_answer,
+                    correct_answer: m.correct_answer
+                  })),
+                  userName,
+                  totalMistakes: mistakes.length
+                }
+              });
+            }}
+            disabled={!mistakes.length}
             className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto disabled:bg-gray-400"
             size="sm"
           >
-            {isGeneratingQuestions ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <TargetIcon className="h-4 w-4 mr-2" />
-            )}
-            <span className="truncate">
-              {isGeneratingQuestions ? 'Generating Questions...' : 'Target My Weakness'}
-            </span>
+            <TargetIcon className="h-4 w-4 mr-2" />
+            <span className="truncate">Target My Weakness</span>
           </Button>
         </div>
       </div>
 
       {/* Error Display */}
-      {(analysisError || questionsError) && (
+      {analysisError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-red-500" />
-            <span className="text-sm text-red-700">{analysisError || questionsError}</span>
+            <span className="text-sm text-red-700">{analysisError}</span>
           </div>
         </div>
       )}
@@ -521,24 +488,6 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
         </CardContent>
       </Card>
 
-      {/* Weakness Training Zone */}
-      {showTrainingZone && (
-        <div className="mt-6">
-          <WeaknessTrainingZone
-            questions={targetedQuestions}
-            weaknessInsights={weaknessInsights}
-            overallStrategy={overallStrategy}
-            estimatedTime={estimatedTime}
-            onQuestionComplete={(questionIndex, isCorrect) => {
-              console.log(`Question ${questionIndex + 1}: ${isCorrect ? 'Correct' : 'Incorrect'}`);
-            }}
-            onAllQuestionsComplete={(results) => {
-              console.log('Training completed:', results);
-              // TODO: Store results in database for progress tracking
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };

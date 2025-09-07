@@ -28,14 +28,14 @@ const Index = () => {
     }
   }, [loading]);
 
+  // Add timeout for loading state to prevent infinite loading
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
   // Temporary bypass for debugging - remove this after testing
   if (window.location.search.includes('bypass=true')) {
     console.log('Bypassing auth for debugging');
     return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
   }
-
-  // Add timeout for loading state to prevent infinite loading
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,7 +67,9 @@ const Index = () => {
     if (currentScreen === 'auth') {
       return <AuthPage />;
     }
-    return <LandingScreen onGetStarted={() => setCurrentScreen('auth')} />;
+    return <LandingScreen onGetStarted={() => {
+      setCurrentScreen('auth');
+    }} />;
   }
 
   const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
