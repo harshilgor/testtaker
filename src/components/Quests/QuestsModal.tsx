@@ -1,11 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Target, Clock, Trophy, CheckCircle, Star, X, Brain, Sparkles, Award, Calendar, TrendingUp } from 'lucide-react';
+import { Clock, Trophy, CheckCircle, X, TrendingUp } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,6 +21,7 @@ interface Quest {
   progress: number;
   points: number;
   completed: boolean;
+  claimed?: boolean;
   expiresAt: Date;
   subject: string;
   accuracy: number;
@@ -52,6 +52,17 @@ const getAttemptedTopics = (attempts: any[]): Set<string> => {
     if (t) s.add(String(t));
   });
   return s;
+};
+
+// Helper: calculate average time per question
+const calculateAverageTimePerQuestion = (attempts: any[] = []): number => {
+  if (!attempts || attempts.length === 0) return 0;
+  
+  const totalTime = attempts.reduce((sum, attempt) => {
+    return sum + (attempt.time_spent || 0);
+  }, 0);
+  
+  return totalTime / attempts.length;
 };
 
 // Fetch a pool of available skills/topics from question_bank (skill preferred, fallback domain/topic)
@@ -255,135 +266,159 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
     const questsToCreate: any[] = [];
     
-    // Determine user stage
+    // Determine user stage based on performance data
     const attemptedTopics = getAttemptedTopics(questionAttempts || []);
     const hasAnyActivity = attemptedTopics.size > 0;
     const hasManyTopics = attemptedTopics.size >= 8;
 
     if (!hasAnyActivity) {
-      // New user – random seed quests from a broad pool
-      const allTopics = await fetchAllTopics();
-      const seeds = pickRandom(allTopics, 8);
-      const seedDefs = seeds.map((t, idx) => ({
-        quest_title: `Practice ${t}`,
-        target_topic: t,
-        target_count: idx < 2 ? 10 : 8,
-        difficulty: idx < 2 ? 'Easy' : 'Medium',
-        points_reward: idx < 2 ? 15 : 12
-      }));
+      // NEW USER: Basic onboarding quests
+      const onboardingQuests = [
+        {
+          quest_title: "Explore the Marathon feature",
+          quest_description: "Complete your first Marathon session to get familiar with the feature",
+          target_topic: "Marathon",
+          target_count: 1,
+          difficulty: 'Easy',
+          points_reward: 10,
+          quest_type: 'daily'
+        },
+        {
+          quest_title: "Solve 3 questions in Marathon",
+          quest_description: "Complete 3 questions correctly in Marathon mode",
+          target_topic: "Marathon",
+          target_count: 3,
+          difficulty: 'Easy',
+          points_reward: 15,
+          quest_type: 'daily'
+        },
+        {
+          quest_title: "Solve 10 questions in Quiz mode",
+          quest_description: "Answer 10 questions correctly in Quiz mode",
+          target_topic: "Quiz",
+          target_count: 10,
+          difficulty: 'Medium',
+          points_reward: 20,
+          quest_type: 'daily'
+        },
+        {
+          quest_title: "Complete 1 Mock Test",
+          quest_description: "Take and complete your first Mock Test",
+          target_topic: "Mock Test",
+          target_count: 1,
+          difficulty: 'Hard',
+          points_reward: 25,
+          quest_type: 'weekly'
+        }
+      ];
 
-      seedDefs.forEach((q, index) => {
-        // First 5 are daily (expire 11:59 PM), others weekly (14 days)
+      onboardingQuests.forEach((quest, index) => {
         let expiresAt: string;
-        if (index < 5) {
+        if (quest.quest_type === 'daily') {
           const today = new Date();
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-          expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-        }
-        const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        questsToCreate.push({
-          user_id: userId,
-          quest_id: questId,
-          quest_title: q.quest_title,
-          quest_description: `Goal: Answer ${q.target_count} ${q.target_topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
-          target_topic: q.target_topic,
-          difficulty: q.difficulty,
-          quest_type: index < 5 ? 'daily' : 'weekly',
-          target_count: q.target_count,
-          current_progress: 0,
-          points_reward: q.points_reward,
-          completed: false,
-          expires_at: expiresAt
-        });
-      });
-    } else if (!hasManyTopics) {
-      // Some activity – prioritize unattempted skills
-      const allTopics = await fetchAllTopics();
-      const unattempted = allTopics.filter(t => !attemptedTopics.has(t));
-      const picks = pickRandom(unattempted, 7);
-      picks.forEach((topic, index) => {
-        const goal = index < 3 ? 8 : 6;
-        const difficulty = 'Medium';
-        let expiresAt: string;
-        if (index < 5) {
-          const today = new Date();
-          today.setHours(23, 59, 59, 999);
-          expiresAt = today.toISOString();
-    } else {
+          // Weekly quests expire in 7 days
           expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         }
+        
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         questsToCreate.push({
           user_id: userId,
           quest_id: questId,
-          quest_title: `Explore ${topic}`,
-          quest_description: `Goal: Answer ${goal} ${topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
-          target_topic: topic,
-          difficulty,
-          quest_type: index < 5 ? 'daily' : 'weekly',
-          target_count: goal,
+          quest_title: quest.quest_title,
+          quest_description: quest.quest_description,
+          target_topic: quest.target_topic,
+          difficulty: quest.difficulty,
+          quest_type: quest.quest_type,
+          target_count: quest.target_count,
           current_progress: 0,
-          points_reward: 12,
+          points_reward: quest.points_reward,
           completed: false,
           expires_at: expiresAt
         });
       });
     } else {
-      // Lots of activity – focus weakest accuracy areas (existing logic)
-      weakTopicsAnalysis.slice(0, 7).forEach((weakArea, index) => {
+      // RETURNING USER: Personalized quests based on performance
+      const personalizedQuests: any[] = [];
+      
+      // Generate quests for weak topics (top 3-5)
+      const topWeakTopics = weakTopicsAnalysis.slice(0, 5);
+      
+      topWeakTopics.forEach((weakArea, index) => {
         const isUrgent = weakArea.accuracy < 50;
         const target = isUrgent ? 10 : 8;
         const difficulty = isUrgent ? 'Hard' : 'Medium';
-        const points = isUrgent ? 18 : 12;
+        const points = isUrgent ? 25 : 18;
+        
+        personalizedQuests.push({
+          quest_title: `Solve ${target} ${weakArea.topic} questions`,
+          quest_description: `Improve your ${weakArea.topic} skills by answering ${target} questions correctly`,
+          target_topic: weakArea.topic,
+          target_count: target,
+          difficulty: difficulty,
+          points_reward: points,
+          quest_type: index < 3 ? 'daily' : 'weekly',
+          accuracy: weakArea.accuracy,
+          subject: weakArea.subject
+        });
+      });
+
+      // Add speed-based quests if user is consistently slow
+      const avgTimePerQuestion = calculateAverageTimePerQuestion(questionAttempts || []);
+      if (avgTimePerQuestion > 120) { // More than 2 minutes per question
+        personalizedQuests.push({
+          quest_title: `Solve 5 Reading questions under 60 seconds each`,
+          quest_description: `Improve your reading speed by completing 5 Reading questions in under 60 seconds each`,
+          target_topic: "Reading Speed",
+          target_count: 5,
+          difficulty: 'Hard',
+          points_reward: 20,
+          quest_type: 'daily'
+        });
+      }
+
+      personalizedQuests.forEach((quest, index) => {
         let expiresAt: string;
-        if (index < 5) {
+        if (quest.quest_type === 'daily') {
           const today = new Date();
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-        const daysToComplete = isUrgent ? 3 : 7;
-          expiresAt = new Date(Date.now() + daysToComplete * 24 * 60 * 60 * 1000).toISOString();
+          // Weekly quests expire in 7 days
+          expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         }
+        
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         questsToCreate.push({
           user_id: userId,
           quest_id: questId,
-          quest_title: `Improve ${weakArea.topic}`,
-          quest_description: `Goal: Answer ${target} ${weakArea.topic} questions correctly\nPractice in Quiz, Marathon, or Mock Test`,
-          target_topic: weakArea.topic,
-          difficulty,
-          quest_type: index < 5 ? 'daily' : 'weekly',
-          target_count: target,
+          quest_title: quest.quest_title,
+          quest_description: quest.quest_description,
+          target_topic: quest.target_topic,
+          difficulty: quest.difficulty,
+          quest_type: quest.quest_type,
+          target_count: quest.target_count,
           current_progress: 0,
-          points_reward: points,
+          points_reward: quest.points_reward,
           completed: false,
           expires_at: expiresAt
         });
       });
     }
 
-    // Ensure we don't exceed 12 quests total per user
-    const existingQuests = await supabase
-      .from('user_quests')
-      .select('id')
-      .eq('user_id', userId)
-      .gte('expires_at', new Date().toISOString());
+    // Insert all quests (limit to 8 max)
+    const maxQuests = 8;
+    const questsToAdd = questsToCreate.slice(0, maxQuests);
 
-    const currentQuestCount = existingQuests.data?.length || 0;
-    const maxQuests = 12;
-    const questsToAdd = Math.min(questsToCreate.length, maxQuests - currentQuestCount);
-
-    if (questsToAdd > 0) {
-      const { error } = await supabase.from('user_quests').insert(questsToCreate.slice(0, questsToAdd));
+    if (questsToAdd.length > 0) {
+      const { error } = await supabase.from('user_quests').insert(questsToAdd);
       if (error) {
         console.error('Error creating targeted quests:', error);
       } else {
-        console.log(`Created ${questsToAdd} quests for user (${currentQuestCount + questsToAdd}/${maxQuests} total)`);
+        console.log(`Created ${questsToAdd.length} ${hasAnyActivity ? 'personalized' : 'onboarding'} quests for user`);
       }
-    } else if (currentQuestCount >= maxQuests) {
-      console.log(`User already has maximum of ${maxQuests} quests`);
     }
   };
 
@@ -443,10 +478,14 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       const quest = userQuests.find(q => q.id === questId);
       if (!quest) return;
 
-      // Update quest as completed and sync progress
+      // Update quest as completed and claimed
       const { error: updateError } = await supabase
         .from('user_quests')
-        .update({ completed: true, current_progress: quest.target })
+        .update({ 
+          completed: true, 
+          current_progress: quest.target,
+          completed_at: new Date().toISOString()
+        })
         .eq('id', questId);
 
       if (updateError) {
@@ -457,7 +496,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       const { data: user } = await supabase.auth.getUser();
       const userId = user.user?.id as string;
 
-      // Award points to user (uses p_points, p_user_id)
+      // Award points to user immediately
       const { error: pointsError } = await supabase.rpc('increment_user_points', {
         p_points: quest.points,
         p_user_id: userId
@@ -467,9 +506,9 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         console.error('Error awarding points:', pointsError);
       }
 
-      // Update local state
+      // Update local state - mark as completed and claimed
       setUserQuests(prev => prev.map(q => 
-        q.id === questId ? { ...q, completed: true, progress: quest.target } : q
+        q.id === questId ? { ...q, completed: true, progress: quest.target, claimed: true } : q
       ));
 
       setShowConfetti(true);
@@ -577,22 +616,22 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
   return (
     <TooltipProvider>
       <AnimatePresence>
-      {open && (
+        {open && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/20 z-40"
-          onClick={onClose}
-        />
-      )}
+            onClick={onClose}
+          />
+        )}
       </AnimatePresence>
       
       <motion.div 
         initial={{ x: "100%" }}
         animate={{ x: open ? 0 : "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:w-2/5 bg-gradient-to-br from-gray-50 to-white shadow-2xl z-50 overflow-hidden"
+        className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:w-2/5 bg-white shadow-2xl z-50 overflow-hidden"
       >
         <div className="h-full flex flex-col">
           {/* Header */}
@@ -600,23 +639,15 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="flex items-center justify-between p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm"
+            className="flex items-center justify-between p-6 border-b border-gray-200 bg-white"
           >
             <div className="flex items-center gap-3">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <Trophy className="h-5 w-5 text-yellow-500" />
-              </motion.div>
-              <h2 className="text-xl font-bold text-gray-900">Your Quests</h2>
+              <Trophy className="h-6 w-6 text-blue-600" />
+              <h2 className="text-2xl font-bold text-black">Your Quests</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-gray-700 border-gray-300 font-medium bg-gray-50">
-                {activeQuests.length} quests
-              </Badge>
-              <Badge variant="outline" className="text-yellow-600 border-yellow-600 font-medium bg-yellow-50">
-                {totalPointsAvailable} pts available
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-black border-gray-300 font-medium bg-white">
+                {activeQuests.length} active
               </Badge>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -630,201 +661,167 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           </motion.div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {/* Removed Stats Overview */}
-
-            {/* Active Quests */}
-            <motion.div 
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="space-y-3"
-            >
-              {activeQuests.length === 0 ? (
-                <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-center py-8"
-                >
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Trophy className="h-12 w-12 text-yellow-500 mx-auto mb-3" />
-                  </motion.div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">All Quests Completed!</h3>
-                  <p className="text-gray-600 text-sm">Amazing work! New quests will be generated based on your latest performance.</p>
-                </motion.div>
-              ) : (
-                <>
-                  {/* Daily Quests - First 5 quests */}
-                  {activeQuests.slice(0, 5).map((quest) => (
-                    <motion.div
-                      key={quest.id}
-                      variants={cardVariants}
-                      whileHover={{ y: -2, boxShadow: "0 10px 25px rgba(0,0,0,0.06)" }}
-                      className="group"
-                    >
-                      <Card className="relative border-2 border-orange-400 hover:border-orange-500 transition-all duration-300 bg-white/80 backdrop-blur-sm">
-                        <CardContent className="p-4">
-                          {/* Daily Quest Badge - moved to bottom right */}
-                          <div className="absolute bottom-2 right-2">
-                            <Badge variant="outline" className="text-orange-600 border-orange-400 bg-orange-50 font-medium text-[8px] px-1 py-0.5">
-                              DAILY
-                            </Badge>
+          <div className="flex-1 overflow-y-auto p-6">
+            {userQuests.length === 0 ? (
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-center py-12"
+              >
+                <Trophy className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-black mb-2">No Quests Available</h3>
+                <p className="text-gray-600">New quests will be generated based on your performance.</p>
+              </motion.div>
+            ) : (
+              <div className="space-y-6">
+                {/* Active Quests */}
+                {activeQuests.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-black mb-4">Active Quests</h3>
+                    <div className="space-y-4">
+                      {activeQuests.map((quest, index) => (
+                        <motion.div
+                          key={quest.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-start gap-4 p-4 border-l-4 border-blue-600 bg-gray-50 rounded-r-lg"
+                        >
+                          {/* Bullet point */}
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
                           </div>
-
-                          {/* Claim button top-right */}
-                          {quest.progress >= quest.target && !quest.completed && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <motion.button
-                                  variants={buttonVariants}
-                                  whileHover="hover"
-                                  whileTap="tap"
-                                  onClick={() => handleCompleteQuest(quest.id)}
-                                  aria-label="Claim reward"
-                                  className="absolute top-3 right-3 bg-black hover:bg-neutral-800 text-white px-3 py-1.5 rounded-md font-medium text-xs shadow-md"
-                                >
-                                  Claim
-                                </motion.button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Claim your reward (+{quest.points} pts)</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-
-                          <div className="flex items-start justify-between mb-2 pr-20">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-semibold text-gray-900 text-sm md:text-base truncate">{quest.title}</h4>
-                                <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50 font-medium text-[10px] md:text-xs">
-                                  +{quest.points} pts
-                                </Badge>
+                          
+                          {/* Quest content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-black mb-1">
+                                  {quest.title}
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-3">
+                                  {quest.description}
+                                </p>
                               </div>
-                              <div className="text-xs text-gray-700 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                {quest.description}
+                              
+                              {/* Claim button */}
+                              {quest.progress >= quest.target && !quest.completed && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleCompleteQuest(quest.id)}
+                                      disabled={claimingQuest === quest.id}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm disabled:opacity-50"
+                                    >
+                                      {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
+                                    </motion.button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Claim your reward (+{quest.points} points)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                            
+                            {/* Progress bar */}
+                            <div className="mb-2">
+                              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                                <span>Progress: {quest.progress}/{quest.target}</span>
+                                <span>{Math.round(getProgressPercentage(quest.progress, quest.target))}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
+                                  transition={{ duration: 0.6, ease: "easeOut" }}
+                                  className="h-2 bg-blue-600 rounded-full"
+                                />
                               </div>
                             </div>
-                          </div>
-                          
-                          {/* Meta row (removed subject tag) */}
-                          <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {getTimeRemaining(quest.expiresAt)}
-                            </span>
-                            <span className="font-medium">{quest.progress}/{quest.target}</span>
-                          </div>
-                          
-                          {/* Progress bar (smaller) */}
-                          <div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
-                                transition={{ duration: 0.6, ease: "easeOut" }}
-                                className={`h-2 rounded-full ${
-                                quest.subject === 'Math' 
-                                  ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                                  : 'bg-gradient-to-r from-purple-500 to-purple-600'
-                              }`}
-                              />
-                            </div>
-                            {quest.progress < quest.target && (
-                              <p className="text-[11px] text-gray-500 mt-1 text-center">
-                                {Math.max(0, quest.target - quest.progress)} more correct answers needed
-                              </p>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-
-                  {/* Regular Quests - Remaining quests */}
-                  {activeQuests.slice(5).map((quest) => (
-                  <motion.div
-                    key={quest.id}
-                    variants={cardVariants}
-                    whileHover={{ y: -2, boxShadow: "0 10px 25px rgba(0,0,0,0.06)" }}
-                    className="group"
-                  >
-                    <Card className="relative border border-gray-200 hover:border-yellow-300 transition-all duration-300 bg-white/80 backdrop-blur-sm">
-                      <CardContent className="p-4">
-                        {/* Claim button top-right */}
-                        {quest.progress >= quest.target && !quest.completed && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <motion.button
-                                variants={buttonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={() => handleCompleteQuest(quest.id)}
-                                aria-label="Claim reward"
-                                className="absolute top-3 right-3 bg-black hover:bg-neutral-800 text-white px-3 py-1.5 rounded-md font-medium text-xs shadow-md"
-                              >
-                                Claim
-                              </motion.button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Claim your reward (+{quest.points} pts)</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-
-                        <div className="flex items-start justify-between mb-2 pr-20">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-gray-900 text-sm md:text-base truncate">{quest.title}</h4>
-                              <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50 font-medium text-[10px] md:text-xs">
-                              +{quest.points} pts
-                            </Badge>
-                          </div>
-                            <div className="text-xs text-gray-700 leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {quest.description}
+                            
+                            {/* Quest metadata */}
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {getTimeRemaining(quest.expiresAt)}
+                              </span>
+                              <span className="font-medium text-blue-600">+{quest.points} points</span>
+                              <Badge variant="outline" className="text-xs">
+                                {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                              </Badge>
                             </div>
                           </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Completed Quests */}
+                {completedQuests.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-black mb-4">Completed Quests</h3>
+                    <div className="space-y-4">
+                      {completedQuests.map((quest, index) => (
+                        <motion.div
+                          key={quest.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: (activeQuests.length + index) * 0.1 }}
+                          className="flex items-start gap-4 p-4 border-l-4 border-gray-300 bg-gray-100 rounded-r-lg opacity-60"
+                        >
+                          {/* Checkmark */}
+                          <div className="flex-shrink-0 mt-1">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
                           </div>
                           
-                        {/* Meta row (removed subject tag) */}
-                        <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {getTimeRemaining(quest.expiresAt)}
-                            </span>
-                          <span className="font-medium">{quest.progress}/{quest.target}</span>
-                        </div>
-                        
-                        {/* Progress bar (smaller) */}
-                        <div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
-                              className={`h-2 rounded-full ${
-                              quest.subject === 'Math' 
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                                : 'bg-gradient-to-r from-purple-500 to-purple-600'
-                            }`}
-                            />
-                        </div>
-                          {quest.progress < quest.target && (
-                            <p className="text-[11px] text-gray-500 mt-1 text-center">
-                              {Math.max(0, quest.target - quest.progress)} more correct answers needed
-                        </p>
-                          )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  </motion.div>
-                  ))}
-                </>
-              )}
-            </motion.div>
+                          {/* Quest content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-500 mb-1 line-through">
+                                  {quest.title}
+                                </h3>
+                                <p className="text-sm text-gray-400 mb-3">
+                                  {quest.description}
+                                </p>
+                              </div>
+                              
+                              {/* Completed badge */}
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-300">
+                                Completed
+                              </Badge>
+                            </div>
+                            
+                            {/* Progress bar - full */}
+                            <div className="mb-2">
+                              <div className="flex items-center justify-between text-sm text-gray-400 mb-1">
+                                <span>Progress: {quest.progress}/{quest.target}</span>
+                                <span>100%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div className="h-2 bg-green-600 rounded-full w-full" />
+                              </div>
+                            </div>
+                            
+                            {/* Quest metadata */}
+                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                              <span className="font-medium text-green-600">+{quest.points} points earned</span>
+                              <Badge variant="outline" className="text-xs">
+                                {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Performance Summary */}
             {weakTopicsAnalysis.length > 0 && (
@@ -832,10 +829,10 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200"
+                className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200"
               >
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                <h3 className="text-lg font-semibold text-black mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
                   Your Focus Areas
                 </h3>
                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -847,7 +844,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                       transition={{ delay: 0.6 + index * 0.1 }}
                       className="text-xs bg-white rounded-lg p-3 border shadow-sm"
                     >
-                      <div className="font-medium text-gray-900">{area.topic}</div>
+                      <div className="font-medium text-black">{area.topic}</div>
                       <div className="text-gray-600">{area.accuracy}% accuracy</div>
                     </motion.div>
                   ))}
@@ -891,7 +888,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                 {['🎉', '⭐', '🎊', '🏆', '💎'][Math.floor(Math.random() * 5)]}
               </motion.div>
             ))}
-      </div>
+          </div>
         )}
       </motion.div>
     </TooltipProvider>

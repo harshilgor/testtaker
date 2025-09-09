@@ -13,6 +13,7 @@ interface UseAnswerHandlerProps {
   loadUserPoints: () => Promise<void>;
   stopTimer: () => void;
   incrementQuestionsAttempted: () => void;
+  recordAnswer?: (questionId: string, isCorrect: boolean, timeSpent: number, difficulty: 'easy' | 'medium' | 'hard', targetSkill?: string) => Promise<void>;
 }
 
 export const useAnswerHandler = ({
@@ -24,7 +25,8 @@ export const useAnswerHandler = ({
   recordAttempt,
   loadUserPoints,
   stopTimer,
-  incrementQuestionsAttempted
+  incrementQuestionsAttempted,
+  recordAnswer
 }: UseAnswerHandlerProps) => {
 
   const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
@@ -81,6 +83,18 @@ export const useAnswerHandler = ({
         }),
         loadUserPoints()
       ]);
+
+      // Record adaptive learning progress if enabled
+      if (recordAnswer && currentQuestion.metadata?.targetSkill) {
+        await recordAnswer(
+          currentQuestion.id,
+          isCorrect,
+          timeSpent,
+          attempt.difficulty,
+          currentQuestion.metadata.targetSkill as string
+        );
+        console.log('🧠 Recorded adaptive learning progress for skill:', currentQuestion.metadata.targetSkill);
+      }
     } catch (error) {
       console.error('useAnswerHandler: Error recording question attempt:', error);
     }

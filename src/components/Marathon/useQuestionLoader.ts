@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DatabaseQuestion } from '@/services/questionService';
+import { MarathonSettings } from '../../types/marathon';
 
 interface UseQuestionLoaderProps {
   session: any;
@@ -9,6 +10,9 @@ interface UseQuestionLoaderProps {
   setLoading: (loading: boolean) => void;
   loadSessionStats: () => Promise<void>;
   startTimer: () => void;
+  settings?: MarathonSettings;
+  getAdaptiveQuestions?: (questions: any[], sessionProgress: any, count: number, subject?: 'math' | 'english') => Promise<any[]>;
+  sessionHistory?: string[];
 }
 
 export const useQuestionLoader = ({
@@ -16,7 +20,10 @@ export const useQuestionLoader = ({
   setCurrentQuestion,
   setLoading,
   loadSessionStats,
-  startTimer
+  startTimer,
+  settings,
+  getAdaptiveQuestions,
+  sessionHistory = []
 }: UseQuestionLoaderProps) => {
 
   const loadNextQuestion = useCallback(async () => {
@@ -97,36 +104,86 @@ export const useQuestionLoader = ({
       }
 
       if (questions && questions.length > 0) {
-        // Pick random question for variety
-        const randomIndex = Math.floor(Math.random() * questions.length);
-        const question = questions[randomIndex];
-        console.log('useQuestionLoader: Loaded question:', question.id);
+        let selectedQuestion: any;
+
+        // Use adaptive learning if enabled and available
+        if (settings?.adaptiveLearning && getAdaptiveQuestions) {
+          console.log('🧠 Using adaptive learning for question selection');
+          
+          try {
+            // Determine subject based on session subjects
+            const sessionSubjects = session.subjects || ['both'];
+            let targetSubject: 'math' | 'english' | undefined;
+            
+            if (sessionSubjects.includes('math') && !sessionSubjects.includes('english') && !sessionSubjects.includes('both')) {
+              targetSubject = 'math';
+            } else if (sessionSubjects.includes('english') && !sessionSubjects.includes('math') && !sessionSubjects.includes('both')) {
+              targetSubject = 'english';
+            }
+            
+            // Get adaptive questions (just 1 for now)
+            const adaptiveQuestions = await getAdaptiveQuestions(questions, {}, 1, targetSubject);
+            
+            if (adaptiveQuestions.length > 0) {
+              selectedQuestion = adaptiveQuestions[0];
+              console.log('🎯 Selected adaptive question:', {
+                id: selectedQuestion.id,
+                targetSkill: selectedQuestion.targetSkill,
+                selectionReason: selectedQuestion.selectionReason,
+                difficulty: selectedQuestion.difficulty
+              });
+            } else {
+              // Fallback to random if adaptive selection fails
+              const randomIndex = Math.floor(Math.random() * questions.length);
+              selectedQuestion = questions[randomIndex];
+              console.log('🔄 Fallback to random question due to empty adaptive selection');
+            }
+          } catch (error) {
+            console.error('❌ Error in adaptive question selection:', error);
+            // Fallback to random selection
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            selectedQuestion = questions[randomIndex];
+            console.log('🔄 Fallback to random question due to error');
+          }
+        } else {
+          // Traditional random selection
+          const randomIndex = Math.floor(Math.random() * questions.length);
+          selectedQuestion = questions[randomIndex];
+          console.log('🎲 Using random question selection (adaptive learning disabled)');
+        }
+
+        console.log('useQuestionLoader: Loaded question:', selectedQuestion.id);
         
         // Format question with proper type conversion
         const formattedQuestion: DatabaseQuestion = {
-          id: question.id.toString(),
-          question_text: question.question_text || '',
-          option_a: question.option_a || '',
-          option_b: question.option_b || '',
-          option_c: question.option_c || '',
-          option_d: question.option_d || '',
-          correct_answer: question.correct_answer || '',
-          correct_rationale: question.correct_rationale || '',
-          incorrect_rationale_a: question.incorrect_rationale_a || '',
-          incorrect_rationale_b: question.incorrect_rationale_b || '',
-          incorrect_rationale_c: question.incorrect_rationale_c || '',
-          incorrect_rationale_d: question.incorrect_rationale_d || '',
-          section: question.assessment || 'SAT',
-          skill: question.skill || '',
-          difficulty: question.difficulty || 'medium',
-          domain: question.domain || '',
-          test_name: question.test || '',
+          id: selectedQuestion.id.toString(),
+          question_text: selectedQuestion.question_text || '',
+          option_a: selectedQuestion.option_a || '',
+          option_b: selectedQuestion.option_b || '',
+          option_c: selectedQuestion.option_c || '',
+          option_d: selectedQuestion.option_d || '',
+          correct_answer: selectedQuestion.correct_answer || '',
+          correct_rationale: selectedQuestion.correct_rationale || '',
+          incorrect_rationale_a: selectedQuestion.incorrect_rationale_a || '',
+          incorrect_rationale_b: selectedQuestion.incorrect_rationale_b || '',
+          incorrect_rationale_c: selectedQuestion.incorrect_rationale_c || '',
+          incorrect_rationale_d: selectedQuestion.incorrect_rationale_d || '',
+          section: selectedQuestion.assessment || 'SAT',
+          skill: selectedQuestion.skill || '',
+          difficulty: selectedQuestion.difficulty || 'medium',
+          domain: selectedQuestion.domain || '',
+          test_name: selectedQuestion.test || '',
           question_type: 'multiple-choice',
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          metadata: {},
-          image: typeof question.image === 'string' && ['true', 'True', '1'].includes(question.image)
+          metadata: {
+            // Store adaptive learning metadata
+            targetSkill: selectedQuestion.targetSkill,
+            selectionReason: selectedQuestion.selectionReason,
+            adaptiveWeight: selectedQuestion.adaptiveWeight
+          },
+          image: typeof selectedQuestion.image === 'string' && ['true', 'True', '1'].includes(selectedQuestion.image)
         };
         
         setCurrentQuestion(formattedQuestion);

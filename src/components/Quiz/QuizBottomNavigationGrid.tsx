@@ -1,21 +1,9 @@
 
 import React from 'react';
-
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  subject: string;
-  topic: string;
-  difficulty: string;
-  imageUrl?: string;
-  hasImage?: boolean;
-}
+import { QuizQuestion } from '@/types/question';
 
 interface QuizBottomNavigationGridProps {
-  questions: Question[];
+  questions: QuizQuestion[];
   currentQuestionIndex: number;
   answers: (number | null)[];
   flaggedQuestions: boolean[];

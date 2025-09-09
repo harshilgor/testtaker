@@ -4,23 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RotateCcw, Trophy, Clock, Target, BookOpen, TrendingUp, TrendingDown, AlertTriangle, Award } from 'lucide-react';
 import { Subject } from '@/types/common';
+import { QuizQuestion } from '@/types/question';
 import CollapsibleQuestionReview from '@/components/CollapsibleQuestionReview';
 
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  subject: string;
-  topic: string;
-  difficulty: string;
-  imageUrl?: string;
-  hasImage?: boolean;
-}
-
 interface QuizSummaryPageProps {
-  questions: Question[];
+  questions: QuizQuestion[];
   answers: (number | null)[];
   topics: string[];
   timeElapsed: number;

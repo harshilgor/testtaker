@@ -4,6 +4,7 @@ import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
 import { useMarathonState } from './Marathon/useMarathonState';
 import { useMarathonActions } from './Marathon/useMarathonActions';
+import { useAdaptiveLearning } from '@/hooks/useAdaptiveLearning';
 import MarathonInterface from './Marathon/MarathonInterface';
 import MarathonLoadingState from './Marathon/MarathonLoadingState';
 import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
@@ -53,6 +54,16 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     incrementQuestionsAttempted
   } = useMarathonState(session);
 
+  // Initialize adaptive learning
+  const {
+    getAdaptiveQuestions,
+    recordAnswer,
+    sessionHistory,
+    isInitialized,
+    getProgressSummary,
+    getNextSkillToFocus
+  } = useAdaptiveLearning();
+
   const {
     loadNextQuestion,
     handleAnswer,
@@ -78,8 +89,30 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     sessionPoints,
     stopTimer,
     startTimer,
-    incrementQuestionsAttempted
+    incrementQuestionsAttempted,
+    settings,
+    getAdaptiveQuestions: settings?.adaptiveLearning ? getAdaptiveQuestions : undefined,
+    sessionHistory,
+    recordAnswer: settings?.adaptiveLearning ? recordAnswer : undefined
   });
+
+  // Log adaptive learning status
+  useEffect(() => {
+    if (settings?.adaptiveLearning && isInitialized) {
+      console.log('🧠 Adaptive Learning ENABLED for marathon session');
+      const progress = getProgressSummary();
+      const nextSkill = getNextSkillToFocus();
+      console.log('📊 Current adaptive learning status:', {
+        progress,
+        nextSkill: nextSkill?.name,
+        sessionHistory: sessionHistory.length
+      });
+    } else if (settings?.adaptiveLearning && !isInitialized) {
+      console.log('🔄 Adaptive Learning initializing...');
+    } else {
+      console.log('🎲 Using traditional random question selection');
+    }
+  }, [settings?.adaptiveLearning, isInitialized, sessionHistory.length]);
 
   // Initialize session when ready
   useEffect(() => {

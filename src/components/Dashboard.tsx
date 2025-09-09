@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import QuestsModal from './Quests/QuestsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
+import RecentSessionsPrefetcher from './Performance/RecentSessionsPrefetcher';
 
 interface DashboardProps {
   userName: string;
@@ -72,6 +73,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-6 md:py-8">
+      {/* Pre-fetch recent sessions data for instant loading on Performance page */}
+      <RecentSessionsPrefetcher userName={userName} />
+      
       <div className="max-w-6xl mx-auto w-full">
         <div className="text-center mb-8 md:mb-10 relative">
           <div className="flex items-center justify-center gap-6 mb-3">

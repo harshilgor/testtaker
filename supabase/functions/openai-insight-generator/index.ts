@@ -63,6 +63,7 @@ serve(async (req) => {
     const rawTargetDate = body?.targetDate as string | undefined;
     const tzOffsetMinutes = Number.isFinite(Number(body?.tzOffsetMinutes)) ? Number(body.tzOffsetMinutes) : 0;
     const clientFallbackData = body?.clientFallbackData;
+    const promptTemplate = body?.promptTemplate as string | undefined;
     const isMonthly = body?.isMonthly === true;
     const skillAnalysisData = body?.skillAnalysisData;
 
@@ -255,11 +256,13 @@ Guidance:
 
 Generate actionable insights and next steps for SAT improvement based on this performance data.${isMonthly ? ' Provide comprehensive monthly analysis with detailed insights about study patterns, consistency, and long-term progress.' : ''}
 
-Return a structured JSON with fields:
-- insights: array of specific observations about the performance
-- nextSteps: array of actionable recommendations for improvement
+You MUST return ONLY a valid JSON object with this exact structure:
+{
+  "insights": ["insight 1", "insight 2", "insight 3"],
+  "nextSteps": ["step 1", "step 2", "step 3"]
+}
 
-Focus on SAT-specific advice and be encouraging.`;
+Do not include any text before or after the JSON. Focus on SAT-specific advice and be encouraging.`;
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -293,13 +296,44 @@ Focus on SAT-specific advice and be encouraging.`;
           parsedResponse = JSON.parse(aiContent);
         } catch (parseError) {
           console.error('Failed to parse OpenAI response:', parseError);
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: 'No deeper patterns detected yet—keep practicing for more insights!' 
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          console.error('Raw AI content:', aiContent);
+          
+          // Try to extract JSON from the response if it's wrapped in text
+          const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              parsedResponse = JSON.parse(jsonMatch[0]);
+            } catch (secondParseError) {
+              console.error('Failed to parse extracted JSON:', secondParseError);
+              // Provide fallback insights based on the data
+              parsedResponse = {
+                insights: [
+                  `Completed ${fallbackSessionData.questionsAttempted} questions with ${fallbackSessionData.accuracy}% accuracy`,
+                  `Study time: ${fallbackSessionData.studyTime} minutes`,
+                  "Focus on reviewing incorrect answers to improve understanding"
+                ],
+                nextSteps: [
+                  "Review explanations for questions you got wrong",
+                  "Practice more questions in your weak areas",
+                  "Take timed practice tests to improve speed and accuracy"
+                ]
+              };
+            }
+          } else {
+            // Provide fallback insights based on the data
+            parsedResponse = {
+              insights: [
+                `Completed ${fallbackSessionData.questionsAttempted} questions with ${fallbackSessionData.accuracy}% accuracy`,
+                `Study time: ${fallbackSessionData.studyTime} minutes`,
+                "Focus on reviewing incorrect answers to improve understanding"
+              ],
+              nextSteps: [
+                "Review explanations for questions you got wrong",
+                "Practice more questions in your weak areas",
+                "Take timed practice tests to improve speed and accuracy"
+              ]
+            };
+          }
         }
 
         // Record the API call for daily limit tracking
@@ -311,10 +345,59 @@ Focus on SAT-specific advice and be encouraging.`;
             created_at: new Date().toISOString()
           });
 
+        // Handle different response formats for fallback
+        let insights: string[] = [];
+        let nextSteps: string[] = [];
+        
+        if ((parsedResponse as any).text) {
+          // If response has a text field, try to parse it and extract insights
+          try {
+            const textContent = (parsedResponse as any).text;
+            const parsedText = JSON.parse(textContent);
+            
+            // Extract insights from various possible fields
+            insights = [
+              ...(parsedText.keyInsights || []),
+              ...(parsedText.errorPatterns || []),
+              ...(parsedText.insights || [])
+            ];
+            
+            // Extract next steps from various possible fields
+            nextSteps = [
+              ...(parsedText.actionPlan || []),
+              ...(parsedText.nextSteps || []),
+              ...(parsedText.recommendations || [])
+            ];
+            
+            // If still empty, create from available data
+            if (insights.length === 0 && nextSteps.length === 0) {
+              insights = [
+                parsedText.dailyOverview || "Completed practice session",
+                `Accuracy: ${parsedText.detailedBreakdown?.overallAccuracy || 'N/A'}`,
+                `Questions attempted: ${parsedText.detailedBreakdown?.totalQuestions || 'N/A'}`
+              ];
+              nextSteps = [
+                "Review incorrect answers to understand mistakes",
+                "Practice more questions in weak areas",
+                "Focus on improving accuracy through targeted practice"
+              ];
+            }
+          } catch (parseError) {
+            console.error('Failed to parse fallback text response:', parseError);
+            // Fallback to basic insights
+            insights = ["Practice session completed", "Focus on improving accuracy"];
+            nextSteps = ["Review incorrect answers", "Practice more questions"];
+          }
+        } else {
+          // Standard format
+          insights = parsedResponse.insights || [];
+          nextSteps = parsedResponse.nextSteps || [];
+        }
+
         return new Response(JSON.stringify({
           success: true,
-          insights: parsedResponse.insights || [],
-          nextSteps: parsedResponse.nextSteps || []
+          insights: insights,
+          nextSteps: nextSteps
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -348,8 +431,9 @@ Focus on SAT-specific advice and be encouraging.`;
     if (cachedResponse) {
       return new Response(JSON.stringify({
         success: true,
-        insights: cachedResponse.response.insights || [],
-        nextSteps: cachedResponse.response.nextSteps || [],
+        insights: cachedResponse.response?.insights || [],
+        nextSteps: cachedResponse.response?.nextSteps || [],
+        text: typeof cachedResponse.response?.text === 'string' ? cachedResponse.response.text : undefined,
         cached: true
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -369,7 +453,9 @@ Focus on SAT-specific advice and be encouraging.`;
       });
     }
 
-    const prompt = `Analyze this SAT practice session data${isMonthly ? ' for the entire month' : ''}: ${JSON.stringify(sessionData)}
+    const assembledPrompt = promptTemplate
+      ? promptTemplate.replace('[INSERT_JSON_HERE]', JSON.stringify(sessionData))
+      : `Analyze this SAT practice session data${isMonthly ? ' for the entire month' : ''}: ${JSON.stringify(sessionData)}
 
 Generate deeper patterns and actionable next steps for SAT improvement. Focus on:
 - Performance patterns across skills and difficulties
@@ -379,13 +465,15 @@ Generate deeper patterns and actionable next steps for SAT improvement. Focus on
 - Monthly study patterns and consistency
 - Long-term progress trends
 - Comprehensive skill assessment across the month
-- Strategic recommendations for the next month' : ''}
+- Strategic recommendations for the next month` : ''}
 
-Return a structured JSON with fields:
-- insights: array of specific pattern observations (e.g., "Accuracy in Comprehension improves 5% per 10 questions")
-- nextSteps: array of actionable recommendations (e.g., "Practice 5 timed hard Comprehension questions")
+You MUST return ONLY a valid JSON object with this exact structure:
+{
+  "insights": ["insight 1", "insight 2", "insight 3"],
+  "nextSteps": ["step 1", "step 2", "step 3"]
+}
 
-Ensure insights reflect SAT-specific skills (Reading, Math, Writing) and difficulties (easy, medium, hard).${isMonthly ? ' Provide comprehensive monthly analysis with detailed insights about study patterns, consistency, and long-term progress.' : ''}`;
+Do not include any text before or after the JSON. Ensure insights reflect SAT-specific skills (Reading, Math, Writing) and difficulties (easy, medium, hard).${isMonthly ? ' Provide comprehensive monthly analysis with detailed insights about study patterns, consistency, and long-term progress.' : ''}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -400,7 +488,7 @@ Ensure insights reflect SAT-specific skills (Reading, Math, Writing) and difficu
             role: 'system', 
             content: 'You are an SAT prep expert analyzing student performance data. Return only valid JSON responses with insights and nextSteps arrays.' 
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: assembledPrompt }
         ],
         max_tokens: isMonthly ? 800 : 500,
         temperature: 0.7,
@@ -418,18 +506,54 @@ Ensure insights reflect SAT-specific skills (Reading, Math, Writing) and difficu
       throw new Error('Empty response from OpenAI');
     }
 
-    let parsedResponse: OpenAIResponse;
-    try {
-      parsedResponse = JSON.parse(aiContent);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError);
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'No deeper patterns detected yet—keep practicing for more insights!' 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let parsedResponse: OpenAIResponse | { text: string };
+    if (promptTemplate) {
+      // When a custom prompt template is supplied, treat response as plain text
+      parsedResponse = { text: aiContent };
+    } else {
+      try {
+        parsedResponse = JSON.parse(aiContent);
+      } catch (parseError) {
+        console.error('Failed to parse OpenAI response:', parseError);
+        console.error('Raw AI content:', aiContent);
+        
+        // Try to extract JSON from the response if it's wrapped in text
+        const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            parsedResponse = JSON.parse(jsonMatch[0]);
+          } catch (secondParseError) {
+            console.error('Failed to parse extracted JSON:', secondParseError);
+            // Provide fallback insights based on the data
+            parsedResponse = {
+              insights: [
+                `Completed ${sessionData.questionsAttempted} questions with ${sessionData.accuracy}% accuracy`,
+                `Study time: ${sessionData.studyTime} minutes`,
+                "Focus on reviewing incorrect answers to improve understanding"
+              ],
+              nextSteps: [
+                "Review explanations for questions you got wrong",
+                "Practice more questions in your weak areas",
+                "Take timed practice tests to improve speed and accuracy"
+              ]
+            };
+          }
+        } else {
+          // Provide fallback insights based on the data
+          parsedResponse = {
+            insights: [
+              `Completed ${sessionData.questionsAttempted} questions with ${sessionData.accuracy}% accuracy`,
+              `Study time: ${sessionData.studyTime} minutes`,
+              "Focus on reviewing incorrect answers to improve understanding"
+            ],
+            nextSteps: [
+              "Review explanations for questions you got wrong",
+              "Practice more questions in your weak areas",
+              "Take timed practice tests to improve speed and accuracy"
+            ]
+          };
+        }
+      }
     }
 
     // Cache the response
@@ -451,10 +575,60 @@ Ensure insights reflect SAT-specific skills (Reading, Math, Writing) and difficu
         created_at: new Date().toISOString()
       });
 
+    // Handle different response formats
+    let insights: string[] = [];
+    let nextSteps: string[] = [];
+    
+    if ((parsedResponse as any).text) {
+      // If response has a text field, try to parse it and extract insights
+      try {
+        const textContent = (parsedResponse as any).text;
+        const parsedText = JSON.parse(textContent);
+        
+        // Extract insights from various possible fields
+        insights = [
+          ...(parsedText.keyInsights || []),
+          ...(parsedText.errorPatterns || []),
+          ...(parsedText.insights || [])
+        ];
+        
+        // Extract next steps from various possible fields
+        nextSteps = [
+          ...(parsedText.actionPlan || []),
+          ...(parsedText.nextSteps || []),
+          ...(parsedText.recommendations || [])
+        ];
+        
+        // If still empty, create from available data
+        if (insights.length === 0 && nextSteps.length === 0) {
+          insights = [
+            parsedText.dailyOverview || "Completed practice session",
+            `Accuracy: ${parsedText.detailedBreakdown?.overallAccuracy || 'N/A'}`,
+            `Questions attempted: ${parsedText.detailedBreakdown?.totalQuestions || 'N/A'}`
+          ];
+          nextSteps = [
+            "Review incorrect answers to understand mistakes",
+            "Practice more questions in weak areas",
+            "Focus on improving accuracy through targeted practice"
+          ];
+        }
+      } catch (parseError) {
+        console.error('Failed to parse text response:', parseError);
+        // Fallback to basic insights
+        insights = ["Practice session completed", "Focus on improving accuracy"];
+        nextSteps = ["Review incorrect answers", "Practice more questions"];
+      }
+    } else {
+      // Standard format
+      insights = (parsedResponse as any).insights || [];
+      nextSteps = (parsedResponse as any).nextSteps || [];
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      insights: parsedResponse.insights || [],
-      nextSteps: parsedResponse.nextSteps || []
+      insights: insights,
+      nextSteps: nextSteps,
+      text: (parsedResponse as any).text
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

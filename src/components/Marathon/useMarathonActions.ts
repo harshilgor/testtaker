@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useQuestionLoader } from './useQuestionLoader';
 import { useAnswerHandler } from './useAnswerHandler';
 import { useMarathonNavigation } from './useMarathonNavigation';
+import { MarathonSettings } from '../../types/marathon';
 
 interface UseMarathonActionsProps {
   session: any;
@@ -24,6 +25,10 @@ interface UseMarathonActionsProps {
   stopTimer: () => void;
   startTimer: () => void;
   incrementQuestionsAttempted: () => void;
+  settings?: MarathonSettings;
+  getAdaptiveQuestions?: (questions: any[], sessionProgress: any, count: number, subject?: 'math' | 'english') => Promise<any[]>;
+  sessionHistory?: string[];
+  recordAnswer?: (questionId: string, isCorrect: boolean, timeSpent: number, difficulty: 'easy' | 'medium' | 'hard', targetSkill?: string) => Promise<void>;
 }
 
 export const useMarathonActions = (props: UseMarathonActionsProps) => {
@@ -43,7 +48,11 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     sessionPoints,
     stopTimer,
     startTimer,
-    incrementQuestionsAttempted
+    incrementQuestionsAttempted,
+    settings,
+    getAdaptiveQuestions,
+    sessionHistory,
+    recordAnswer
   } = props;
 
   // Use the smaller, focused hooks
@@ -52,7 +61,10 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     setCurrentQuestion,
     setLoading,
     loadSessionStats,
-    startTimer
+    startTimer,
+    settings,
+    getAdaptiveQuestions,
+    sessionHistory
   });
 
   const { handleAnswer } = useAnswerHandler({
@@ -64,7 +76,8 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     recordAttempt,
     loadUserPoints,
     stopTimer,
-    incrementQuestionsAttempted
+    incrementQuestionsAttempted,
+    recordAnswer
   });
 
   const { handleEndMarathon, confirmEndMarathon } = useMarathonNavigation({

@@ -124,7 +124,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
     <Card className="h-full">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Questions Solved</h3>
+          <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
           <Target className="h-5 w-5 text-blue-600" />
         </div>
 

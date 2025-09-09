@@ -311,6 +311,100 @@ Analyze ALL ${mistakeCount} mistakes comprehensively. Be specific about patterns
     };
   }
 
+  async generateOverallInsights(mistakes: any[], userName: string): Promise<Array<{
+    type: 'warning' | 'tip' | 'focus';
+    icon: string;
+    title: string;
+    message: string;
+  }>> {
+    try {
+      const prompt = `Analyze this student's performance data and provide 3 key insights:
+
+STUDENT: ${userName}
+TOTAL MISTAKES: ${mistakes.length}
+RECENT MISTAKES (last 7 days): ${mistakes.filter(m => {
+        const mistakeDate = new Date(m.created_at);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return mistakeDate >= weekAgo;
+      }).length}
+
+Provide insights in this JSON format:
+{
+  "insights": [
+    {
+      "type": "warning/tip/focus",
+      "title": "Insight title",
+      "message": "Detailed message about the insight"
+    }
+  ]
+}
+
+Be encouraging but honest. Focus on actionable insights.`;
+
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('Gemini API key not configured');
+      }
+      
+      const response = await fetch(`${baseUrl}?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return parsed.insights || [];
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error generating overall insights:', error);
+    }
+
+    // Fallback insights
+    return [
+      {
+        type: 'warning' as const,
+        icon: '⚠️',
+        title: 'Recent Struggles',
+        message: `${mistakes.filter(m => {
+          const mistakeDate = new Date(m.created_at);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return mistakeDate >= weekAgo;
+        }).length} mistakes this week - consider reviewing fundamentals`
+      },
+      {
+        type: 'tip' as const,
+        icon: '💡',
+        title: 'Practice Strategy',
+        message: 'Focus on your weakest topics first and review explanations thoroughly'
+      },
+      {
+        type: 'focus' as const,
+        icon: '🎯',
+        title: 'Improvement Focus',
+        message: 'Set specific goals for each study session to track your progress'
+      }
+    ];
+  }
 }
 
 export const geminiAnalysisService = new GeminiAnalysisService();

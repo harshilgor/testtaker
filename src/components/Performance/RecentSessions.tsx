@@ -1,218 +1,38 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Clock, Target, Brain, FileText } from 'lucide-react';
+import { useRecentSessions } from '@/hooks/useRecentSessions';
 
 interface RecentSessionsProps {
   userName: string;
   onViewTrends?: () => void;
 }
 
-interface Session {
-  id: string;
-  type: 'marathon' | 'quiz' | 'mocktest';
-  date: string;
-  questions: number;
-  accuracy: number;
-  subject?: string;
-  difficulty?: string;
-  score?: number;
-}
-
 const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends }) => {
-  const queryClient = useQueryClient();
-
-  // Set up real-time listeners for all session types
-  useEffect(() => {
-    if (!userName) return;
-
-    const channel = supabase
-      .channel('sessions-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'marathon_sessions'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['recent-marathon-sessions', userName] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'quiz_results'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['recent-quiz-sessions', userName] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'mock_test_results'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['recent-mocktest-sessions', userName] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userName, queryClient]);
-  // Fetch recent marathon sessions
-  const { data: marathonSessions = [] } = useQuery({
-    queryKey: ['recent-marathon-sessions', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('marathon_sessions')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (error) {
-        console.error('Error fetching marathon sessions:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
+  // Use the optimized hook for instant loading with caching
+  const { 
+    sessions: recentSessions, 
+    isLoading, 
+    hasCachedData,
+    isInitialLoad 
+  } = useRecentSessions({ 
+    userName,
+    enabled: !!userName
   });
 
-  // Fetch recent quiz results
-  const { data: quizSessions = [] } = useQuery({
-    queryKey: ['recent-quiz-sessions', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (error) {
-        console.error('Error fetching quiz sessions:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
-  });
-
-  // Fetch recent mock test results
-  const { data: mockTestSessions = [] } = useQuery({
-    queryKey: ['recent-mocktest-sessions', userName],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return [];
-
-      const { data, error } = await supabase
-        .from('mock_test_results')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .order('completed_at', { ascending: false })
-        .limit(2);
-
-      if (error) {
-        console.error('Error fetching mock test sessions:', error);
-        return [];
-      }
-
-      return data || [];
-    },
-    enabled: !!userName,
-  });
-
-  // Combine and sort all sessions
-  const getAllSessions = (): Session[] => {
-    const sessions: Session[] = [];
-
-    // Add marathon sessions
-    marathonSessions.forEach(session => {
-      sessions.push({
-        id: session.id,
-        type: 'marathon',
-        date: session.created_at,
-        questions: session.total_questions || 0,
-        accuracy: session.total_questions > 0 ? 
-          Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : 0,
-        difficulty: session.difficulty || 'mixed'
+  // Log optimization status for debugging
+  React.useEffect(() => {
+    if (hasCachedData) {
+      console.log('⚡ Recent Sessions: Loaded instantly from cache!', { 
+        sessionCount: recentSessions.length,
+        userName 
       });
-    });
-
-    // Add quiz sessions (DB)
-    quizSessions.forEach(session => {
-      sessions.push({
-        id: session.id,
-        type: 'quiz',
-        date: session.created_at,
-        questions: session.total_questions || 0,
-        accuracy: session.total_questions > 0 ? 
-          Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : Math.round(session.score_percentage || 0),
-        subject: session.subject || 'Mixed'
-      });
-    });
-
-    // Add mock test sessions (DB)
-    mockTestSessions.forEach(session => {
-      const accuracy = Math.round((session.total_score / 1600) * 100);
-      sessions.push({
-        id: session.id,
-        type: 'mocktest',
-        date: session.completed_at,
-        questions: 154,
-        accuracy,
-        score: session.total_score || 0
-      });
-    });
-
-    // Add local quiz sessions as fallback (for unauthenticated users or offline sessions)
-    try {
-      const stored = JSON.parse(localStorage.getItem('quizResults') || '[]');
-      const localQuizzes = (stored || []).filter((r: any) => r.userName === userName);
-      localQuizzes.forEach((r: any, idx: number) => {
-        const correct = r.answers.filter((ans: any, i: number) => ans === r.questions[i]?.correctAnswer).length;
-        const total = r.questions?.length || 0;
-        sessions.push({
-          id: r.id || `local-quiz-${idx}-${r.date}`,
-          type: 'quiz',
-          date: r.date,
-          questions: total,
-          accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
-          subject: r.subject || 'Mixed'
-        });
-      });
-    } catch (e) {
-      console.warn('Failed to parse local quiz results', e);
+    } else if (isLoading) {
+      console.log('🔄 Recent Sessions: Loading from server...', { userName });
     }
-
-    // Sort by date (most recent first) and take top 5
-    return sessions
-      .filter(s => !!s.date)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
-  };
-
-  const recentSessions = getAllSessions();
+  }, [hasCachedData, isLoading, recentSessions.length, userName]);
 
   const getSessionIcon = (type: string) => {
     switch (type) {
@@ -272,6 +92,16 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
       <CardContent className="pt-0">
         {recentSessions.length > 0 ? (
           <div className="space-y-3">
+            {/* Show subtle loading indicator only when no cached data and still loading */}
+            {isLoading && !hasCachedData && (
+              <div className="flex items-center justify-center py-2">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  Loading recent sessions...
+                </div>
+              </div>
+            )}
+            
             {recentSessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
                 <div className="flex items-center gap-3">

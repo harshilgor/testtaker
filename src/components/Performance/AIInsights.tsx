@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Lightbulb, Brain, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import INSIGHTS_PROMPT_TEMPLATE from '@/lib/insights';
 
 interface AIInsightsProps {
   userName: string;
@@ -14,6 +15,7 @@ interface AIInsightsProps {
 interface AIInsight {
   insights: string[];
   nextSteps: string[];
+  text?: string;
 }
 
 const AIInsights: React.FC<AIInsightsProps> = ({ userName, targetDate }) => {
@@ -107,7 +109,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ userName, targetDate }) => {
           targetDate: normalizedTargetDate, 
           tzOffsetMinutes: new Date().getTimezoneOffset(),
           clientFallbackData: fallbackData,
-          isMonthly: basicInsights?.isMonthly || false
+          isMonthly: basicInsights?.isMonthly || false,
+          promptTemplate: INSIGHTS_PROMPT_TEMPLATE
         }
       });
 
@@ -126,7 +129,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ userName, targetDate }) => {
       if (data?.success && (data.insights?.length > 0 || data.nextSteps?.length > 0)) {
         setAiInsights({
           insights: data.insights || [],
-          nextSteps: data.nextSteps || []
+          nextSteps: data.nextSteps || [],
+          text: data.text
         });
         setIsExpanded(true);
       } else {
@@ -263,15 +267,59 @@ const AIInsights: React.FC<AIInsightsProps> = ({ userName, targetDate }) => {
 
               {isExpanded && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                  {/* Paragraph summary if available */}
+                  {(aiInsights as any)?.text && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Summary:</h4>
+                      <div className="text-sm text-gray-700 space-y-2">
+                        {(() => {
+                          try {
+                            const textContent = (aiInsights as any).text;
+                            const parsed = JSON.parse(textContent);
+                            
+                            return (
+                              <div className="space-y-3">
+                                {parsed.dailyOverview && (
+                                  <p className="font-medium text-gray-800">{parsed.dailyOverview}</p>
+                                )}
+                                {parsed.encouragement && (
+                                  <p className="italic text-blue-700 bg-blue-50 p-3 rounded-lg">
+                                    💪 {parsed.encouragement}
+                                  </p>
+                                )}
+                                {parsed.detailedBreakdown && (
+                                  <div className="bg-gray-50 p-3 rounded-lg">
+                                    <h5 className="font-medium text-gray-800 mb-2">Performance Details:</h5>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div>Questions: {parsed.detailedBreakdown.totalQuestions?.attempted || 'N/A'}</div>
+                                      <div>Correct: {parsed.detailedBreakdown.totalQuestions?.correct || 'N/A'}</div>
+                                      <div>Accuracy: {parsed.detailedBreakdown.overallAccuracyPercentage || 'N/A'}%</div>
+                                      <div>Time: {parsed.detailedBreakdown.totalTimeSpent || 'N/A'} min</div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          } catch (error) {
+                            // If it's not JSON, display as plain text
+                            return <p className="whitespace-pre-wrap">{(aiInsights as any).text}</p>;
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  )}
                   {/* Insights */}
                   {aiInsights.insights.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">Insights:</h4>
-                      <ul className="space-y-1">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                        <span className="mr-2">💡</span>
+                        Key Insights
+                      </h4>
+                      <ul className="space-y-2">
                         {aiInsights.insights.map((insight, index) => (
-                          <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                            <span className="text-green-600">•</span>
-                            {insight}
+                          <li key={index} className="flex items-start">
+                            <span className="text-blue-500 mr-3 mt-1">•</span>
+                            <span className="text-sm text-blue-800">{insight}</span>
                           </li>
                         ))}
                       </ul>
@@ -280,13 +328,18 @@ const AIInsights: React.FC<AIInsightsProps> = ({ userName, targetDate }) => {
 
                   {/* Next Steps */}
                   {aiInsights.nextSteps.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">Next Steps:</h4>
-                      <ol className="space-y-1">
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+                        <span className="mr-2">🎯</span>
+                        Action Plan
+                      </h4>
+                      <ol className="space-y-2">
                         {aiInsights.nextSteps.map((step, index) => (
-                          <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                            <span className="font-medium text-gray-900">{index + 1}.</span>
-                            {step}
+                          <li key={index} className="flex items-start">
+                            <span className="text-green-600 mr-3 mt-1 font-medium bg-green-100 rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm text-green-800">{step}</span>
                           </li>
                         ))}
                       </ol>

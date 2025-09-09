@@ -74,6 +74,28 @@ const TargetWeakness: React.FC = () => {
   useEffect(() => {
     const loadQuizData = async () => {
       try {
+        // Check for saved progress first
+        const savedProgress = localStorage.getItem('targetWeaknessProgress');
+        if (savedProgress) {
+          const progressData = JSON.parse(savedProgress);
+          const isRecent = new Date(progressData.timestamp).getTime() > (Date.now() - 24 * 60 * 60 * 1000); // 24 hours
+          
+          if (isRecent && progressData.quizData) {
+            console.log('Loading saved progress:', progressData);
+            setQuizData(progressData.quizData);
+            setCurrentQuestionIndex(progressData.currentQuestionIndex);
+            setSelectedAnswer(progressData.selectedAnswer);
+            setShowExplanation(progressData.showExplanation);
+            setQuestionResults(progressData.questionResults);
+            setTimeSpent(progressData.timeSpent);
+            setIsLoading(false);
+            return;
+          } else {
+            // Clear old progress
+            localStorage.removeItem('targetWeaknessProgress');
+          }
+        }
+
         // Get mistakes data from location state
         const mistakes = location.state?.mistakes || [];
         const userName = location.state?.userName || 'Student';
@@ -122,6 +144,8 @@ const TargetWeakness: React.FC = () => {
     
     if (isLastQuestion) {
       setIsCompleted(true);
+      // Clear saved progress when naturally completing
+      localStorage.removeItem('targetWeaknessProgress');
     }
   };
 
@@ -216,11 +240,34 @@ const TargetWeakness: React.FC = () => {
   const handlePause = () => {
     setIsPaused(!isPaused);
     setShowMenu(false);
+    
+    // Save progress when pausing
+    if (!isPaused) {
+      const progressData = {
+        currentQuestionIndex,
+        selectedAnswer,
+        showExplanation,
+        questionResults,
+        timeSpent,
+        quizData: quizData ? {
+          questions: quizData.questions,
+          weaknessTopics: quizData.weaknessTopics,
+          totalQuestions: quizData.totalQuestions,
+          estimatedTime: quizData.estimatedTime
+        } : null,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem('targetWeaknessProgress', JSON.stringify(progressData));
+      console.log('Progress saved:', progressData);
+    }
   };
 
   const handleEnd = () => {
     setIsCompleted(true);
     setShowMenu(false);
+    // Clear saved progress when ending
+    localStorage.removeItem('targetWeaknessProgress');
   };
 
   if (isLoading) {
@@ -345,48 +392,35 @@ const TargetWeakness: React.FC = () => {
             Section 1, Module 1: Reading & Writing
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-lg font-bold text-gray-900">Timer Hidden</div>
-            <button className="px-3 py-1 text-sm border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-              Show
-            </button>
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-center">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                  </svg>
-                </div>
-                <span className="text-xs text-gray-600">Annotate</span>
-              </div>
-                <div className="relative menu-container">
-                  <button 
-                    onClick={() => setShowMenu(!showMenu)}
-                    className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded"
+            <div className="relative menu-container">
+              <button 
+                onClick={() => setShowMenu(!showMenu)}
+                className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded"
+              >
+                <Menu className="w-5 h-5 text-gray-600" />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-2 w-32 z-50">
+                  <button
+                    onClick={handlePause}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
-                    <Menu className="w-5 h-5 text-gray-600" />
+                    <Pause className="w-4 h-4" />
+                    {isPaused ? 'Resume' : 'Pause'}
                   </button>
-                  {showMenu && (
-                    <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg py-2 w-32 z-50">
-                    <button
-                      onClick={handlePause}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                    >
-                      <Pause className="w-4 h-4" />
-                      {isPaused ? 'Resume' : 'Pause'}
-                    </button>
-                    <button
-                      onClick={handleEnd}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                    >
-                      <Square className="w-4 h-4" />
-                      End
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button
+                    onClick={handleEnd}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <Square className="w-4 h-4" />
+                    End
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      </div>
         
         {/* Progress Bar */}
         <div className="flex gap-1 mt-4">
@@ -401,10 +435,8 @@ const TargetWeakness: React.FC = () => {
             />
           ))}
         </div>
-      </div>
-
       {/* Main Content Area */}
-      <div ref={containerRef} className="flex h-[calc(100vh-200px)] pb-20">
+      <div ref={containerRef} className="flex h-[calc(100vh-140px)]">
         {/* Left Panel - Question Prompt */}
         <div 
           className="p-8 border-r border-gray-200 overflow-auto"
@@ -577,7 +609,7 @@ const TargetWeakness: React.FC = () => {
       {/* Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-50 shadow-lg">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">Test Qube</div>
+          <div></div>
           <div className="flex items-center gap-4">
             <button className="px-4 py-2 bg-gray-800 text-white rounded text-sm font-medium hover:bg-gray-700 transition-all duration-200">
               Question {currentQuestionIndex + 1} of {quizData.totalQuestions} &gt;
