@@ -182,7 +182,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
                     <img 
-                      src="/library/home page.png" 
+                      src="/library/homepage.png" 
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
                     />
@@ -208,7 +208,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
                     <img 
-                      src="/library/leaderboard page.png" 
+                      src="/library/leaderboard.png" 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
                     />
