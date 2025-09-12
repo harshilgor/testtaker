@@ -127,8 +127,19 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       muted 
                       loop
                       playsInline
+                      preload="metadata"
+                      onError={(e) => {
+                        console.error('Video failed to load:', e);
+                        e.currentTarget.style.display = 'none';
+                      }}
                     >
                       <source src="/library/performance.mp4" type="video/mp4" />
+                      <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
+                        <div className="text-center">
+                          <BarChart3 className="h-16 w-16 mx-auto mb-2" />
+                          <p>Performance Analytics Demo</p>
+                        </div>
+                      </div>
                     </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center">
@@ -157,8 +168,19 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       muted 
                       loop
                       playsInline
+                      preload="metadata"
+                      onError={(e) => {
+                        console.error('Video failed to load:', e);
+                        e.currentTarget.style.display = 'none';
+                      }}
                     >
                       <source src="/library/learn.mp4" type="video/mp4" />
+                      <div className="w-full h-full flex items-center justify-center bg-teal-100 text-teal-600">
+                        <div className="text-center">
+                          <BookOpen className="h-16 w-16 mx-auto mb-2" />
+                          <p>Learning Demo</p>
+                        </div>
+                      </div>
                     </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
@@ -185,7 +207,18 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       src="/library/homepage.png" 
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
+                      onError={(e) => {
+                        console.error('Image failed to load:', e);
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                      }}
                     />
+                    <div className="w-full h-full hidden items-center justify-center bg-slate-100 text-slate-600">
+                      <div className="text-center">
+                        <Target className="h-16 w-16 mx-auto mb-2" />
+                        <p>Practice Modes Demo</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
@@ -211,7 +244,18 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       src="/library/leaderboard.png" 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
+                      onError={(e) => {
+                        console.error('Image failed to load:', e);
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                      }}
                     />
+                    <div className="w-full h-full hidden items-center justify-center bg-teal-100 text-teal-600">
+                      <div className="text-center">
+                        <Award className="h-16 w-16 mx-auto mb-2" />
+                        <p>Leaderboard Demo</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
                     <div className="flex items-center gap-3 mb-4">
