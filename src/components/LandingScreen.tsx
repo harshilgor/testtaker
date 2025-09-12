@@ -121,21 +121,15 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <CardContent className="p-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
-                    <img 
-                      src="/performance-demo.jpg" 
-                      alt="SAT Performance Analytics Dashboard"
+                    <video 
                       className="w-full h-full object-contain bg-slate-50"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="hidden w-full h-full bg-slate-100 flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <BarChart3 className="h-16 w-16 mx-auto mb-4" />
-                        <p>Performance Analytics Preview</p>
-                      </div>
-                    </div>
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                    >
+                      <source src="/src/library/performance.mp4" type="video/mp4" />
+                    </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
@@ -157,21 +151,15 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <CardContent className="p-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
-                    <img 
-                      src="/learn-demo.jpg" 
-                      alt="Learning interface with question explanations"
+                    <video 
                       className="w-full h-full object-contain bg-slate-50"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="hidden w-full h-full bg-slate-100 flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <BookOpen className="h-16 w-16 mx-auto mb-4" />
-                        <p>Learning Interface Preview</p>
-                      </div>
-                    </div>
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                    >
+                      <source src="/src/library/learn.mp4" type="video/mp4" />
+                    </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
                     <div className="flex items-center gap-3 mb-4">
@@ -194,20 +182,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
                     <img 
-                      src="/home-page.jpg" 
+                      src="/src/library/home page.png" 
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
                     />
-                    <div className="hidden w-full h-full bg-slate-100 flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <Target className="h-16 w-16 mx-auto mb-4" />
-                        <p>Practice Modes Preview</p>
-                      </div>
-                    </div>
                   </div>
                   <div className="p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
@@ -230,20 +208,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
                     <img 
-                      src="/leaderboard-page.jpg" 
+                      src="/src/library/leaderboard page.png" 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
                     />
-                    <div className="hidden w-full h-full bg-slate-100 flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <Award className="h-16 w-16 mx-auto mb-4" />
-                        <p>Leaderboard Preview</p>
-                      </div>
-                    </div>
                   </div>
                   <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
                     <div className="flex items-center gap-3 mb-4">
