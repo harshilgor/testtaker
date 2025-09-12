@@ -252,44 +252,51 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
   // Group all sessions by day
   const groupedSessions = useMemo((): DayGroup[] => {
     const allSessions: { session: SessionActivity; timestamp: Date }[] = [];
+    const seenIds = new Set<string>();
 
     // Add marathon sessions
     marathonSessions.forEach(session => {
-      const accuracy = session.total_questions > 0 ? 
-        Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : 0;
-      allSessions.push({
-        session: {
-          id: session.id,
-          type: 'marathon',
-          title: 'Marathon Mode',
-          questions: session.total_questions || 0,
-          accuracy,
-          topics: session.subjects || ['Mixed'],
-          icon: <Target className="h-4 w-4 text-orange-500" />,
-          time: formatRelativeTime(session.created_at),
-          timestamp: session.created_at
-        },
-        timestamp: new Date(session.created_at),
-      });
+      if (!seenIds.has(session.id)) {
+        seenIds.add(session.id);
+        const accuracy = session.total_questions > 0 ? 
+          Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : 0;
+        allSessions.push({
+          session: {
+            id: session.id,
+            type: 'marathon',
+            title: 'Marathon Mode',
+            questions: session.total_questions || 0,
+            accuracy,
+            topics: session.subjects || ['Mixed'],
+            icon: <Target className="h-4 w-4 text-orange-500" />,
+            time: formatRelativeTime(session.created_at),
+            timestamp: session.created_at
+          },
+          timestamp: new Date(session.created_at),
+        });
+      }
     });
 
-    // Add quiz sessions
+    // Add quiz sessions from database
     quizSessions.forEach(session => {
-      const accuracy = Math.round(session.score_percentage || 0);
-      allSessions.push({
-        session: {
-          id: session.id,
-          type: 'quiz',
-          title: `${session.subject === 'math' ? 'Math' : 'English'} Quiz`,
-          questions: session.total_questions || 0,
-          accuracy,
-          topics: session.topics || [session.subject],
-          icon: <Brain className="h-4 w-4 text-purple-500" />,
-          time: formatRelativeTime(session.created_at),
-          timestamp: session.created_at
-        },
-        timestamp: new Date(session.created_at),
-      });
+      if (!seenIds.has(session.id)) {
+        seenIds.add(session.id);
+        const accuracy = Math.round(session.score_percentage || 0);
+        allSessions.push({
+          session: {
+            id: session.id,
+            type: 'quiz',
+            title: `${session.subject === 'math' ? 'Math' : 'English'} Quiz`,
+            questions: session.total_questions || 0,
+            accuracy,
+            topics: session.topics || [session.subject],
+            icon: <Brain className="h-4 w-4 text-purple-500" />,
+            time: formatRelativeTime(session.created_at),
+            timestamp: session.created_at
+          },
+          timestamp: new Date(session.created_at),
+        });
+      }
     });
 
     // Add local quiz sessions (fallback if not saved to DB)
@@ -297,23 +304,43 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
       const stored = JSON.parse(localStorage.getItem('quizResults') || '[]');
       const localQuizzes = (stored || []).filter((r: any) => r.userName === userName);
       localQuizzes.forEach((r: any, idx: number) => {
-        const correct = r.answers.filter((ans: any, i: number) => ans === r.questions[i]?.correctAnswer).length;
-        const total = r.questions?.length || 0;
-        const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
-        allSessions.push({
-          session: {
-            id: r.id || `local-quiz-${idx}-${r.date}`,
-            type: 'quiz',
-            title: `${r.subject || 'Mixed'} Quiz`,
-            questions: total,
-            accuracy: acc,
-            topics: r.topics || (r.questions || []).map((q: any) => q.topic).filter(Boolean).slice(0, 3),
-            icon: <Brain className="h-4 w-4 text-purple-500" />,
-            time: formatRelativeTime(r.date),
-            timestamp: r.date
-          },
-          timestamp: new Date(r.date),
+        const localId = r.id || `local-quiz-${idx}-${r.date}`;
+        
+        // Check if this local quiz already exists in database results
+        const existsInDB = quizSessions.some(dbSession => {
+          // Compare by date, questions count, and accuracy to detect duplicates
+          const dbDate = new Date(dbSession.created_at).toISOString().split('T')[0];
+          const localDate = new Date(r.date).toISOString().split('T')[0];
+          const dbAccuracy = Math.round(dbSession.score_percentage || 0);
+          const localAccuracy = r.questions?.length > 0 ? 
+            Math.round((r.answers.filter((ans: any, i: number) => ans === r.questions[i]?.correctAnswer).length / r.questions.length) * 100) : 0;
+          
+          return dbDate === localDate && 
+                 dbSession.total_questions === (r.questions?.length || 0) && 
+                 Math.abs(dbAccuracy - localAccuracy) <= 5; // Allow 5% tolerance for accuracy
         });
+
+        // Only add local quiz if it doesn't exist in database and not already seen
+        if (!existsInDB && !seenIds.has(localId)) {
+          seenIds.add(localId);
+          const correct = r.answers.filter((ans: any, i: number) => ans === r.questions[i]?.correctAnswer).length;
+          const total = r.questions?.length || 0;
+          const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+          allSessions.push({
+            session: {
+              id: localId,
+              type: 'quiz',
+              title: `${r.subject || 'Mixed'} Quiz`,
+              questions: total,
+              accuracy: acc,
+              topics: r.topics || (r.questions || []).map((q: any) => q.topic).filter(Boolean).slice(0, 3),
+              icon: <Brain className="h-4 w-4 text-purple-500" />,
+              time: formatRelativeTime(r.date),
+              timestamp: r.date
+            },
+            timestamp: new Date(r.date),
+          });
+        }
       });
     } catch (e) {
       console.warn('Failed to parse local quiz results', e);
@@ -321,22 +348,25 @@ const TrendsPage: React.FC<TrendsPageProps> = ({ userName, onBack }) => {
 
     // Add mock test sessions
     mockTestSessions.forEach(session => {
-      const accuracy = Math.round((session.total_score / 1600) * 100);
-      allSessions.push({
-        session: {
-          id: session.id,
-          type: 'mocktest',
-          title: 'SAT Mock Test',
-          questions: 154,
-          accuracy,
-          score: session.total_score,
-          topics: ['Math', 'Reading', 'Writing'],
-          icon: <FileText className="h-4 w-4 text-green-500" />,
-          time: formatRelativeTime(session.completed_at),
-          timestamp: session.completed_at
-        },
-        timestamp: new Date(session.completed_at),
-      });
+      if (!seenIds.has(session.id)) {
+        seenIds.add(session.id);
+        const accuracy = Math.round((session.total_score / 1600) * 100);
+        allSessions.push({
+          session: {
+            id: session.id,
+            type: 'mocktest',
+            title: 'SAT Mock Test',
+            questions: 154,
+            accuracy,
+            score: session.total_score,
+            topics: ['Math', 'Reading', 'Writing'],
+            icon: <FileText className="h-4 w-4 text-green-500" />,
+            time: formatRelativeTime(session.completed_at),
+            timestamp: session.completed_at
+          },
+          timestamp: new Date(session.completed_at),
+        });
+      }
     });
 
     // Sort by timestamp (most recent first)

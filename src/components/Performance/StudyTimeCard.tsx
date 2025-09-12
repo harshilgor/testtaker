@@ -10,6 +10,8 @@ import { useData } from '@/contexts/DataContext';
 
 interface StudyTimeCardProps {
   userName: string;
+  isMinimized?: boolean;
+  onExpand?: () => void;
 }
 
 interface StudyGoal {
@@ -28,7 +30,7 @@ interface StudyStats {
   bestStreak: number;
 }
 
-const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName }) => {
+const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName, isMinimized = false, onExpand }) => {
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [studyGoal, setStudyGoal] = useState<StudyGoal>(() => {
@@ -214,78 +216,88 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName }) => {
   };
 
   return (
-    <Card className="bg-white">
+    <Card 
+      className="bg-white cursor-pointer hover:shadow-md transition-shadow"
+      onClick={isMinimized ? onExpand : undefined}
+    >
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Study Time</h3>
           <div className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded-full ${getStatusColor()}`}></div>
-            <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="p-1">
-                  <Settings className="w-4 h-4 text-gray-500" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Set Study Goals</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="dailyHours">Daily Study Goal (hours)</Label>
-                    <Input
-                      id="dailyHours"
-                      type="number"
-                      min="0.5"
-                      max="12"
-                      step="0.5"
-                      value={studyGoal.dailyHours}
-                      onChange={(e) => setStudyGoal(prev => ({ ...prev, dailyHours: parseFloat(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="weeklyHours">Weekly Study Goal (hours)</Label>
-                    <Input
-                      id="weeklyHours"
-                      type="number"
-                      min="1"
-                      max="84"
-                      step="1"
-                      value={studyGoal.weeklyHours}
-                      onChange={(e) => setStudyGoal(prev => ({ ...prev, weeklyHours: parseInt(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="monthlyHours">Monthly Study Goal (hours)</Label>
-                    <Input
-                      id="monthlyHours"
-                      type="number"
-                      min="4"
-                      max="360"
-                      step="1"
-                      value={studyGoal.monthlyHours}
-                      onChange={(e) => setStudyGoal(prev => ({ ...prev, monthlyHours: parseInt(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="streakGoal">Streak Goal (days)</Label>
-                    <Input
-                      id="streakGoal"
-                      type="number"
-                      min="1"
-                      max="365"
-                      step="1"
-                      value={studyGoal.streakGoal}
-                      onChange={(e) => setStudyGoal(prev => ({ ...prev, streakGoal: parseInt(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  <Button onClick={handleSaveGoal} className="w-full">
-                    Save Goals
+            {!isMinimized && (
+              <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="p-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Settings className="w-4 h-4 text-gray-500" />
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Set Study Goals</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="dailyHours">Daily Study Goal (hours)</Label>
+                      <Input
+                        id="dailyHours"
+                        type="number"
+                        min="0.5"
+                        max="12"
+                        step="0.5"
+                        value={studyGoal.dailyHours}
+                        onChange={(e) => setStudyGoal(prev => ({ ...prev, dailyHours: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="weeklyHours">Weekly Study Goal (hours)</Label>
+                      <Input
+                        id="weeklyHours"
+                        type="number"
+                        min="1"
+                        max="84"
+                        step="1"
+                        value={studyGoal.weeklyHours}
+                        onChange={(e) => setStudyGoal(prev => ({ ...prev, weeklyHours: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="monthlyHours">Monthly Study Goal (hours)</Label>
+                      <Input
+                        id="monthlyHours"
+                        type="number"
+                        min="4"
+                        max="360"
+                        step="1"
+                        value={studyGoal.monthlyHours}
+                        onChange={(e) => setStudyGoal(prev => ({ ...prev, monthlyHours: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="streakGoal">Streak Goal (days)</Label>
+                      <Input
+                        id="streakGoal"
+                        type="number"
+                        min="1"
+                        max="365"
+                        step="1"
+                        value={studyGoal.streakGoal}
+                        onChange={(e) => setStudyGoal(prev => ({ ...prev, streakGoal: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <Button onClick={handleSaveGoal} className="w-full">
+                      Save Goals
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -293,84 +305,93 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName }) => {
         <div className="text-4xl font-bold text-gray-900 mb-1">{todayDisplay.value}</div>
         <div className="text-sm text-gray-500 mb-4">{todayDisplay.unit}</div>
         
-        {/* Progress Bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Progress</span>
-            <span>{Math.round(dailyProgress)}%</span>
-          </div>
-          <Progress value={dailyProgress} className="h-2" />
-        </div>
-
-        {/* Progress Button */}
-        <Dialog open={showProgressDialog} onOpenChange={setShowProgressDialog}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full">
-              Progress
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Study Progress</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              {/* Motivational Message */}
-              <div className="text-sm text-gray-600 italic text-center">
-                {getMotivationalMessage()}
+        {!isMinimized && (
+          <>
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Progress</span>
+                <span>{Math.round(dailyProgress)}%</span>
               </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="w-4 h-4 text-green-600" />
-                    <span className="text-xs text-gray-600">Daily Average</span>
-                  </div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {stats.dailyAverage} min
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs text-gray-600">This Week</span>
-                  </div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {stats.thisWeek}h
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {Math.round(weeklyProgress)}% of goal
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs text-gray-600">This Month</span>
-                  </div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {stats.thisMonth}h
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {Math.round(monthlyProgress)}% of goal
-                  </div>
-                </div>
-              </div>
-
-              {/* Goal Summary */}
-              <div className="bg-blue-50 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">Daily Goal</span>
-                </div>
-                <div className="text-sm text-blue-800">
-                  {studyGoal.dailyHours} hours • {studyGoal.weeklyHours}h/week • {studyGoal.monthlyHours}h/month
-                </div>
-              </div>
+              <Progress value={dailyProgress} className="h-2" />
             </div>
-          </DialogContent>
-        </Dialog>
+
+            {/* Progress Button */}
+            <Dialog open={showProgressDialog} onOpenChange={setShowProgressDialog}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Progress
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Study Progress</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  {/* Motivational Message */}
+                  <div className="text-sm text-gray-600 italic text-center">
+                    {getMotivationalMessage()}
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-gray-600">Daily Average</span>
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {stats.dailyAverage} min
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs text-gray-600">This Week</span>
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {stats.thisWeek}h
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {Math.round(weeklyProgress)}% of goal
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs text-gray-600">This Month</span>
+                      </div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {stats.thisMonth}h
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {Math.round(monthlyProgress)}% of goal
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Goal Summary */}
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">Daily Goal</span>
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      {studyGoal.dailyHours} hours • {studyGoal.weeklyHours}h/week • {studyGoal.monthlyHours}h/month
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </CardContent>
     </Card>
   );

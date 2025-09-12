@@ -66,7 +66,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
     }));
 
     // Filter topics with at least 3 attempts for meaningful analysis
-    const significantTopics = allTopics.filter(topic => topic.attempts >= 3);
+    const significantTopics = allTopics.filter(topic => topic.attempts >= 1);
     
     if (significantTopics.length === 0) {
       return {
@@ -81,14 +81,23 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
     const avgAccuracy = significantTopics.reduce((sum, topic) => sum + topic.accuracy, 0) / significantTopics.length;
     const avgTime = significantTopics.reduce((sum, topic) => sum + topic.avgTime, 0) / significantTopics.length;
 
-    // Categorize topics
+    // Debug logging
+    console.log('Performance Analysis Debug:', {
+      totalTopics: allTopics.length,
+      significantTopics: significantTopics.length,
+      avgAccuracy: avgAccuracy.toFixed(2),
+      avgTime: avgTime.toFixed(2),
+      topics: significantTopics.map(t => ({ topic: t.topic, attempts: t.attempts, accuracy: t.accuracy.toFixed(2) }))
+    });
+
+    // Categorize topics - be more inclusive
     const bestTopics = significantTopics
-      .filter(topic => topic.accuracy > avgAccuracy)
+      .filter(topic => topic.accuracy >= avgAccuracy * 0.8) // More inclusive threshold
       .sort((a, b) => b.accuracy - a.accuracy)
       .slice(0, 5);
 
     const needsWork = significantTopics
-      .filter(topic => topic.accuracy < avgAccuracy)
+      .filter(topic => topic.accuracy < avgAccuracy * 1.2) // More inclusive threshold
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, 5);
 
@@ -102,9 +111,16 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       .sort((a, b) => a.avgTime - b.avgTime)
       .slice(0, 5);
 
+    // Fallback: if categorization is too restrictive, show all topics sorted appropriately
+    const finalBestTopics = bestTopics.length > 0 ? bestTopics : 
+      significantTopics.sort((a, b) => b.accuracy - a.accuracy).slice(0, 5);
+    
+    const finalNeedsWork = needsWork.length > 0 ? needsWork : 
+      significantTopics.sort((a, b) => a.accuracy - b.accuracy).slice(0, 5);
+
     return {
-      bestTopics,
-      needsWork,
+      bestTopics: finalBestTopics,
+      needsWork: finalNeedsWork,
       timeIntensive,
       quickTopics
     };

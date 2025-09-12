@@ -2,16 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Target } from 'lucide-react';
+import { Target, Settings } from 'lucide-react';
 import SetGoalDialog from '@/components/Goals/SetGoalDialog';
 import { useData } from '@/contexts/DataContext';
 
 interface QuestionsSolvedCardOptimizedProps {
   userName: string;
   marathonStats: any;
+  isMinimized?: boolean;
+  onExpand?: () => void;
 }
 
-const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> = ({ userName, marathonStats }) => {
+const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> = ({ userName, marathonStats, isMinimized = false, onExpand }) => {
   const { quizResults, marathonSessions, mockTests, loading: dataLoading } = useData();
   const [selectedPeriod, setSelectedPeriod] = useState<'7days' | '1month' | 'alltime'>('alltime');
   const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
@@ -121,29 +123,54 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
   const isLoading = dataLoading;
 
   return (
-    <Card className="h-full">
+    <Card 
+      className="h-full cursor-pointer hover:shadow-md transition-shadow"
+      onClick={isMinimized ? onExpand : undefined}
+    >
       <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
-          <Target className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-blue-600" />
+            {/* New settings icon to open goal dialog, replacing bottom button */}
+            {!isMinimized && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGoalDialogOpen(true);
+                }}
+                className="p-1 rounded hover:bg-blue-50"
+                title={currentGoal > 0 ? 'Update Goal' : 'Set Goal'}
+              >
+                <Settings className="h-5 w-5 text-blue-600" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Period Selection */}
-        <div className="flex space-x-2 mb-6">
-          {(['7days', '1month', 'alltime'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                selectedPeriod === period
-                  ? 'bg-blue-100 text-blue-700 font-medium'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {getPeriodLabel(period)}
-            </button>
-          ))}
-        </div>
+        {!isMinimized && (
+          <>
+            {/* Period Selection */}
+            <div className="flex space-x-2 mb-6">
+              {(['7days', '1month', 'alltime'] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPeriod(period);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    selectedPeriod === period
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {getPeriodLabel(period)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Main Stats */}
         <div className="text-center mb-6">
@@ -163,7 +190,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
             </>
           )}
           
-          {currentGoal > 0 && !isLoading && (
+          {currentGoal > 0 && !isLoading && !isMinimized && (
             <div className="mt-3">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Goal Progress</span>
@@ -181,16 +208,6 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
             </div>
           )}
         </div>
-
-        {/* Set Goal Button */}
-        <Button
-          onClick={() => setGoalDialogOpen(true)}
-          variant="outline"
-          size="sm"
-          className="w-full"
-        >
-          {currentGoal > 0 ? 'Update Goal' : 'Set Goal'}
-        </Button>
 
         {/* Goal Dialog */}
         <SetGoalDialog

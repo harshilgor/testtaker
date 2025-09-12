@@ -1,0 +1,5 @@
+[33mb72672b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Redesign Quests page with bullet-point list UI and improved quest logic
+[33mc5bd7e9[m Add weakness targeting and quiz functionality with UI improvements
+[33m96ac441[m Implement Target My Weakness functionality with AI-generated practice questions
+[33mefb5401[m Add new Target My Weakness button and rename existing button
+[33m20ab5aa[m Optimize Learn page loading time for instant data display

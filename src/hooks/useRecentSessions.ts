@@ -7,6 +7,7 @@ import {
   getCachedSessions, 
   cacheSessions, 
   invalidateSessionCache,
+  cleanupDuplicateQuizResults,
   Session 
 } from '@/services/recentSessionsService';
 
@@ -41,6 +42,10 @@ export const useRecentSessions = ({
     queryKey: ['recent-sessions', userName],
     queryFn: async () => {
       console.log('🔄 Fetching recent sessions for:', userName);
+      
+      // Clean up any duplicate quiz results first
+      cleanupDuplicateQuizResults(userName);
+      
       const sessionData = await prefetchRecentSessions(userName);
       const transformedSessions = transformSessions(sessionData);
       
@@ -154,6 +159,7 @@ export const useRecentSessions = ({
     refetch,
     // Helper to manually refresh data
     refresh: () => {
+      cleanupDuplicateQuizResults(userName);
       invalidateSessionCache(userName);
       refetch();
     }

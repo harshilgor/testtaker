@@ -511,10 +511,10 @@ Do not include any text before or after the JSON. Ensure insights reflect SAT-sp
       // When a custom prompt template is supplied, treat response as plain text
       parsedResponse = { text: aiContent };
     } else {
-      try {
-        parsedResponse = JSON.parse(aiContent);
-      } catch (parseError) {
-        console.error('Failed to parse OpenAI response:', parseError);
+    try {
+      parsedResponse = JSON.parse(aiContent);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', parseError);
         console.error('Raw AI content:', aiContent);
         
         // Try to extract JSON from the response if it's wrapped in text

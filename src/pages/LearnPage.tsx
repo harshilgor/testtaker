@@ -3,11 +3,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
 
 interface SkillRow { skill: string | null; test: string | null; }
 
 const LearnPage: React.FC = () => {
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load bookmarks from localStorage
+    try {
+      const userId = localStorage.getItem('userName') || 'Student';
+      const ids = JSON.parse(localStorage.getItem(`bookmarked_questions_${userId}`) || '[]');
+      const details = JSON.parse(localStorage.getItem(`bookmarked_question_details_${userId}`) || '{}');
+      const list = (ids || []).map((id: any) => details[String(id)]).filter(Boolean);
+      setBookmarks(list);
+    } catch {}
+  }, []);
 
   const { data: allSkills = [] } = useQuery({
     queryKey: ['all-skills'],
@@ -86,6 +99,32 @@ const LearnPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Bookmarked Questions */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Bookmark className="h-4 w-4" /> Bookmarked Questions
+                </h3>
+                {bookmarks.length === 0 ? (
+                  <div className="text-sm text-gray-500">No bookmarked questions yet.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {bookmarks.map((q, idx) => (
+                      <div key={q.id || idx} className="p-3 border rounded-lg bg-white">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm text-gray-800 flex-1">{q.question_text}</div>
+                          <BookmarkCheck className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          <span className="mr-3">{q.skill}</span>
+                          <span className="mr-3">{q.difficulty}</span>
+                          <span>{q.domain}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

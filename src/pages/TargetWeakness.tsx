@@ -9,13 +9,19 @@ import {
   CheckCircle,
   XCircle,
   Bookmark,
+  BookmarkCheck,
   Settings,
   Target,
   Volume2,
   VolumeX,
   Menu,
   Pause,
-  Square
+  Square,
+  BookOpen,
+  Brain,
+  Zap,
+  Lightbulb,
+  Play
 } from 'lucide-react';
 import weaknessQuizService from '@/services/weaknessQuizService';
 
@@ -59,6 +65,8 @@ const TargetWeakness: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set());
+  const [showIntroduction, setShowIntroduction] = useState(false);
 
   // Timer effect
   useEffect(() => {
@@ -99,6 +107,7 @@ const TargetWeakness: React.FC = () => {
         // Get mistakes data from location state
         const mistakes = location.state?.mistakes || [];
         const userName = location.state?.userName || 'Student';
+        const questionCount = location.state?.questionCount || 10;
         
         if (mistakes.length === 0) {
           setError('No mistake data available. Please go back and try again.');
@@ -109,11 +118,13 @@ const TargetWeakness: React.FC = () => {
         const request = {
           mistakes,
           userName,
-          totalMistakes: mistakes.length
+          totalMistakes: mistakes.length,
+          questionCount: questionCount
         };
 
         const response = await weaknessQuizService.generateWeaknessQuiz(request);
         setQuizData(response);
+        setShowIntroduction(true); // Show introduction page first
       } catch (error) {
         console.error('Error loading quiz data:', error);
         setError('Failed to load quiz. Please try again.');
@@ -124,6 +135,71 @@ const TargetWeakness: React.FC = () => {
 
     loadQuizData();
   }, [location.state]);
+
+  // Load and persist bookmarks
+  useEffect(() => {
+    const userName = location.state?.userName || 'Student';
+    try {
+      const saved = localStorage.getItem(`bookmarked_questions_${userName}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setBookmarkedQuestions(new Set(parsed.map((id: any) => String(id))));
+        }
+      }
+    } catch {}
+  }, [location.state]);
+
+  const saveBookmarks = (set: Set<string>) => {
+    const userName = location.state?.userName || 'Student';
+    localStorage.setItem(`bookmarked_questions_${userName}`, JSON.stringify([...set]));
+  };
+
+  const toggleBookmarkCurrent = () => {
+    if (!currentQuestion) return;
+    const id = String(currentQuestion.id);
+    setBookmarkedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        // also remove from details cache
+        try {
+          const userName = location.state?.userName || 'Student';
+          const detailsKey = `bookmarked_question_details_${userName}`;
+          const details = JSON.parse(localStorage.getItem(detailsKey) || '{}');
+          if (details && details[id]) {
+            delete details[id];
+            localStorage.setItem(detailsKey, JSON.stringify(details));
+          }
+        } catch {}
+      } else {
+        next.add(id);
+        // store a snapshot of details for quick viewing
+        try {
+          const userName = location.state?.userName || 'Student';
+          const detailsKey = `bookmarked_question_details_${userName}`;
+          const details = JSON.parse(localStorage.getItem(detailsKey) || '{}');
+          details[id] = {
+            id: currentQuestion.id,
+            question_text: currentQuestion.question_text,
+            option_a: currentQuestion.option_a,
+            option_b: currentQuestion.option_b,
+            option_c: currentQuestion.option_c,
+            option_d: currentQuestion.option_d,
+            correct_answer: currentQuestion.correct_answer,
+            correct_rationale: currentQuestion.correct_rationale,
+            skill: currentQuestion.skill,
+            difficulty: currentQuestion.difficulty,
+            domain: currentQuestion.domain,
+            test: currentQuestion.test,
+          };
+          localStorage.setItem(detailsKey, JSON.stringify(details));
+        } catch {}
+      }
+      saveBookmarks(next);
+      return next;
+    });
+  };
 
   const currentQuestion = quizData?.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === (quizData?.questions.length || 0) - 1;
@@ -281,6 +357,130 @@ const TargetWeakness: React.FC = () => {
     );
   }
 
+  // Show introduction page
+  if (showIntroduction && quizData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Card className="w-full">
+            <CardContent className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="h-8 w-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Target My Weakness Practice</h1>
+              <p className="text-gray-600">Get ready to focus on your weakest areas with higher difficulty questions</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Quiz Overview */}
+                <div className="bg-blue-50 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-blue-600" />
+                    Quiz Overview
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{quizData.totalQuestions}</div>
+                      <div className="text-sm text-gray-600">Questions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{quizData.estimatedTime}</div>
+                      <div className="text-sm text-gray-600">Estimated Time</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills to Practice */}
+                <div className="bg-green-50 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-green-600" />
+                    Skills You'll Practice
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {quizData.weaknessTopics.map((topic, index) => (
+                      <Badge key={index} variant="outline" className="border-green-300 text-green-700 bg-green-100">
+                        {topic}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Difficulty Levels */}
+                <div className="bg-yellow-50 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-yellow-600" />
+                    Difficulty Levels
+                  </h2>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Badge className="bg-red-100 text-red-800 border-red-300">Hard</Badge>
+                      <span className="text-sm text-gray-600">Challenging questions to push your limits</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Medium</Badge>
+                      <span className="text-sm text-gray-600">Moderate difficulty for skill building</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-gray-600" />
+                    How It Works
+                  </h2>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>Questions are selected from your weakest skills with higher difficulty</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>Take your time to read each question carefully</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>Review explanations after each question to learn from mistakes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>Track your progress and see improvement over time</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <Button
+                onClick={() => navigate('/learn')}
+                variant="outline"
+                className="flex-1"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Learn
+              </Button>
+              <Button
+                onClick={() => setShowIntroduction(false)}
+                className="flex-1 bg-black hover:bg-gray-800 text-white"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Practice
+              </Button>
+            </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -388,10 +588,44 @@ const TargetWeakness: React.FC = () => {
       {/* Top Header Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="text-lg font-bold text-gray-900">
-            Section 1, Module 1: Reading & Writing
+          <div className="flex flex-col">
+            <div className="text-lg font-bold text-gray-900">
+              Weakness Practice
+            </div>
+            {/* Progress Bar aligned with title */}
+            <div className="flex gap-1 mt-2">
+              {Array.from({ length: quizData?.totalQuestions || 5 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`w-3 h-3 rounded-sm ${
+                    i < currentQuestionIndex + 1
+                      ? i % 2 === 0 ? 'bg-blue-500' : 'bg-purple-500'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-4">
+            {currentQuestion && (
+              <div className="flex items-center gap-3">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${
+                    currentQuestion.difficulty === 'Easy' 
+                      ? 'border-green-300 text-green-700 bg-green-50'
+                      : currentQuestion.difficulty === 'Medium'
+                      ? 'border-yellow-300 text-yellow-700 bg-yellow-50'
+                      : 'border-red-300 text-red-700 bg-red-50'
+                  }`}
+                >
+                  {currentQuestion.difficulty}
+                </Badge>
+                <Badge variant="outline" className="text-xs font-medium border-blue-300 text-blue-700 bg-blue-50">
+                  {currentQuestion.skill}
+                </Badge>
+              </div>
+            )}
             <div className="relative menu-container">
               <button 
                 onClick={() => setShowMenu(!showMenu)}
@@ -422,19 +656,6 @@ const TargetWeakness: React.FC = () => {
         </div>
       </div>
         
-        {/* Progress Bar */}
-        <div className="flex gap-1 mt-4">
-          {Array.from({ length: quizData?.totalQuestions || 5 }, (_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-sm ${
-                i < currentQuestionIndex + 1
-                  ? i % 2 === 0 ? 'bg-blue-500' : 'bg-purple-500'
-                  : 'bg-gray-200'
-              }`}
-            />
-          ))}
-        </div>
       {/* Main Content Area */}
       <div ref={containerRef} className="flex h-[calc(100vh-140px)]">
         {/* Left Panel - Question Prompt */}
@@ -470,11 +691,17 @@ const TargetWeakness: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Mark for Review</span>
-              <div className="w-4 h-4">
-                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd"/>
-                </svg>
-              </div>
+              <button
+                onClick={toggleBookmarkCurrent}
+                className="w-5 h-5 flex items-center justify-center hover:text-blue-600"
+                title={bookmarkedQuestions.has(String(currentQuestion.id)) ? 'Remove bookmark' : 'Bookmark this question'}
+              >
+                {bookmarkedQuestions.has(String(currentQuestion.id)) ? (
+                  <BookmarkCheck className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Bookmark className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
             </div>
           </div>
 

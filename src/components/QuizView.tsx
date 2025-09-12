@@ -162,8 +162,21 @@ const QuizView: React.FC<QuizViewProps> = ({
           // Don't throw error, continue to save locally
         } else {
           console.log('Quiz results saved successfully');
-        // Dispatch event to refresh question counts
-        window.dispatchEvent(new CustomEvent('quiz-completed'));
+          // Clear localStorage cache to prevent duplicates
+          try {
+            const stored = JSON.parse(localStorage.getItem('quizResults') || '[]');
+            const filtered = stored.filter((r: any) => 
+              !(r.userName === userName && 
+                r.questions?.length === questions.length && 
+                Math.abs(new Date(r.date).getTime() - new Date().getTime()) < 60000) // Within 1 minute
+            );
+            localStorage.setItem('quizResults', JSON.stringify(filtered));
+            console.log('Cleared duplicate localStorage entries');
+          } catch (e) {
+            console.warn('Failed to clear localStorage cache:', e);
+          }
+          // Dispatch event to refresh question counts
+          window.dispatchEvent(new CustomEvent('quiz-completed'));
         }
 
         // Record individual question attempts for performance tracking
@@ -202,12 +215,21 @@ const QuizView: React.FC<QuizViewProps> = ({
         console.log('Invalidating React Query cache...');
         queryClient.invalidateQueries({ queryKey: ['recent-quiz-sessions', userName] });
         queryClient.invalidateQueries({ queryKey: ['all-quiz-sessions', userName] });
+        queryClient.invalidateQueries({ queryKey: ['recent-sessions', userName] });
         queryClient.invalidateQueries({ queryKey: ['quiz-results-performance', userName] });
         queryClient.invalidateQueries({ queryKey: ['performance-analysis', userName] });
         queryClient.invalidateQueries({ queryKey: ['all-attempts', userName] });
         queryClient.invalidateQueries({ queryKey: ['difficulty-breakdown', userName] });
         queryClient.invalidateQueries({ queryKey: ['marathon-sessions-performance', userName] });
         queryClient.invalidateQueries({ queryKey: ['user-mistakes', userName] });
+        
+        // Clear recent sessions cache to force refresh
+        try {
+          localStorage.removeItem(`recent-sessions-cache-${userName}`);
+          console.log('Cleared recent sessions cache');
+        } catch (e) {
+          console.warn('Failed to clear recent sessions cache:', e);
+        }
         queryClient.invalidateQueries({ queryKey: ['question-details'] });
         
       } catch (error) {

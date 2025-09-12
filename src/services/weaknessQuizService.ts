@@ -31,6 +31,19 @@ interface WeaknessQuizRequest {
   mistakes: Mistake[];
   userName: string;
   totalMistakes: number;
+  questionCount?: number;
+}
+
+interface TargetedQuizRequest {
+  targetSkills: string[];
+  questionCount: number;
+  targetDifficulty: string;
+  userName: string;
+}
+
+interface DiagnosticQuizRequest {
+  questionCount: number;
+  userName: string;
 }
 
 interface WeaknessQuizResponse {
@@ -43,13 +56,13 @@ interface WeaknessQuizResponse {
 class WeaknessQuizService {
   async generateWeaknessQuiz(request: WeaknessQuizRequest): Promise<WeaknessQuizResponse> {
     try {
-      const { mistakes } = request;
+      const { mistakes, questionCount = 10 } = request;
       
       // Analyze user's mistakes to identify weak topics
       const weaknessTopics = this.analyzeWeaknessTopics(mistakes);
       
       // Fetch questions from database based on weak topics
-      const questions = await this.fetchQuestionsForWeaknesses(weaknessTopics, mistakes);
+      const questions = await this.fetchQuestionsForWeaknesses(weaknessTopics, mistakes, questionCount);
       
       return {
         questions,
@@ -81,7 +94,7 @@ class WeaknessQuizService {
     return sortedTopics;
   }
 
-  private async fetchQuestionsForWeaknesses(weaknessTopics: string[], mistakes: Mistake[]): Promise<QuizQuestion[]> {
+  private async fetchQuestionsForWeaknesses(weaknessTopics: string[], mistakes: Mistake[], questionCount: number = 10): Promise<QuizQuestion[]> {
     try {
       // Get difficulty progression for each topic
       const topicDifficulties = this.getTopicDifficultyProgression(mistakes);
@@ -111,20 +124,20 @@ class WeaknessQuizService {
       }
       
       // If we don't have enough questions, fill with general questions
-      if (allQuestions.length < 5) {
+      if (allQuestions.length < questionCount) {
         const { data, error } = await supabase
           .from('question_bank')
           .select('*')
           .in('difficulty', ['Medium', 'Hard'])
-          .limit(5 - allQuestions.length);
+          .limit(questionCount - allQuestions.length);
         
         if (!error && data) {
           allQuestions.push(...data);
         }
       }
       
-      // Shuffle and limit to 5 questions
-      return this.shuffleArray(allQuestions).slice(0, 5);
+      // Shuffle and limit to requested question count
+      return this.shuffleArray(allQuestions).slice(0, questionCount);
     } catch (error) {
       console.error('Error fetching questions from database:', error);
       return [];
@@ -150,6 +163,94 @@ class WeaknessQuizService {
     });
     
     return topicDifficulties;
+  }
+
+  async generateTargetedQuiz(request: TargetedQuizRequest): Promise<WeaknessQuizResponse> {
+    try {
+      const { targetSkills, questionCount, targetDifficulty, userName } = request;
+      
+      // Get questions for each target skill with higher difficulty
+      const questions: QuizQuestion[] = [];
+      const questionsPerSkill = Math.ceil(questionCount / targetSkills.length);
+      
+      for (const skill of targetSkills) {
+        const skillQuestions = await this.getQuestionsForSkill(skill, questionsPerSkill, targetDifficulty);
+        questions.push(...skillQuestions);
+      }
+      
+      // Shuffle and limit to requested count
+      const shuffledQuestions = this.shuffleArray(questions).slice(0, questionCount);
+      
+      return {
+        questions: shuffledQuestions,
+        weaknessTopics: targetSkills,
+        totalQuestions: shuffledQuestions.length,
+        estimatedTime: `${Math.ceil(shuffledQuestions.length * 2)} minutes`
+      };
+    } catch (error) {
+      console.error('Error generating targeted quiz:', error);
+      throw new Error('Failed to generate targeted quiz');
+    }
+  }
+
+  async generateDiagnosticQuiz(request: DiagnosticQuizRequest): Promise<WeaknessQuizResponse> {
+    try {
+      const { questionCount, userName } = request;
+      
+      // Get a mix of questions from different skills and difficulties for diagnostic
+      const { data: questions, error } = await supabase
+        .from('question_bank')
+        .select('*')
+        .in('difficulty', ['Easy', 'Medium', 'Hard'])
+        .limit(questionCount * 2); // Get more to ensure variety
+      
+      if (error) throw error;
+      
+      // Shuffle and select diverse questions
+      const shuffledQuestions = this.shuffleArray(questions || []);
+      const selectedQuestions = shuffledQuestions.slice(0, questionCount);
+      
+      // Get unique topics from selected questions
+      const topics = [...new Set(selectedQuestions.map(q => q.skill))];
+      
+      return {
+        questions: selectedQuestions,
+        weaknessTopics: topics,
+        totalQuestions: selectedQuestions.length,
+        estimatedTime: `${Math.ceil(selectedQuestions.length * 2)} minutes`
+      };
+    } catch (error) {
+      console.error('Error generating diagnostic quiz:', error);
+      throw new Error('Failed to generate diagnostic quiz');
+    }
+  }
+
+  private async getQuestionsForSkill(skill: string, count: number, difficulty: string): Promise<QuizQuestion[]> {
+    try {
+      // Map difficulty to higher level
+      const difficultyMap: { [key: string]: string[] } = {
+        'easy': ['Medium', 'Hard'],
+        'medium': ['Hard'],
+        'hard': ['Hard']
+      };
+      
+      const targetDifficulties = difficultyMap[difficulty.toLowerCase()] || ['Medium', 'Hard'];
+      
+      const { data: questions, error } = await supabase
+        .from('question_bank')
+        .select('*')
+        .eq('skill', skill)
+        .in('difficulty', targetDifficulties)
+        .limit(count * 2); // Get more to ensure we have enough
+      
+      if (error) throw error;
+      
+      // Shuffle and return requested count
+      return this.shuffleArray(questions || []).slice(0, count);
+    } catch (error) {
+      console.error(`Error getting questions for skill ${skill}:`, error);
+      return [];
+    }
   }
 
   private shuffleArray<T>(array: T[]): T[] {

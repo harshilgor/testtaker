@@ -48,6 +48,14 @@ const WeaknessQuiz: React.FC = () => {
   const [timeSpent, setTimeSpent] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get URL parameters
+  const urlParams = new URLSearchParams(location.search);
+  const questionCount = parseInt(urlParams.get('count') || '10');
+  const targetSkills = urlParams.get('skills')?.split(',') || [];
+  const targetDifficulty = urlParams.get('difficulty') || 'medium';
+  const quizType = urlParams.get('type') || 'weakness-quiz';
+  const isDiagnostic = urlParams.get('diagnostic') === 'true';
 
   // Timer effect
   useEffect(() => {
@@ -67,20 +75,36 @@ const WeaknessQuiz: React.FC = () => {
         const mistakes = location.state?.mistakes || [];
         const userName = location.state?.userName || 'Student';
         
-        if (mistakes.length === 0) {
-          setError('No mistake data available. Please go back and try again.');
+        if (isDiagnostic) {
+          // For diagnostic quiz, generate basic questions
+          const response = await weaknessQuizService.generateDiagnosticQuiz({
+            questionCount,
+            userName
+          });
+          setQuizData(response);
+        } else if (targetSkills.length > 0) {
+          // For weakness practice, generate targeted questions
+          const response = await weaknessQuizService.generateTargetedQuiz({
+            targetSkills,
+            questionCount,
+            targetDifficulty,
+            userName
+          });
+          setQuizData(response);
+        } else if (mistakes.length > 0) {
+          // Fallback to original weakness quiz
+          const request = {
+            mistakes,
+            userName,
+            totalMistakes: mistakes.length
+          };
+          const response = await weaknessQuizService.generateWeaknessQuiz(request);
+          setQuizData(response);
+        } else {
+          setError('No data available for quiz generation. Please go back and try again.');
           setIsLoading(false);
           return;
         }
-
-        const request = {
-          mistakes,
-          userName,
-          totalMistakes: mistakes.length
-        };
-
-        const response = await weaknessQuizService.generateWeaknessQuiz(request);
-        setQuizData(response);
       } catch (error) {
         console.error('Error loading quiz data:', error);
         setError('Failed to load quiz. Please try again.');
@@ -272,11 +296,37 @@ const WeaknessQuiz: React.FC = () => {
               Back to Learn
             </Button>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Target My Weakness Quiz</h1>
-              <p className="text-sm text-gray-600">Practice questions based on your weak areas</p>
+              <h1 className="text-lg font-semibold text-gray-900">
+                {isDiagnostic ? 'Diagnostic Quiz' : 'Weakness Practice'}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {isDiagnostic 
+                  ? 'Quick assessment to identify your weak areas' 
+                  : 'Practice questions based on your weak areas'
+                }
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {currentQuestion && (
+              <div className="flex items-center gap-3">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${
+                    currentQuestion.difficulty === 'Easy' 
+                      ? 'border-green-300 text-green-700 bg-green-50'
+                      : currentQuestion.difficulty === 'Medium'
+                      ? 'border-yellow-300 text-yellow-700 bg-yellow-50'
+                      : 'border-red-300 text-red-700 bg-red-50'
+                  }`}
+                >
+                  {currentQuestion.difficulty}
+                </Badge>
+                <Badge variant="outline" className="text-xs font-medium border-blue-300 text-blue-700 bg-blue-50">
+                  {currentQuestion.skill}
+                </Badge>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Clock className="h-4 w-4" />
               <span>{formatTime(timeSpent)}</span>

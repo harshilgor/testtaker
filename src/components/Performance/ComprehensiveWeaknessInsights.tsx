@@ -2,6 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   TrendingDown, 
   AlertTriangle, 
@@ -79,6 +82,8 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
   const navigate = useNavigate();
   const [comprehensiveInsights, setComprehensiveInsights] = useState<ComprehensiveInsights | null>(null);
   const [isGeneratingComprehensive, setIsGeneratingComprehensive] = useState(false);
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false);
+  const [questionCount, setQuestionCount] = useState(10);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   
@@ -211,52 +216,83 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            onClick={analyzeAllSkills}
-            disabled={isGeneratingComprehensive || hasAnalyzed}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-            size="sm"
-          >
-            {isGeneratingComprehensive ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : hasAnalyzed ? (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            ) : (
-              <Brain className="h-4 w-4 mr-2" />
-            )}
-            <span className="truncate">
-              {isGeneratingComprehensive ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Practice'}
-            </span>
-          </Button>
-          
-          <Button
-            onClick={() => {
-              // Navigate to the new Target My Weakness page with mistakes data
-              navigate('/target-weakness', { 
-                state: { 
-                  mistakes: mistakes.map(m => ({
-                    question_text: m.question_text,
-                    time_spent: m.time_spent,
-                    difficulty: m.difficulty,
-                    error_type: m.error_type,
-                    created_at: m.created_at,
-                    topic: m.topic,
-                    subject: m.subject,
-                    user_answer: m.user_answer,
-                    correct_answer: m.correct_answer
-                  })),
-                  userName,
-                  totalMistakes: mistakes.length
-                }
-              });
-            }}
-            disabled={!mistakes.length}
-            className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto disabled:bg-gray-400"
-            size="sm"
-          >
-            <TargetIcon className="h-4 w-4 mr-2" />
-            <span className="truncate">Target My Weakness</span>
-          </Button>
+          <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => setShowQuestionDialog(true)}
+                disabled={!mistakes.length}
+                className="bg-black hover:bg-gray-800 text-white w-full sm:w-auto disabled:bg-gray-400"
+                size="sm"
+              >
+                <TargetIcon className="h-4 w-4 mr-2" />
+                <span className="truncate">Target My Weakness</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <TargetIcon className="h-5 w-5 text-orange-600" />
+                  Target My Weakness Practice
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  How many questions would you like to practice? We'll create a personalized quiz based on your weakest skills with higher difficulty questions.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="questionCount">Number of Questions</Label>
+                  <Input
+                    id="questionCount"
+                    type="number"
+                    min="5"
+                    max="50"
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(parseInt(e.target.value) || 10)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Recommended: 10-20 questions for focused practice
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => setShowQuestionDialog(false)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowQuestionDialog(false);
+                      // Navigate to the new Target My Weakness page with mistakes data
+                      navigate('/target-weakness', { 
+                        state: { 
+                          mistakes: mistakes.map(m => ({
+                            question_text: m.question_text,
+                            time_spent: m.time_spent,
+                            difficulty: m.difficulty,
+                            error_type: m.error_type,
+                            created_at: m.created_at,
+                            topic: m.topic,
+                            subject: m.subject,
+                            user_answer: m.user_answer,
+                            correct_answer: m.correct_answer
+                          })),
+                          userName,
+                          totalMistakes: mistakes.length,
+                          questionCount: questionCount
+                        }
+                      });
+                    }}
+                    className="flex-1 bg-black hover:bg-gray-800 text-white"
+                  >
+                    Start Practice
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -475,16 +511,29 @@ const ComprehensiveWeaknessInsights: React.FC<ComprehensiveWeaknessInsightsProps
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 text-sm mb-1 truncate">Total Mistakes</h4>
-              <p className="text-2xl font-bold text-gray-900">{mistakes.length}</p>
+          
+          {/* Mistakes per Skill Summary */}
+          {allSkills.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h4 className="font-medium text-gray-900 text-sm mb-3">Mistakes by Skill</h4>
+              <div className="space-y-2">
+                {allSkills.map(({ skill, subject, mistakes: skillMistakes }) => {
+                  // Calculate total questions attempted for this skill (mistakes + correct answers)
+                  // For now, we'll estimate based on mistakes and assume some correct answers
+                  const estimatedTotal = Math.max(skillMistakes.length * 2, skillMistakes.length + 5);
+                  
+                  return (
+                    <div key={skill} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-700 capitalize">{skill}</span>
+                      <span className="text-gray-900 font-medium">
+                        {skillMistakes.length} / {estimatedTotal}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 text-sm mb-1 truncate">Skills Analyzed</h4>
-              <p className="text-2xl font-bold text-gray-900">{allSkills.length}</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

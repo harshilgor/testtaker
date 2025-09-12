@@ -58,10 +58,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       </header>
 
       {/* Hero Section */}
-      <section className="pt-24 sm:pt-32 pb-16 sm:pb-20 bg-gradient-to-b from-gray-50 to-white px-4 sm:px-6">
+      <section className="pt-24 sm:pt-32 pb-8 sm:pb-12 bg-gradient-to-b from-gray-50 to-white px-4 sm:px-6 min-h-screen flex flex-col justify-center">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-slate-900 leading-tight mb-6 sm:mb-8">
-            An AI tutor made for <span className="text-blue-600">SAT</span>
+            The worlds best <span className="text-blue-600">SAT prep Website!</span>
           </h2>
           
           <p className="text-lg sm:text-xl text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-2">
@@ -76,7 +76,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             Start Learning Today
           </Button>
           
-          <div className="flex items-center justify-center space-x-2 text-gray-600 mb-16 sm:mb-20 px-4">
+          <div className="flex items-center justify-center space-x-2 text-gray-600 px-4">
             <div className="flex space-x-1">
               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full"></div>
@@ -85,7 +85,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             </div>
             <span className="font-medium text-sm sm:text-base text-center">Trusted by 10,000+ students worldwide</span>
           </div>
+        </div>
+      </section>
 
+      {/* University Section */}
+      <section className="py-8 sm:py-12 bg-white px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
           <p className="text-gray-500 text-base sm:text-lg mb-8 sm:mb-12 px-4">
             Our students have gotten into top elite universities
           </p>
@@ -110,34 +115,116 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-16 sm:mb-20">
-            <Card className="p-6 sm:p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <div className="max-w-7xl mx-auto space-y-12 mb-16 sm:mb-20">
+            {/* Feature 1: Unlock Your SAT Insights */}
+            <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="bg-blue-100 rounded-2xl p-3 sm:p-4 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                  <div className="relative h-80 lg:h-96">
+                    <video 
+                      className="w-full h-full object-contain bg-slate-50"
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                    >
+                      <source src="/src/library/performance.mp4" type="video/mp4" />
+                    </video>
+                  </div>
+                  <div className="p-8 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <BarChart3 className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <h4 className="text-2xl font-bold text-slate-900">Unlock Your SAT Insights</h4>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-base">
+                      Track your strengths and weaknesses with detailed analytics for Math, Reading, and Writing. Use personalized insights like "Target My Weakness" to focus on skills you need most. Boost your score with data-driven prep.
+                    </p>
+                  </div>
                 </div>
-                <h4 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">Focus on your weakness</h4>
-                <p className="text-gray-600 leading-relaxed text-sm sm:text-base">Adaptive learning mode to analyze your performance and adapt questions to your skill level, ensuring optimal learning efficiency.</p>
               </CardContent>
             </Card>
-            
-            <Card className="p-6 sm:p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+
+            {/* Feature 2: Review Your Mistakes */}
+            <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="bg-green-100 rounded-2xl p-3 sm:p-4 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                  <Target className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                  <div className="relative h-80 lg:h-96 order-2 lg:order-1">
+                    <video 
+                      className="w-full h-full object-contain bg-slate-50"
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                    >
+                      <source src="/src/library/learn.mp4" type="video/mp4" />
+                    </video>
+                  </div>
+                  <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 text-teal-600" />
+                      </div>
+                      <h4 className="text-2xl font-bold text-slate-900">Learn from Every Error</h4>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-base">
+                      Get instant explanations and step-by-step breakdowns for every mistake. Turn weaknesses into strengths with targeted drills and AI-powered feedback tailored to your needs.
+                    </p>
+                  </div>
                 </div>
-                <h4 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">Unlimited Practice</h4>
-                <p className="text-gray-600 leading-relaxed text-sm sm:text-base">Solve from over 3000 questions and unlimited AI generated questions</p>
               </CardContent>
             </Card>
-            
-            <Card className="p-6 sm:p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+
+            {/* Feature 3: Practice in 3 Modes */}
+            <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="bg-purple-100 rounded-2xl p-3 sm:p-4 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                  <Award className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                  <div className="relative h-80 lg:h-96">
+                    <img 
+                      src="/src/library/home page.png" 
+                      alt="Practice modes interface"
+                      className="w-full h-full object-contain bg-slate-50"
+                    />
+                  </div>
+                  <div className="p-8 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                        <Target className="h-6 w-6 text-slate-600" />
+                      </div>
+                      <h4 className="text-2xl font-bold text-slate-900">Train Your Way</h4>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-base">
+                      Choose Full Timed Tests, Topic Drills, or Adaptive Quizzes like "Target My Weakness" to fit your prep style. Flexible practice keeps you engaged and improving daily.
+                    </p>
+                  </div>
                 </div>
-                <h4 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">Real SAT Experience</h4>
-                <p className="text-gray-600 leading-relaxed text-sm sm:text-base">20+ Full-length mock tests simulate the actual SAT environment</p>
+              </CardContent>
+            </Card>
+
+            {/* Feature 4: Compete with Others */}
+            <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                  <div className="relative h-80 lg:h-96 order-2 lg:order-1">
+                    <img 
+                      src="/src/library/leaderboard page.png" 
+                      alt="Leaderboard interface"
+                      className="w-full h-full object-contain bg-slate-50"
+                    />
+                  </div>
+                  <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                        <Award className="h-6 w-6 text-teal-600" />
+                      </div>
+                      <h4 className="text-2xl font-bold text-slate-900">Rise Up the Leaderboard</h4>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-base">
+                      Challenge friends or global users in weekly contests. Earn badges and track your rank to stay motivated and aim for a perfect SAT score.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

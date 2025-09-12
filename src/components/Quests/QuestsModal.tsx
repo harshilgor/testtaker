@@ -153,9 +153,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
         const userId = user.user.id;
 
-        // Clear old quests and generate new ones based on current weak areas
-        await generateTargetedQuests(userId);
-        await updateDailyQuestExpiration(userId); // Update daily quest expiration
+        // Manage quest expiration and generate new quests
+        await manageQuestExpiration(userId);
 
         // Load the newly generated quests
         const { data: finalQuests, error: finalError } = await supabase
@@ -319,8 +318,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-          // Weekly quests expire in 7 days
-          expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          // Monthly quests expire in 30 days
+          expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
         
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -386,8 +385,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           today.setHours(23, 59, 59, 999);
           expiresAt = today.toISOString();
         } else {
-          // Weekly quests expire in 7 days
-          expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          // Monthly quests expire in 30 days
+          expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
         
         const questId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -408,9 +407,14 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       });
     }
 
-    // Insert all quests (limit to 8 max)
-    const maxQuests = 8;
-    const questsToAdd = questsToCreate.slice(0, maxQuests);
+    // Insert all quests (limit to 15 max: 5 daily, 10 monthly)
+    const maxDailyQuests = 5;
+    const maxMonthlyQuests = 10;
+    
+    // Separate daily and monthly quests
+    const dailyQuests = questsToCreate.filter(q => q.quest_type === 'daily').slice(0, maxDailyQuests);
+    const monthlyQuests = questsToCreate.filter(q => q.quest_type === 'weekly').slice(0, maxMonthlyQuests);
+    const questsToAdd = [...dailyQuests, ...monthlyQuests];
 
     if (questsToAdd.length > 0) {
       const { error } = await supabase.from('user_quests').insert(questsToAdd);
@@ -422,54 +426,281 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     }
   };
 
-  // Function to update existing daily quests to correct expiration time
-  const updateDailyQuestExpiration = async (userId: string) => {
+  // Function to manage quest expiration and carryover
+  const manageQuestExpiration = async (userId: string) => {
     try {
-      // Get all quests for the user that expire in more than 1 day
+      const now = new Date();
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      // Get all active quests
       const { data: allQuests, error } = await supabase
         .from('user_quests')
-        .select('id, expires_at, quest_type, created_at')
+        .select('*')
         .eq('user_id', userId)
-        .gte('expires_at', new Date().toISOString());
+        .gte('expires_at', now.toISOString());
 
       if (error || !allQuests) return;
 
-      // Update each daily quest to expire at 11:59 PM today
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      const correctExpiration = today.toISOString();
+      // Separate daily and monthly quests
+      const dailyQuests = allQuests.filter(q => q.quest_type === 'daily');
+      const monthlyQuests = allQuests.filter(q => q.quest_type === 'weekly');
 
-      // Get the first 5 quests created today and ensure they expire at 11:59 PM
-      const todayQuests = allQuests
-        .filter(quest => {
-          const questCreatedDate = new Date(quest.created_at);
-          return questCreatedDate.toDateString() === today.toDateString();
-        })
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .slice(0, 5);
+      // Remove expired daily quests (they should expire at end of day)
+      const expiredDailyQuests = dailyQuests.filter(q => new Date(q.expires_at) <= now);
+      if (expiredDailyQuests.length > 0) {
+        await supabase
+          .from('user_quests')
+          .delete()
+          .in('id', expiredDailyQuests.map(q => q.id));
+        console.log(`Removed ${expiredDailyQuests.length} expired daily quests`);
+      }
 
-      for (const quest of todayQuests) {
-        if (quest.expires_at) {
-          const currentExpiration = new Date(quest.expires_at);
-          const oneDayFromNow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-          
-          if (currentExpiration > oneDayFromNow) {
-            // Update to expire today at 11:59 PM and set quest type to daily
-            await supabase
-              .from('user_quests')
-              .update({ 
-                expires_at: correctExpiration,
-                quest_type: 'daily'
-              })
-              .eq('id', quest.id);
-            
-            console.log(`Updated quest ${quest.id} to expire today at 11:59 PM`);
-          }
+      // Count remaining monthly quests (these carry forward)
+      const remainingMonthlyQuests = monthlyQuests.filter(q => new Date(q.expires_at) > now);
+      const monthlyQuestsToCreate = Math.max(0, 10 - remainingMonthlyQuests.length);
+
+      // Generate new daily quests (always 5 per day, but only if we have less than 5)
+      const dailyQuestsToCreate = Math.max(0, 5 - dailyQuests.length);
+      const newDailyQuests = dailyQuestsToCreate > 0 ? 
+        await generateDailyQuests(userId, dailyQuestsToCreate) : [];
+      
+      // Generate new monthly quests if needed (limit to 10 total)
+      const newMonthlyQuests = monthlyQuestsToCreate > 0 ? 
+        await generateMonthlyQuests(userId, monthlyQuestsToCreate) : [];
+
+      // Insert new quests
+      const allNewQuests = [...newDailyQuests, ...newMonthlyQuests];
+      if (allNewQuests.length > 0) {
+        const { error: insertError } = await supabase
+          .from('user_quests')
+          .insert(allNewQuests);
+        
+        if (insertError) {
+          console.error('Error inserting new quests:', insertError);
+        } else {
+          console.log(`Created ${allNewQuests.length} new quests (${newDailyQuests.length} daily, ${newMonthlyQuests.length} monthly)`);
         }
       }
+
     } catch (error) {
-      console.error('Error updating daily quest expiration:', error);
+      console.error('Error managing quest expiration:', error);
     }
+  };
+
+  // Generate daily quests
+  const generateDailyQuests = async (userId: string, count: number) => {
+    // Ensure we never create more than 5 daily quests
+    const maxCount = Math.min(count, 5);
+    const attemptedTopics = getAttemptedTopics(questionAttempts || []);
+    const hasAnyActivity = attemptedTopics.size > 0;
+    
+    const quests = [];
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const expiresAt = today.toISOString();
+
+    if (!hasAnyActivity) {
+      // Basic onboarding quests for new users
+      const onboardingQuests = [
+        {
+          quest_title: "Complete 3 questions in Quiz mode",
+          quest_description: "Answer 3 questions correctly in Quiz mode",
+          target_topic: "Quiz",
+          target_count: 3,
+          difficulty: 'Easy',
+          points_reward: 10,
+        },
+        {
+          quest_title: "Try Marathon mode",
+          quest_description: "Complete your first Marathon session",
+          target_topic: "Marathon",
+          target_count: 1,
+          difficulty: 'Easy',
+          points_reward: 15,
+        },
+        {
+          quest_title: "Solve 5 Math questions",
+          quest_description: "Answer 5 Math questions correctly",
+          target_topic: "Math",
+          target_count: 5,
+          difficulty: 'Medium',
+          points_reward: 20,
+        },
+        {
+          quest_title: "Complete 2 Reading questions",
+          quest_description: "Answer 2 Reading questions correctly",
+          target_topic: "Reading",
+          target_count: 2,
+          difficulty: 'Easy',
+          points_reward: 12,
+        },
+        {
+          quest_title: "Practice Writing skills",
+          quest_description: "Answer 3 Writing questions correctly",
+          target_topic: "Writing",
+          target_count: 3,
+          difficulty: 'Medium',
+          points_reward: 18,
+        }
+      ];
+
+      for (let i = 0; i < Math.min(maxCount, onboardingQuests.length); i++) {
+        const quest = onboardingQuests[i];
+        const questId = crypto.randomUUID();
+        quests.push({
+          user_id: userId,
+          quest_id: questId,
+          quest_title: quest.quest_title,
+          quest_description: quest.quest_description,
+          target_topic: quest.target_topic,
+          difficulty: quest.difficulty,
+          quest_type: 'daily',
+          target_count: quest.target_count,
+          current_progress: 0,
+          points_reward: quest.points_reward,
+          completed: false,
+          expires_at: expiresAt
+        });
+      }
+    } else {
+      // Personalized daily quests for returning users
+      const topWeakTopics = weakTopicsAnalysis.slice(0, count);
+      
+      for (let i = 0; i < Math.min(maxCount, topWeakTopics.length); i++) {
+        const weakArea = topWeakTopics[i];
+        const isUrgent = weakArea.accuracy < 50;
+        const target = isUrgent ? 5 : 3;
+        const difficulty = isUrgent ? 'Hard' : 'Medium';
+        const points = isUrgent ? 25 : 15;
+        
+        const questId = crypto.randomUUID();
+        quests.push({
+          user_id: userId,
+          quest_id: questId,
+          quest_title: `Solve ${target} ${weakArea.topic} questions`,
+          quest_description: `Improve your ${weakArea.topic} skills by answering ${target} questions correctly`,
+          target_topic: weakArea.topic,
+          target_count: target,
+          difficulty: difficulty,
+          quest_type: 'daily',
+          current_progress: 0,
+          points_reward: points,
+          completed: false,
+          expires_at: expiresAt
+        });
+      }
+    }
+
+    return quests;
+  };
+
+  // Generate monthly quests
+  const generateMonthlyQuests = async (userId: string, count: number) => {
+    // Ensure we never create more than 10 monthly quests
+    const maxCount = Math.min(count, 10);
+    const attemptedTopics = getAttemptedTopics(questionAttempts || []);
+    const hasAnyActivity = attemptedTopics.size > 0;
+    
+    const quests = [];
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    nextMonth.setHours(23, 59, 59, 999);
+    const expiresAt = nextMonth.toISOString();
+
+    if (!hasAnyActivity) {
+      // Basic monthly quests for new users
+      const monthlyQuests = [
+        {
+          quest_title: "Complete 1 Mock Test",
+          quest_description: "Take and complete your first Mock Test",
+          target_topic: "Mock Test",
+          target_count: 1,
+          difficulty: 'Hard',
+          points_reward: 50,
+        },
+        {
+          quest_title: "Solve 20 questions in Marathon",
+          quest_description: "Complete 20 questions correctly in Marathon mode",
+          target_topic: "Marathon",
+          target_count: 20,
+          difficulty: 'Hard',
+          points_reward: 40,
+        },
+        {
+          quest_title: "Master Algebra",
+          quest_description: "Answer 15 Algebra questions correctly",
+          target_topic: "Algebra",
+          target_count: 15,
+          difficulty: 'Hard',
+          points_reward: 35,
+        },
+        {
+          quest_title: "Improve Reading Comprehension",
+          quest_description: "Answer 12 Reading questions correctly",
+          target_topic: "Reading",
+          target_count: 12,
+          difficulty: 'Hard',
+          points_reward: 30,
+        },
+        {
+          quest_title: "Excel in Writing",
+          quest_description: "Answer 10 Writing questions correctly",
+          target_topic: "Writing",
+          target_count: 10,
+          difficulty: 'Hard',
+          points_reward: 25,
+        }
+      ];
+
+      for (let i = 0; i < Math.min(maxCount, monthlyQuests.length); i++) {
+        const quest = monthlyQuests[i];
+        const questId = crypto.randomUUID();
+        quests.push({
+          user_id: userId,
+          quest_id: questId,
+          quest_title: quest.quest_title,
+          quest_description: quest.quest_description,
+          target_topic: quest.target_topic,
+          difficulty: quest.difficulty,
+          quest_type: 'weekly',
+          target_count: quest.target_count,
+          current_progress: 0,
+          points_reward: quest.points_reward,
+          completed: false,
+          expires_at: expiresAt
+        });
+      }
+    } else {
+      // Personalized monthly quests for returning users
+      const topWeakTopics = weakTopicsAnalysis.slice(0, count);
+      
+      for (let i = 0; i < Math.min(maxCount, topWeakTopics.length); i++) {
+        const weakArea = topWeakTopics[i];
+        const isUrgent = weakArea.accuracy < 50;
+        const target = isUrgent ? 25 : 20;
+        const difficulty = 'Hard';
+        const points = isUrgent ? 60 : 45;
+        
+        const questId = crypto.randomUUID();
+        quests.push({
+          user_id: userId,
+          quest_id: questId,
+          quest_title: `Master ${weakArea.topic}`,
+          quest_description: `Improve your ${weakArea.topic} skills by answering ${target} questions correctly`,
+          target_topic: weakArea.topic,
+          target_count: target,
+          difficulty: difficulty,
+          quest_type: 'weekly',
+          current_progress: 0,
+          points_reward: points,
+          completed: false,
+          expires_at: expiresAt
+        });
+      }
+    }
+
+    return quests;
   };
 
   const handleCompleteQuest = async (questId: string) => {
@@ -680,82 +911,112 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                   <div>
                     <h3 className="text-lg font-semibold text-black mb-4">Active Quests</h3>
                     <div className="space-y-4">
-                      {activeQuests.map((quest, index) => (
-                        <motion.div
-                          key={quest.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start gap-4 p-4 border-l-4 border-blue-600 bg-gray-50 rounded-r-lg"
-                        >
-                          {/* Bullet point */}
-                          <div className="flex-shrink-0 mt-1">
-                            <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                          </div>
-                          
-                          {/* Quest content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-black mb-1">
-                                  {quest.title}
-                                </h3>
-                                <p className="text-sm text-gray-600 mb-3">
-                                  {quest.description}
-                                </p>
-                              </div>
-                              
-                              {/* Claim button */}
-                              {quest.progress >= quest.target && !quest.completed && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={() => handleCompleteQuest(quest.id)}
-                                      disabled={claimingQuest === quest.id}
-                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm disabled:opacity-50"
-                                    >
-                                      {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
-                                    </motion.button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Claim your reward (+{quest.points} points)</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                      {activeQuests.map((quest, index) => {
+                        const hasStarted = quest.progress > 0;
+                        
+                        return (
+                          <motion.div
+                            key={quest.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={hasStarted 
+                              ? "flex items-start gap-4 p-4 border-l-4 border-blue-600 bg-gray-50 rounded-r-lg"
+                              : "flex items-start gap-3 py-2"
+                            }
+                          >
+                            {/* Bullet point */}
+                            <div className="flex-shrink-0 mt-1">
+                              <div className={`w-3 h-3 rounded-full ${hasStarted ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                            </div>
+                            
+                            {/* Quest content */}
+                            <div className="flex-1 min-w-0">
+                              {hasStarted ? (
+                                // Card view for started quests
+                                <>
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1">
+                                      <h3 className="text-lg font-semibold text-black mb-1">
+                                        {quest.title}
+                                      </h3>
+                                      <p className="text-sm text-gray-600 mb-3">
+                                        {quest.description}
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Claim button */}
+                                    {quest.progress >= quest.target && !quest.completed && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => handleCompleteQuest(quest.id)}
+                                            disabled={claimingQuest === quest.id}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm disabled:opacity-50"
+                                          >
+                                            {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
+                                          </motion.button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Claim your reward (+{quest.points} points)</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Progress bar */}
+                                  <div className="mb-2">
+                                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                                      <span>Progress: {quest.progress}/{quest.target}</span>
+                                      <span>{Math.round(getProgressPercentage(quest.progress, quest.target))}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
+                                        transition={{ duration: 0.6, ease: "easeOut" }}
+                                        className="h-2 bg-blue-600 rounded-full"
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Quest metadata */}
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {getTimeRemaining(quest.expiresAt)}
+                                    </span>
+                                    <span className="font-medium text-blue-600">+{quest.points} points</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                                    </Badge>
+                                  </div>
+                                </>
+                              ) : (
+                                // Bullet point view for unstarted quests
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-medium text-gray-900">
+                                      {quest.title}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {quest.description}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <span>+{quest.points} pts</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                                    </Badge>
+                                  </div>
+                                </div>
                               )}
                             </div>
-                            
-                            {/* Progress bar */}
-                            <div className="mb-2">
-                              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                <span>Progress: {quest.progress}/{quest.target}</span>
-                                <span>{Math.round(getProgressPercentage(quest.progress, quest.target))}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
-                                  transition={{ duration: 0.6, ease: "easeOut" }}
-                                  className="h-2 bg-blue-600 rounded-full"
-                                />
-                              </div>
-                            </div>
-                            
-                            {/* Quest metadata */}
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {getTimeRemaining(quest.expiresAt)}
-                              </span>
-                              <span className="font-medium text-blue-600">+{quest.points} points</span>
-                              <Badge variant="outline" className="text-xs">
-                                {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

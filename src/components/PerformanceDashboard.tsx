@@ -5,7 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame } from 'lucide-react';
+import { Flame, Settings } from 'lucide-react';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
@@ -103,6 +103,22 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     return saved ? parseInt(saved) : 0;
   });
   const [showGoalDialog, setShowGoalDialog] = useState(false);
+
+  // Widget minimization state - widgets start minimized after first visit
+  const [widgetsMinimized, setWidgetsMinimized] = useState(() => {
+    const hasVisitedBefore = localStorage.getItem('performancePageVisited');
+    return hasVisitedBefore === 'true';
+  });
+  
+  // Mark page as visited on first load
+  useEffect(() => {
+    localStorage.setItem('performancePageVisited', 'true');
+  }, []);
+  
+  // Handle widget expansion
+  const handleWidgetExpand = () => {
+    setWidgetsMinimized(false);
+  };
 
   // Fetch marathon sessions from Supabase
   const { data: marathonSessions = [], isLoading } = useQuery({
@@ -444,13 +460,26 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         {/* Top Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Current Streak */}
-          <Card className="bg-white relative">
+          <Card 
+            className="bg-white relative h-full cursor-pointer hover:shadow-md transition-shadow"
+            onClick={widgetsMinimized ? handleWidgetExpand : undefined}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-gray-600">Current Streak</h3>
-                <div className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                </div>
+                {/* Settings button to view calendar (replaces bottom View Calendar) */}
+                {!widgetsMinimized && (
+                <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowStreakCalendar(true);
+                    }}
+                  className="p-1 rounded hover:bg-orange-50"
+                  title="View calendar"
+                >
+                  <Settings className="w-4 h-4 text-orange-500" />
+                </button>
+                )}
               </div>
               <div className="flex items-center gap-3 mb-1">
                 <div className="text-4xl font-bold text-gray-900">
@@ -466,6 +495,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               </div>
               <div className="text-sm text-gray-500 mb-4">Day Streak</div>
               
+              {!widgetsMinimized && (
+                <>
                   {/* Week progress circles */}
                 <div className="mb-4">
                   <div className="text-xs text-gray-500 mb-2">
@@ -519,22 +550,17 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                 </div>
               )}
 
-              {/* View Calendar Button */}
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowStreakCalendar(true)}
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 h-7 text-xs"
-                >
-                  View Calendar
-                </Button>
-              </div>
+              {/* Removed bottom View Calendar button to reduce height */}
+                </>
+              )}
             </CardContent>
           </Card>
 
           {/* Predicted SAT Score */}
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow"
+            onClick={widgetsMinimized ? handleWidgetExpand : undefined}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-gray-600">Predicted SAT Score</h3>
@@ -545,6 +571,8 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <div className="text-4xl font-bold text-gray-900 mb-1">{scorePrediction.totalScore}</div>
               <div className="text-sm text-gray-500 mb-4">Based on your performance</div>
               
+              {!widgetsMinimized && (
+                <>
               {/* Score breakdown */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
@@ -580,19 +608,33 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowGoalDialog(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowGoalDialog(true);
+                    }}
                 className="w-full"
               >
                 {satGoal ? `Update Goal (${satGoal})` : 'Set Goal'}
               </Button>
+                </>
+              )}
             </CardContent>
           </Card>
 
           {/* Study Time */}
-          <StudyTimeCard userName={userName} />
+          <StudyTimeCard 
+            userName={userName} 
+            isMinimized={widgetsMinimized}
+            onExpand={handleWidgetExpand}
+          />
 
           {/* Questions Solved */}
-          <QuestionsSolvedCardOptimized userName={userName} marathonStats={marathonStats} />
+          <QuestionsSolvedCardOptimized 
+            userName={userName} 
+            marathonStats={marathonStats}
+            isMinimized={widgetsMinimized}
+            onExpand={handleWidgetExpand}
+          />
         </div>
 
         {/* Two Column Layout - Weakest Topics & Recent Sessions */}

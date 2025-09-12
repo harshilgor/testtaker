@@ -2,6 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   TrendingDown, 
   AlertTriangle, 
@@ -27,6 +30,7 @@ import {
   Target as TargetIcon
 } from 'lucide-react';
 import { geminiAnalysisService } from '@/services/geminiAnalysisService';
+import { useNavigate } from 'react-router-dom';
 
 interface Mistake {
   id: string;
@@ -106,6 +110,7 @@ interface ComprehensiveInsights {
 }
 
 const WeaknessInsights: React.FC<WeaknessInsightsProps> = ({ mistakes, userName, onStartPractice }) => {
+  const navigate = useNavigate();
   const [skillAnalyses, setSkillAnalyses] = useState<SkillAnalysis[]>([]);
   const [overallInsights, setOverallInsights] = useState<Array<{
     type: 'warning' | 'tip' | 'focus';
@@ -116,6 +121,8 @@ const WeaknessInsights: React.FC<WeaknessInsightsProps> = ({ mistakes, userName,
   const [isLoading, setIsLoading] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [isPreparingPractice, setIsPreparingPractice] = useState(false);
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false);
+  const [questionCount, setQuestionCount] = useState(10);
   const [comprehensiveInsights, setComprehensiveInsights] = useState<ComprehensiveInsights | null>(null);
   const [isGeneratingComprehensive, setIsGeneratingComprehensive] = useState(false);
 
@@ -428,6 +435,60 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
     }
   };
 
+  const startWeaknessPractice = async () => {
+    try {
+      // Get the weakest skills based on mistake count and accuracy
+      const skillStats = Array.from(allSkills.entries()).map(([skill, skillData]) => {
+        const skillMistakes = skillData.mistakes;
+        const totalAttempts = skillMistakes.length;
+        const accuracy = totalAttempts > 0 ? (totalAttempts - skillMistakes.length) / totalAttempts : 0;
+        return {
+          skill,
+          mistakeCount: skillMistakes.length,
+          accuracy,
+          avgDifficulty: skillMistakes.reduce((sum, m) => {
+            const difficultyMap = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+            return sum + (difficultyMap[m.difficulty as keyof typeof difficultyMap] || 2);
+          }, 0) / Math.max(skillMistakes.length, 1)
+        };
+      });
+
+      // Sort by weakness (lowest accuracy, highest mistake count)
+      const weakestSkills = skillStats
+        .sort((a, b) => {
+          if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+          return b.mistakeCount - a.mistakeCount;
+        })
+        .slice(0, Math.min(5, skillStats.length)); // Top 5 weakest skills
+
+      if (weakestSkills.length === 0) {
+        // No weaknesses yet - redirect to diagnostic
+        navigate('/weakness-quiz?diagnostic=true&count=5');
+        return;
+      }
+
+      // Create practice data with higher difficulty questions
+      const practiceData = {
+        questionCount,
+        weakestSkills: weakestSkills.map(s => s.skill),
+        targetDifficulty: 'hard', // Start with hard difficulty for weakness practice
+        focusTopics: weakestSkills.map(s => s.skill)
+      };
+
+      // Navigate to weakness quiz with practice data
+      const queryParams = new URLSearchParams({
+        count: questionCount.toString(),
+        skills: weakestSkills.map(s => s.skill).join(','),
+        difficulty: 'hard',
+        type: 'weakness-practice'
+      });
+
+      navigate(`/weakness-quiz?${queryParams.toString()}`);
+    } catch (error) {
+      console.error('Error starting weakness practice:', error);
+    }
+  };
+
   // Prepare practice session with questions user is most likely to get wrong
   const preparePracticeSession = async () => {
     if (!hasAnalyzed || skillAnalyses.length === 0) return;
@@ -547,20 +608,75 @@ Make the analysis specific, actionable, and encouraging. Focus on patterns and s
           </div>
         </div>
         
-        <Button
-          onClick={analyzeAllSkills}
-          disabled={isLoading || hasAnalyzed}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : hasAnalyzed ? (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          ) : (
-            <TargetIcon className="h-4 w-4 mr-2" />
-          )}
-          {isLoading ? 'Analyzing...' : hasAnalyzed ? 'Re-analyze' : 'Target My Weakness'}
-        </Button>
+        <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                if (!hasAnalyzed) {
+                  analyzeAllSkills();
+                }
+                setShowQuestionDialog(true);
+              }}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : hasAnalyzed ? (
+                <Play className="h-4 w-4 mr-2" />
+              ) : (
+                <TargetIcon className="h-4 w-4 mr-2" />
+              )}
+              {isLoading ? 'Analyzing...' : hasAnalyzed ? 'Start Practice' : 'Target My Weakness'}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <TargetIcon className="h-5 w-5 text-blue-600" />
+                Target My Weakness Practice
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                How many questions would you like to practice? We'll create a personalized quiz based on your weakest skills with higher difficulty questions.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="questionCount">Number of Questions</Label>
+                <Input
+                  id="questionCount"
+                  type="number"
+                  min="5"
+                  max="50"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(parseInt(e.target.value) || 10)}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Recommended: 10-20 questions for focused practice
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={() => setShowQuestionDialog(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowQuestionDialog(false);
+                    startWeaknessPractice();
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Start Practice
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Comprehensive AI Insights */}

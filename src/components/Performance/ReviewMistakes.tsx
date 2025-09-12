@@ -18,7 +18,8 @@ import {
   CheckCircle,
   PlayCircle,
   Bookmark,
-  BookmarkCheck
+  BookmarkCheck,
+  BookOpen
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ComprehensiveWeaknessInsights from './ComprehensiveWeaknessInsights';
@@ -623,7 +624,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
         </div>
 
         {/* Key Insights */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="h-4 w-4 text-red-600" />
@@ -646,6 +647,13 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
             <div className="text-lg font-semibold text-gray-900">
               {mistakeStats.topTopics[0]?.topic || 'N/A'}
             </div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-gray-700">Skills Analyzed</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{mistakeStats.topTopics.length}</div>
           </div>
         </div>
 
