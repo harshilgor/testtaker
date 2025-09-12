@@ -128,7 +128,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       loop
                       playsInline
                     >
-                      <source src="/src/library/performance.mp4" type="video/mp4" />
+                      <source src="/library/performance.mp4" type="video/mp4" />
                     </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center">
@@ -158,7 +158,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       loop
                       playsInline
                     >
-                      <source src="/src/library/learn.mp4" type="video/mp4" />
+                      <source src="/library/learn.mp4" type="video/mp4" />
                     </video>
                   </div>
                   <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
@@ -182,7 +182,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
                     <img 
-                      src="/src/library/home page.png" 
+                      src="/library/home page.png" 
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
                     />
@@ -208,7 +208,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
                     <img 
-                      src="/src/library/leaderboard page.png" 
+                      src="/library/leaderboard page.png" 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
                     />
