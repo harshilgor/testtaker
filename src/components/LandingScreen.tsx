@@ -133,7 +133,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                         e.currentTarget.style.display = 'none';
                       }}
                     >
-                      <source src="./library/performance.mp4" type="video/mp4" />
+                      <source src="/library/performance.mp4" type="video/mp4" />
                       <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
                         <div className="text-center">
                           <BarChart3 className="h-16 w-16 mx-auto mb-2" />
