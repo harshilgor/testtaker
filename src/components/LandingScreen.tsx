@@ -241,7 +241,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
                     <img 
-                      src="./library/leaderboard.png" 
+                      src="/library/leaderboard.png" 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
