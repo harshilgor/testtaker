@@ -174,7 +174,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                         e.currentTarget.style.display = 'none';
                       }}
                     >
-                      <source src="./library/learn.mp4" type="video/mp4" />
+                      <source src="/library/learn.mp4" type="video/mp4" />
                       <div className="w-full h-full flex items-center justify-center bg-teal-100 text-teal-600">
                         <div className="text-center">
                           <BookOpen className="h-16 w-16 mx-auto mb-2" />
@@ -204,7 +204,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
                     <img 
-                      src="./library/homepage.png" 
+                      src="/library/homepage.png" 
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
