@@ -286,7 +286,11 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
         </Card>
 
         {/* Question Review */}
-        <CollapsibleQuestionReview questions={questions} answers={answers} />
+        <CollapsibleQuestionReview questions={questions.map(q => ({ 
+          ...q, 
+          subject: q.subject || '', 
+          difficulty: q.difficulty || 'medium' 
+        }))} answers={answers} />
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

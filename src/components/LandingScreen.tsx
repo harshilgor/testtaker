@@ -210,7 +210,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       onError={(e) => {
                         console.error('Image failed to load:', e);
                         e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
                       }}
                     />
                     <div className="w-full h-full hidden items-center justify-center bg-slate-100 text-slate-600">
@@ -247,7 +248,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       onError={(e) => {
                         console.error('Image failed to load:', e);
                         e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
                       }}
                     />
                     <div className="w-full h-full hidden items-center justify-center bg-teal-100 text-teal-600">
