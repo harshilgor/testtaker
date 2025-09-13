@@ -57,11 +57,11 @@ export const useRecentSessions = ({
     },
     enabled: enabled && !!userName,
     staleTime,
-    cacheTime,
+    gcTime: cacheTime,
     // Use cached data as initial data for instant loading
     initialData: cachedSessions.length > 0 ? cachedSessions : undefined,
     // Keep previous data while refetching to avoid loading states
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     // Retry failed requests
     retry: 2,
     retryDelay: 1000
@@ -142,7 +142,7 @@ export const useRecentSessions = ({
             return transformSessions(sessionData);
           },
           staleTime,
-          cacheTime
+          gcTime: cacheTime
         });
       }
     }
@@ -188,7 +188,7 @@ export const usePrefetchRecentSessions = (userName: string) => {
           return transformedSessions;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
-        cacheTime: 10 * 60 * 1000 // 10 minutes
+        gcTime: 10 * 60 * 1000 // 10 minutes
       });
       
       console.log('✅ Recent sessions pre-fetched successfully');
