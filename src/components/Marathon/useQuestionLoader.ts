@@ -193,7 +193,7 @@ export const useQuestionLoader = ({
         const markUsedPromise = supabase.rpc('mark_question_used_in_session', {
           p_session_id: session.id,
           p_session_type: 'marathon',
-          p_question_id: formattedQuestion.id.toString()
+          p_question_id: question.id.toString()
         });
         
         const statsPromise = loadSessionStats();
