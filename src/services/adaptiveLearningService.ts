@@ -194,9 +194,26 @@ export class AdaptiveLearningService {
   // Load user's skill progress from database
   async loadUserProgress(userId: string): Promise<void> {
     try {
-      // Skip user_skill_progress table as it doesn't exist in current schema
-      console.log('Skill progress loading skipped (table not available) for user:', userId);
-      
+      const { data: skillProgress } = await supabase
+        .from('user_skill_progress')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (skillProgress) {
+        skillProgress.forEach(progress => {
+          const skill = this.skillGraph.get(progress.skill_id);
+          if (skill) {
+            skill.proficiencyScore = progress.proficiency_score;
+            skill.masteryLevel = progress.mastery_level;
+            skill.attempts = progress.attempts;
+            skill.correctAttempts = progress.correct_attempts;
+            skill.recentAccuracy = progress.recent_accuracy;
+            skill.unlocked = progress.unlocked;
+            skill.lastUpdated = new Date(progress.updated_at);
+          }
+        });
+      }
+
       // Update unlocked skills based on prerequisites
       this.updateUnlockedSkills();
     } catch (error) {
@@ -207,8 +224,21 @@ export class AdaptiveLearningService {
   // Save user's skill progress to database
   async saveUserProgress(userId: string): Promise<void> {
     try {
-      // Skip user_skill_progress table updates as it doesn't exist in current schema
-      console.log('Skill progress saving skipped (table not available) for user:', userId);
+      const progressData = Array.from(this.skillGraph.values()).map(skill => ({
+        user_id: userId,
+        skill_id: skill.id,
+        proficiency_score: skill.proficiencyScore,
+        mastery_level: skill.masteryLevel,
+        attempts: skill.attempts,
+        correct_attempts: skill.correctAttempts,
+        recent_accuracy: skill.recentAccuracy,
+        unlocked: skill.unlocked,
+        updated_at: new Date().toISOString()
+      }));
+
+      await supabase
+        .from('user_skill_progress')
+        .upsert(progressData, { onConflict: 'user_id,skill_id' });
     } catch (error) {
       console.error('Error saving user progress:', error);
     }
