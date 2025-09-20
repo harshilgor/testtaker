@@ -209,8 +209,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
                         console.error('Image failed to load:', e);
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
                       }}
                     />
                     <div className="w-full h-full hidden items-center justify-center bg-slate-100 text-slate-600">
@@ -246,8 +246,8 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
                         console.error('Image failed to load:', e);
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
                       }}
                     />
                     <div className="w-full h-full hidden items-center justify-center bg-teal-100 text-teal-600">
