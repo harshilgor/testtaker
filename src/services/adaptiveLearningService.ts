@@ -194,26 +194,9 @@ export class AdaptiveLearningService {
   // Load user's skill progress from database
   async loadUserProgress(userId: string): Promise<void> {
     try {
-      const { data: skillProgress } = await supabase
-        .from('user_skill_progress')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (skillProgress) {
-        skillProgress.forEach(progress => {
-          const skill = this.skillGraph.get(progress.skill_id);
-          if (skill) {
-            skill.proficiencyScore = progress.proficiency_score;
-            skill.masteryLevel = progress.mastery_level;
-            skill.attempts = progress.attempts;
-            skill.correctAttempts = progress.correct_attempts;
-            skill.recentAccuracy = progress.recent_accuracy;
-            skill.unlocked = progress.unlocked;
-            skill.lastUpdated = new Date(progress.updated_at);
-          }
-        });
-      }
-
+      // Disable this functionality as user_skill_progress table doesn't exist
+      console.log('Skipping user progress loading - table not implemented');
+      
       // Update unlocked skills based on prerequisites
       this.updateUnlockedSkills();
     } catch (error) {
@@ -236,9 +219,8 @@ export class AdaptiveLearningService {
         updated_at: new Date().toISOString()
       }));
 
-      await supabase
-        .from('user_skill_progress')
-        .upsert(progressData, { onConflict: 'user_id,skill_id' });
+      // Disable this functionality as user_skill_progress table doesn't exist
+      console.log('Skipping user progress saving - table not implemented');
     } catch (error) {
       console.error('Error saving user progress:', error);
     }
