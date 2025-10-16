@@ -4,6 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
 
+// Import assets
+import performanceVideo from '/library/performance.mp4';
+import learnVideo from '/library/learn.mp4';
+import homepageImage from '/library/homepage.png';
+import leaderboardImage from '/library/leaderboard.png';
+
 interface LandingScreenProps {
   onGetStarted: () => void;
 }
@@ -133,7 +139,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                         e.currentTarget.style.display = 'none';
                       }}
                     >
-                      <source src="/library/performance.mp4" type="video/mp4" />
+                      <source src={performanceVideo} type="video/mp4" />
                       <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
                         <div className="text-center">
                           <BarChart3 className="h-16 w-16 mx-auto mb-2" />
@@ -174,7 +180,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                         e.currentTarget.style.display = 'none';
                       }}
                     >
-                      <source src="/library/learn.mp4" type="video/mp4" />
+                      <source src={learnVideo} type="video/mp4" />
                       <div className="w-full h-full flex items-center justify-center bg-teal-100 text-teal-600">
                         <div className="text-center">
                           <BookOpen className="h-16 w-16 mx-auto mb-2" />
@@ -204,7 +210,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96">
                     <img 
-                      src="/library/homepage.png"
+                      src={homepageImage}
                       alt="Practice modes interface"
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
@@ -241,7 +247,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                   <div className="relative h-80 lg:h-96 order-2 lg:order-1">
                     <img 
-                      src="/library/leaderboard.png" 
+                      src={leaderboardImage} 
                       alt="Leaderboard interface"
                       className="w-full h-full object-contain bg-slate-50"
                       onError={(e) => {
