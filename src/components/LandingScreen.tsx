@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
+import LiveActivityPopups from './LiveActivityPopups';
+import UserReviews from './UserReviews';
 
 // Import assets
 import performanceVideo from '/library/performance.mp4';
@@ -63,6 +65,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
         </div>
       </header>
 
+      {/* Right-side live activity popups (landing only) */}
+      <LiveActivityPopups />
+
       {/* Hero Section */}
       <section className="pt-24 sm:pt-32 pb-8 sm:pb-12 bg-gradient-to-b from-gray-50 to-white px-4 sm:px-6 min-h-screen flex flex-col justify-center">
         <div className="max-w-4xl mx-auto text-center">
@@ -115,20 +120,20 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       <section className="py-16 sm:py-20 bg-white px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
-            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">What do we have to offer?</h3>
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">This is why you should join us</h3>
             <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-2">
               From personalized practice to comprehensive analytics, we've got your SAT preparation covered.
             </p>
           </div>
           
-          <div className="max-w-7xl mx-auto space-y-12 mb-16 sm:mb-20">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 sm:mb-20">
             {/* Feature 1: Unlock Your SAT Insights */}
             <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                  <div className="relative h-80 lg:h-96">
+                <div className="flex flex-col">
+                  <div className="relative h-64 sm:h-72">
                     <video 
-                      className="w-full h-full object-contain bg-slate-50"
+                      className="w-full h-full object-cover bg-slate-50"
                       autoPlay 
                       muted 
                       loop
@@ -148,14 +153,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       </div>
                     </video>
                   </div>
-                  <div className="p-8 flex flex-col justify-center">
+                  <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                         <BarChart3 className="h-6 w-6 text-blue-600" />
                       </div>
-                      <h4 className="text-2xl font-bold text-slate-900">Unlock Your SAT Insights</h4>
+                      <h4 className="text-xl font-bold text-slate-900">Unlock Your SAT Insights</h4>
                     </div>
-                    <p className="text-slate-600 leading-relaxed text-base">
+                    <p className="text-slate-600 leading-relaxed text-sm">
                       Track your strengths and weaknesses with detailed analytics for Math, Reading, and Writing. Use personalized insights like "Target My Weakness" to focus on skills you need most. Boost your score with data-driven prep.
                     </p>
                   </div>
@@ -166,10 +171,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             {/* Feature 2: Review Your Mistakes */}
             <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                  <div className="relative h-80 lg:h-96 order-2 lg:order-1">
+                <div className="flex flex-col">
+                  <div className="relative h-64 sm:h-72">
                     <video 
-                      className="w-full h-full object-contain bg-slate-50"
+                      className="w-full h-full object-cover bg-slate-50"
                       autoPlay 
                       muted 
                       loop
@@ -189,14 +194,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       </div>
                     </video>
                   </div>
-                  <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
+                  <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                         <BookOpen className="h-6 w-6 text-teal-600" />
                       </div>
-                      <h4 className="text-2xl font-bold text-slate-900">Learn from Every Error</h4>
+                      <h4 className="text-xl font-bold text-slate-900">Learn from Every Error</h4>
                     </div>
-                    <p className="text-slate-600 leading-relaxed text-base">
+                    <p className="text-slate-600 leading-relaxed text-sm">
                       Get instant explanations and step-by-step breakdowns for every mistake. Turn weaknesses into strengths with targeted drills and AI-powered feedback tailored to your needs.
                     </p>
                   </div>
@@ -207,12 +212,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             {/* Feature 3: Practice in 3 Modes */}
             <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                  <div className="relative h-80 lg:h-96">
+                <div className="flex flex-col">
+                  <div className="relative h-64 sm:h-72">
                     <img 
                       src={homepageImage}
                       alt="Practice modes interface"
-                      className="w-full h-full object-contain bg-slate-50"
+                      className="w-full h-full object-cover bg-slate-50"
                       onError={(e) => {
                         console.error('Image failed to load:', e);
                         (e.currentTarget as HTMLElement).style.display = 'none';
@@ -226,14 +231,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="p-8 flex flex-col justify-center">
+                  <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
                         <Target className="h-6 w-6 text-slate-600" />
                       </div>
-                      <h4 className="text-2xl font-bold text-slate-900">Train Your Way</h4>
+                      <h4 className="text-xl font-bold text-slate-900">Train Your Way</h4>
                     </div>
-                    <p className="text-slate-600 leading-relaxed text-base">
+                    <p className="text-slate-600 leading-relaxed text-sm">
                       Choose Full Timed Tests, Topic Drills, or Adaptive Quizzes like "Target My Weakness" to fit your prep style. Flexible practice keeps you engaged and improving daily.
                     </p>
                   </div>
@@ -244,12 +249,12 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             {/* Feature 4: Compete with Others */}
             <Card className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white">
               <CardContent className="p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                  <div className="relative h-80 lg:h-96 order-2 lg:order-1">
+                <div className="flex flex-col">
+                  <div className="relative h-64 sm:h-72">
                     <img 
                       src={leaderboardImage} 
                       alt="Leaderboard interface"
-                      className="w-full h-full object-contain bg-slate-50"
+                      className="w-full h-full object-cover bg-slate-50"
                       onError={(e) => {
                         console.error('Image failed to load:', e);
                         (e.currentTarget as HTMLElement).style.display = 'none';
@@ -263,14 +268,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="p-8 flex flex-col justify-center order-1 lg:order-2">
+                  <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                         <Award className="h-6 w-6 text-teal-600" />
                       </div>
-                      <h4 className="text-2xl font-bold text-slate-900">Rise Up the Leaderboard</h4>
+                      <h4 className="text-xl font-bold text-slate-900">Rise Up the Leaderboard</h4>
                     </div>
-                    <p className="text-slate-600 leading-relaxed text-base">
+                    <p className="text-slate-600 leading-relaxed text-sm">
                       Challenge friends or global users in weekly contests. Earn badges and track your rank to stay motivated and aim for a perfect SAT score.
                     </p>
                   </div>
@@ -307,6 +312,9 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
           </div>
         </div>
       </section>
+
+      {/* User Reviews Section */}
+      <UserReviews />
 
       {/* Final CTA Section */}
       <section className="py-16 sm:py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 px-4 sm:px-6">

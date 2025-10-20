@@ -58,7 +58,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       // Use infinite question service
       console.log('🚀 Using infinite question service...');
-      const response = await infiniteQuestionService.getInfiniteQuestions({
+      const response = await infiniteQuestionService.getQuestions({
         subject: subject,
         skill: primaryTopic.skill,
         domain: primaryTopic.domain,
@@ -68,11 +68,11 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       });
 
       console.log(`📊 Infinite service returned ${response.questions.length} questions`);
-      console.log(`🤖 AI was used: ${response.ai_used}`);
+      console.log(`🤖 AI was used: ${response.aiUsed}`);
 
       if (response.questions.length === 0) {
         console.log('❌ No questions generated');
-        setError('No questions could be generated for the selected topic. Please try a different topic or check your internet connection.');
+        setError('No questions could be generated for the selected topic');
         return [];
       }
 
@@ -94,23 +94,12 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       const formattedQuestions = response.questions.map((question, index) => {
         const formatted = {
           id: question.id,
-          // For Reading and Writing questions, question_text is the passage, question_prompt is the question
-          content: question.question_text, // This is the passage text
-          question: question.question_prompt, // This is the actual question
           question_text: question.question_text,
           option_a: question.option_a,
           option_b: question.option_b,
           option_c: question.option_c,
           option_d: question.option_d,
-          // Create options array for QuizAnswerPanel compatibility
-          options: [
-            question.option_a,
-            question.option_b,
-            question.option_c,
-            question.option_d
-          ],
           correct_answer: question.correct_answer,
-          correctAnswer: question.correct_answer === 'A' ? 0 : question.correct_answer === 'B' ? 1 : question.correct_answer === 'C' ? 2 : 3,
           correct_rationale: question.correct_rationale,
           incorrect_rationale_a: question.incorrect_rationale_a,
           incorrect_rationale_b: question.incorrect_rationale_b,
@@ -139,7 +128,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       console.log('=== INFINITE QUIZ GENERATION COMPLETE ===');
       console.log(`🎉 Successfully generated ${formattedQuestions.length} questions`);
-      console.log(`🤖 AI was used: ${response.ai_used}`);
+      console.log(`🤖 AI was used: ${response.aiUsed}`);
       
       return formattedQuestions;
     } catch (error) {
@@ -163,3 +152,4 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
     loadQuizQuestions
   };
 };
+

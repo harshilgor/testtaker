@@ -170,7 +170,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
         <div className="mb-8">
           <p className="text-sm text-gray-600 mb-4">Choose the best answer.</p>
           <div className="space-y-3">
-            {question.options.map((option, index) => {
+            {(question.options || []).map((option, index) => {
               const isSelected = selectedAnswer === index;
               const isCorrectAnswer = index === question.correctAnswer;
               const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;

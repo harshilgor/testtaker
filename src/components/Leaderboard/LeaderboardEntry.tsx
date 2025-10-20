@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Crown, Trophy, Medal } from 'lucide-react';
 

@@ -10,7 +10,9 @@ import TrendsPage from '@/components/TrendsPage';
 import LearnPage from '@/pages/Learn';
 import Navigation from '@/components/Navigation';
 import StreakPopup from '@/components/StreakPopup';
+import WelcomePopup from '@/components/WelcomePopup';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useWelcomePopup } from '@/hooks/useWelcomePopup';
 
 export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends';
 
@@ -18,6 +20,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, session, loading, signOut } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
+  const { showWelcomePopup, closeWelcomePopup } = useWelcomePopup(user);
   
   console.log('Index component rendering - loading:', loading, 'user:', !!user, 'session:', !!session, 'currentScreen:', currentScreen);
 
@@ -78,6 +81,11 @@ const Index = () => {
 
   const handleNavigateToTrends = () => {
     setCurrentScreen('trends');
+  };
+
+  const handleWelcomeGetStarted = () => {
+    closeWelcomePopup();
+    navigate('/quiz');
   };
 
 
@@ -170,6 +178,15 @@ const Index = () => {
         <StreakPopup 
           userName={userName} 
           onNavigateToPerformance={handleNavigateToPerformance}
+        />
+      )}
+      
+      {/* Welcome Popup - shows for new users */}
+      {showWelcomePopup && user && (
+        <WelcomePopup
+          userName={userName}
+          onClose={closeWelcomePopup}
+          onGetStarted={handleWelcomeGetStarted}
         />
       )}
     </div>

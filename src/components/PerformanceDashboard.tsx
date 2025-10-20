@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -6,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Flame, Settings } from 'lucide-react';
+import { useHasSolvedQuestions } from '@/hooks/useHasSolvedQuestions';
 import MarathonHistorySection from './Performance/MarathonHistorySection';
 import PerformanceStats from './Performance/PerformanceStats';
 import QuestionAttemptStats from './Performance/QuestionAttemptStats';
@@ -78,8 +81,11 @@ interface QuizStats {
 }
 
 const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, onBack, onNavigateToTrends }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { quizResults: dataQuizResults, marathonSessions: dataMarathonSessions, mockTests: dataMockTests, loading: dataLoading } = useData();
+  const { hasSolvedQuestions, loading: hasSolvedQuestionsLoading } = useHasSolvedQuestions(user);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
@@ -430,6 +436,19 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
     setShowStreakNotification(false);
   };
 
+  const handleTakeQuiz = () => {
+    navigate('/quiz');
+  };
+
+  // Show loading state
+  if (hasSolvedQuestionsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   // Get dates where user had activity for the calendar
   const getActivityDates = () => {
     const loginHistory = JSON.parse(localStorage.getItem('userLoginHistory') || '[]');
@@ -455,6 +474,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         </div>
+
+        {/* Content area - blur only this section */}
+        <div className={`${!hasSolvedQuestions ? 'blur-sm pointer-events-none' : ''}`}>
 
 
         {/* Top Stats Grid */}
@@ -806,6 +828,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
             </Card>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Streak Calendar Modal */}
@@ -829,6 +852,24 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         onClose={handleCloseStreakNotification}
         isVisible={showStreakNotification}
       />
+
+      {/* Simple overlay message when user hasn't solved questions */}
+      {!hasSolvedQuestions && (
+        <div className="fixed top-20 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-auto text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Solve some questions first</h2>
+            <p className="text-gray-600 mb-6">
+              Take a practice quiz to unlock all performance features and get personalized analytics.
+            </p>
+            <button
+              onClick={handleTakeQuiz}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              Start Practice Quiz
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

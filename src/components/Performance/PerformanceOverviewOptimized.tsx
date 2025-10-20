@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
-import { TrendingUp, TrendingDown, Clock, Zap, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Zap, Info, Calculator, BookOpen } from 'lucide-react';
+import PerformanceAnalytics from './PerformanceAnalytics';
 
 interface PerformanceOverviewOptimizedProps {
   userName: string;
@@ -17,10 +18,12 @@ interface TopicPerformance {
 }
 
 type MetricType = 'best' | 'needs_work' | 'time_intensive' | 'quick';
+type SubjectType = 'all' | 'math' | 'reading_writing';
 
 const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> = ({ userName }) => {
   const { questionAttempts, marathonSessions, loading: dataLoading } = useData();
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('best');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectType>('all');
   const [tooltipStates, setTooltipStates] = useState<Record<string, boolean>>({});
 
   // Process data to get performance insights - now instant!
@@ -35,8 +38,22 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       };
     }
 
+    // Filter attempts by selected subject
+    const filteredAttempts = questionAttempts.filter(attempt => {
+      if (selectedSubject === 'all') return true;
+      
+      // Map database test field to our subject types
+      const testField = attempt.test || attempt.assessment || '';
+      if (selectedSubject === 'math') {
+        return testField.toLowerCase().includes('math');
+      } else if (selectedSubject === 'reading_writing') {
+        return testField.toLowerCase().includes('reading') || testField.toLowerCase().includes('writing');
+      }
+      return true;
+    });
+
     // Group by topic/skill
-    const topicStats = questionAttempts.reduce((acc, attempt) => {
+    const topicStats = filteredAttempts.reduce((acc, attempt) => {
       const topic = attempt.topic || attempt.subject || 'General Practice';
       
       if (!acc[topic]) {
@@ -124,7 +141,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       timeIntensive,
       quickTopics
     };
-  }, [questionAttempts]);
+  }, [questionAttempts, selectedSubject]);
 
   const getMetricData = () => {
     switch (selectedMetric) {
@@ -157,18 +174,29 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
   };
 
   const getMetricTitle = (metric: MetricType) => {
-    switch (metric) {
-      case 'best':
-        return 'Best Performing Topics';
-      case 'needs_work':
-        return 'Topics Needing Work';
-      case 'time_intensive':
-        return 'Time-Intensive Topics';
-      case 'quick':
-        return 'Quick Topics';
-      default:
-        return 'Performance Overview';
+    const baseTitle = (() => {
+      switch (metric) {
+        case 'best':
+          return 'Best Performing Topics';
+        case 'needs_work':
+          return 'Topics Needing Work';
+        case 'time_intensive':
+          return 'Time-Intensive Topics';
+        case 'quick':
+          return 'Quick Topics';
+        default:
+          return 'Performance Overview';
+      }
+    })();
+
+    // Add subject indicator if not showing all subjects
+    if (selectedSubject === 'math') {
+      return `${baseTitle} - Math`;
+    } else if (selectedSubject === 'reading_writing') {
+      return `${baseTitle} - Reading & Writing`;
     }
+    
+    return baseTitle;
   };
 
   const getEmptyMessage = (metric: MetricType) => {
@@ -240,52 +268,89 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
   const Icon = getMetricIcon(selectedMetric);
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Icon className="h-5 w-5 text-blue-600" />
-            {getMetricTitle(selectedMetric)}
-          </CardTitle>
-        </div>
-        
-        {/* Metric Selection */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          {metrics.map((metric) => {
-            const MetricIcon = getMetricIcon(metric);
-            return (
-              <Button
-                key={metric}
-                variant={selectedMetric === metric ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedMetric(metric)}
-                className="flex items-center gap-2 text-xs"
-              >
-                <MetricIcon className="h-3 w-3" />
-                {getMetricTitle(metric).replace(' Topics', '').replace('Topics ', '')}
-              </Button>
-            );
-          })}
-        </div>
-      </CardHeader>
+    <div className="space-y-6">
+      {/* Main Performance Overview Card */}
+      <Card className="h-full">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Icon className="h-5 w-5 text-blue-600" />
+              {getMetricTitle(selectedMetric)}
+            </CardTitle>
+          </div>
+          
+          {/* Subject Selection */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Button
+              variant={selectedSubject === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedSubject('all')}
+              className="flex items-center gap-2 text-xs"
+            >
+              <Info className="h-3 w-3" />
+              All Subjects
+            </Button>
+            <Button
+              variant={selectedSubject === 'math' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedSubject('math')}
+              className="flex items-center gap-2 text-xs"
+            >
+              <Calculator className="h-3 w-3" />
+              Math
+            </Button>
+            <Button
+              variant={selectedSubject === 'reading_writing' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedSubject('reading_writing')}
+              className="flex items-center gap-2 text-xs"
+            >
+              <BookOpen className="h-3 w-3" />
+              Reading & Writing
+            </Button>
+          </div>
+          
+          {/* Metric Selection */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {metrics.map((metric) => {
+              const MetricIcon = getMetricIcon(metric);
+              return (
+                <Button
+                  key={metric}
+                  variant={selectedMetric === metric ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedMetric(metric)}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <MetricIcon className="h-3 w-3" />
+                  {getMetricTitle(metric).replace(' Topics', '').replace('Topics ', '')}
+                </Button>
+              );
+            })}
+          </div>
+        </CardHeader>
 
-      <CardContent>
-        {dataLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : currentData.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Icon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-sm">{getEmptyMessage(selectedMetric)}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {currentData.map((topic, index) => renderTopicCard(topic, index))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <CardContent>
+          {dataLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : currentData.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Icon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-sm">{getEmptyMessage(selectedMetric)}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {currentData.map((topic, index) => renderTopicCard(topic, index))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Performance Analytics */}
+      <PerformanceAnalytics subject={selectedSubject} />
+    </div>
   );
 };
 

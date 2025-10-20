@@ -28,6 +28,7 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
   // Handle different question content formats
   const questionText = 'question' in question ? (question as any).question : question.content || '';
   const questionPrompt = 'question_prompt' in question ? (question as any).question_prompt : undefined;
+  const passageText = question.content || question.question_text || '';
 
   // Generate image URL if hasImage is true but imageUrl is not provided
   const finalImageUrl = question.imageUrl || (question.hasImage && question.id ? 
@@ -54,12 +55,20 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
             )}
           </div>
           
+          {/* Passage Text (for Reading and Writing questions) */}
+          {passageText && passageText !== questionText && (
+            <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-700 p-3 md:p-4 bg-gray-50 rounded-md md:rounded-lg border-l-4 border-green-400 md:border-green-500 mb-4`}>
+              {passageText}
+            </div>
+          )}
+
+          {/* Question Text */}
           <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-4`}>
             {questionText}
           </div>
 
-          {/* Question Prompt */}
-          {showPrompt && questionPrompt && (
+          {/* Question Prompt (fallback for other question types) */}
+          {showPrompt && questionPrompt && questionPrompt !== questionText && (
             <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-600 p-3 md:p-4 bg-gray-50 rounded-md md:rounded-lg border-l-4 border-blue-400 md:border-blue-500 mb-4`}>
               {questionPrompt}
             </div>
