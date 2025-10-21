@@ -47,7 +47,13 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
     setFeedbackPreference,
     handleTopicToggle,
     handleQuestionCountChange,
-    loadQuizQuestions
+    loadQuizQuestions,
+    // Difficulty selection
+    difficultyCounts,
+    useDifficultySelection,
+    handleDifficultyCountChange,
+    toggleDifficultySelection,
+    getTotalQuestions
   } = useQuizTopicSelection(subject, topics);
 
   // Handle auto-selection
@@ -81,7 +87,13 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
       return;
     }
     
-    setQuizQuestions(questions.slice(0, questionsToUse));
+    console.log(`📊 Questions loaded: ${questions.length}, Questions to use: ${questionsToUse}`);
+    
+    // Don't slice if we already have the right number of questions
+    const finalQuestions = questions.length >= questionsToUse ? questions.slice(0, questionsToUse) : questions;
+    console.log(`📊 Final questions for quiz: ${finalQuestions.length}`);
+    
+    setQuizQuestions(finalQuestions);
     setShowQuiz(true);
   };
 
@@ -225,24 +237,103 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
           <Card>
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Quiz Settings</h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Questions
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={questionCount}
-                    onChange={handleQuestionCountChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              
+              {/* Difficulty Selection Toggle */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Difficulty Selection</h3>
+                    <p className="text-xs text-gray-500">Choose specific difficulty levels for your quiz</p>
+                  </div>
+                  <button
+                    onClick={toggleDifficultySelection}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      useDifficultySelection ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        useDifficultySelection ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Feedback Preference
-                  </label>
+              </div>
+
+              {useDifficultySelection ? (
+                // Difficulty Selection Mode
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Easy Questions
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={difficultyCounts.easy}
+                        onChange={(e) => handleDifficultyCountChange('easy', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Medium Questions
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={difficultyCounts.medium}
+                        onChange={(e) => handleDifficultyCountChange('medium', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Hard Questions
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={difficultyCounts.hard}
+                        onChange={(e) => handleDifficultyCountChange('hard', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Total Questions:</strong> {getTotalQuestions()}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Simple Question Count Mode
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Number of Questions
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={questionCount}
+                      onChange={handleQuestionCountChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Feedback Preference */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Feedback Preference
+                </label>
                   <select
                     value={feedbackPreference}
                     onChange={(e) => setFeedbackPreference(e.target.value as 'immediate' | 'end')}

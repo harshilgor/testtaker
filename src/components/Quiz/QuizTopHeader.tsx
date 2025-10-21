@@ -10,9 +10,10 @@ interface QuizTopHeaderProps {
   onBack: () => void;
   eliminateMode?: boolean;
   onToggleEliminateMode?: (enabled: boolean) => void;
+  difficulty?: string;
 }
 
-const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack, eliminateMode = false, onToggleEliminateMode }) => {
+const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack, eliminateMode = false, onToggleEliminateMode, difficulty }) => {
   const { isMobile } = useResponsiveLayout();
   
   const formatTime = (seconds: number) => {
@@ -37,11 +38,23 @@ const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack, eli
             {topics.join(', ')}
           </div>
         )}
+        {difficulty && (
+          <div className={`px-2 py-1 rounded text-xs font-medium ${
+            difficulty.toLowerCase() === 'easy' ? 'bg-green-600' :
+            difficulty.toLowerCase() === 'medium' ? 'bg-yellow-600' :
+            difficulty.toLowerCase() === 'hard' ? 'bg-red-600' :
+            'bg-gray-600'
+          }`}>
+            {difficulty.toUpperCase()}
+          </div>
+        )}
       </div>
       <div className="flex items-center space-x-6">
-        <div className="text-sm font-medium">
-          {formatTime(time)}
-        </div>
+        {time > 0 && (
+          <div className="text-sm font-medium">
+            {formatTime(time)}
+          </div>
+        )}
         {onToggleEliminateMode && (
           <div className="flex items-center space-x-2">
             <span className="text-sm text-white">Eliminate Options</span>
@@ -52,14 +65,16 @@ const QuizTopHeader: React.FC<QuizTopHeaderProps> = ({ topics, time, onBack, eli
             />
           </div>
         )}
-        <Button
-          onClick={onBack}
-          variant="outline"
-          size="sm"
-          className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800"
-        >
-          Exit Quiz
-        </Button>
+        {onBack && (
+          <Button
+            onClick={onBack}
+            variant="outline"
+            size="sm"
+            className="bg-transparent border-white text-white hover:bg-white hover:text-slate-800"
+          >
+            Exit Quiz
+          </Button>
+        )}
       </div>
     </div>
   );

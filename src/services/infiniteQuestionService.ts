@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { openaiQuestionService, GeneratedQuestion } from './openaiQuestionService';
+import { isAIGenerationAvailable } from '../data/questionPrompts';
 import { DatabaseQuestion } from './questionService';
 
 export interface InfiniteQuestionRequest {
@@ -47,36 +48,88 @@ class InfiniteQuestionService {
     }
 
     try {
-      // Step 1: Try to get questions from database first
-      console.log('🔍 Getting database questions for:', request);
-      const dbQuestions = await this.getDatabaseQuestions(request);
-      console.log('📊 Found', (dbQuestions || []).length, 'database questions');
+      // Step 1: Get ALL available database questions (not limited by request.count)
+      console.log('🔍 Getting ALL database questions for:', request);
+      const allDbQuestions = await this.getAllDatabaseQuestions(request);
+      console.log('📊 Found', (allDbQuestions || []).length, 'total database questions');
       
-      // Step 2: If we need more questions and AI is enabled, generate them
-      const neededCount = request.count - (dbQuestions || []).length;
+      // Step 2: Filter out already used questions
+      const availableDbQuestions = allDbQuestions.filter(q => 
+        !(request.excludeIds || []).includes(parseInt(q.id))
+      );
+      console.log('📊 Available database questions (excluding used):', availableDbQuestions.length);
+      
+      // Step 3: Use database questions first (up to requested count)
+      const dbQuestionsToUse = availableDbQuestions.slice(0, request.count);
+      console.log('📊 Using', dbQuestionsToUse.length, 'database questions');
+      
+      // Step 4: Only generate AI questions if we need more AND have exhausted database
+      const neededCount = request.count - dbQuestionsToUse.length;
       let generatedQuestions: DatabaseQuestion[] = [];
       let aiUsed = false;
       
       console.log(`📈 Need ${neededCount} more questions, useAI: ${request.useAI}`);
+      console.log(`📊 Database questions available: ${availableDbQuestions.length}, used: ${dbQuestionsToUse.length}`);
+      console.log(`📊 Request details:`, {
+        skill: request.skill,
+        domain: request.domain,
+        difficulty: request.difficulty,
+        requestedCount: request.count,
+        availableDbCount: availableDbQuestions.length,
+        dbQuestionsToUse: dbQuestionsToUse.length,
+        neededCount: neededCount
+      });
       
-      if (neededCount > 0 && request.useAI !== false) {
-        console.log(`🤖 Generating ${neededCount} questions with OpenAI...`);
+      // Only use AI if:
+      // 1. We need more questions
+      // 2. AI is enabled
+      // 3. We've used all available database questions (or there are none)
+      const hasExhaustedDatabase = availableDbQuestions.length === 0 || 
+                                   dbQuestionsToUse.length >= availableDbQuestions.length;
+      
+      if (neededCount > 0 && request.useAI !== false && hasExhaustedDatabase) {
+        console.log(`🤖 Database exhausted! Generating ${neededCount} questions with OpenAI...`);
+        
+        // Test API connection first
+        console.log('🧪 Testing API connection before generation...');
+        const apiTestResult = await this.testAPIConnection();
+        if (!apiTestResult) {
+          console.error('❌ API test failed, skipping AI generation');
+          return {
+            questions: dbQuestionsToUse,
+            generated_count: dbQuestionsToUse.length,
+            requested_count: request.count,
+            source: 'database',
+            ai_used: false
+          };
+        }
+        
         const aiQuestions = await this.generateAIQuestions({
           ...request,
           count: neededCount,
-          excludeIds: [...(request.excludeIds || []), ...(dbQuestions || []).map(q => parseInt(q.id))]
+          excludeIds: [...(request.excludeIds || []), ...dbQuestionsToUse.map(q => parseInt(q.id))]
         });
         
         generatedQuestions = aiQuestions;
         aiUsed = aiQuestions.length > 0;
         console.log(`✅ Generated ${aiQuestions.length} AI questions`);
+      } else if (neededCount > 0 && !hasExhaustedDatabase) {
+        console.log(`⚠️ Not generating AI questions yet - still have ${availableDbQuestions.length - dbQuestionsToUse.length} unused database questions`);
       }
 
-      // Step 3: Combine and shuffle questions
-      const allQuestions = this.shuffleArray([...(dbQuestions || []), ...generatedQuestions]);
+      // Step 5: Combine questions (database first, then AI-generated)
+      const allQuestions = [...dbQuestionsToUse, ...generatedQuestions];
       const finalQuestions = allQuestions.slice(0, request.count);
+      
+      console.log('🔍 Final question combination:', {
+        dbQuestionsToUse: dbQuestionsToUse.length,
+        generatedQuestions: generatedQuestions.length,
+        allQuestions: allQuestions.length,
+        finalQuestions: finalQuestions.length,
+        requestedCount: request.count
+      });
 
-      // Step 4: Cache the results
+      // Step 6: Cache the results
       this.generationCache.set(cacheKey, finalQuestions);
       this.cacheExpiry.set(cacheKey, Date.now() + this.CACHE_DURATION);
 
@@ -100,7 +153,80 @@ class InfiniteQuestionService {
   }
 
   /**
-   * Get questions from existing database
+   * Get ALL available database questions (not limited by count)
+   */
+  private async getAllDatabaseQuestions(request: InfiniteQuestionRequest): Promise<DatabaseQuestion[]> {
+    const { subject, skill, domain, difficulty } = request;
+    
+    // Map subject to database test field
+    const testFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+    
+    let query = supabase
+      .from('question_bank')
+      .select(`
+        id,
+        question_text,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_answer,
+        correct_rationale,
+        incorrect_rationale_a,
+        incorrect_rationale_b,
+        incorrect_rationale_c,
+        incorrect_rationale_d,
+        assessment,
+        skill,
+        difficulty,
+        domain,
+        test,
+        question_prompt,
+        image
+      `)
+      .eq('assessment', 'SAT')
+      .eq('test', testFilter)
+      .not('question_text', 'is', null)
+      .not('option_a', 'is', null)
+      .not('option_b', 'is', null)
+      .not('option_c', 'is', null)
+      .not('option_d', 'is', null);
+
+    // Apply filters
+    if (skill) {
+      query = query.eq('skill', skill);
+    }
+    
+    if (domain) {
+      query = query.eq('domain', domain);
+    }
+    
+    if (difficulty && difficulty !== 'mixed') {
+      // Map lowercase difficulty to capitalized format used in database
+      const capitalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+      query = query.eq('difficulty', capitalizedDifficulty);
+    }
+
+    const { data, error } = await query
+      .order('id');
+
+    if (error) {
+      console.error('❌ Error fetching all database questions:', error);
+      console.error('Query details:', {
+        subject: request.subject,
+        skill: request.skill,
+        domain: request.domain,
+        difficulty: request.difficulty
+      });
+      return [];
+    }
+
+    console.log('✅ All database query successful, returned:', data?.length || 0, 'questions');
+    return data || [];
+  }
+
+  /**
+   * Get questions from existing database (limited by count)
    */
   private async getDatabaseQuestions(request: InfiniteQuestionRequest): Promise<DatabaseQuestion[]> {
     const { subject, skill, domain, difficulty, excludeIds = [] } = request;
@@ -192,40 +318,85 @@ class InfiniteQuestionService {
         return [];
       }
 
-      // Only use AI generation for the "Comprehension" skill
-      if (request.skill !== 'Comprehension') {
-        console.log(`AI generation only available for "Comprehension" skill, not "${request.skill}"`);
-        return [];
-      }
-
-      // Determine difficulty for AI generation
-      const aiDifficulty = request.difficulty === 'mixed' ? 'medium' : request.difficulty;
-      console.log('🎯 AI generation parameters:', {
-        skill: request.skill,
-        domain: request.domain,
-        difficulty: aiDifficulty,
-        count: request.count
-      });
+      // For mixed difficulty, generate questions from multiple difficulty levels
+      let generatedQuestions: any[] = [];
       
-      // Test API connection first
-      console.log('🧪 Testing API connection...');
-      const isConnected = await openaiQuestionService.testConnection();
-      if (!isConnected) {
-        console.error('❌ API connection test failed, skipping AI generation');
-        return [];
-      }
+      if (request.difficulty === 'mixed') {
+        console.log('🎯 Mixed difficulty - generating questions from all difficulty levels');
+        
+        // Test API connection first
+        console.log('🧪 Testing API connection...');
+        const isConnected = await openaiQuestionService.testConnection();
+        if (!isConnected) {
+          console.error('❌ API connection test failed, skipping AI generation');
+          return [];
+        }
 
-      // Generate questions using OpenAI
-      console.log('📡 Calling OpenAI API...');
-      const generatedQuestions = await openaiQuestionService.generateTopicQuestions(
-        request.skill,
-        request.domain,
-        aiDifficulty as 'easy' | 'medium' | 'hard',
-        request.count
-      );
+        // Generate questions from all three difficulty levels
+        const difficulties: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
+        const questionsPerDifficulty = Math.ceil(request.count / 3);
+        
+        for (const difficulty of difficulties) {
+          if (!isAIGenerationAvailable(request.skill, request.domain, difficulty)) {
+            console.log(`⚠️ AI generation not available for difficulty: ${difficulty}`);
+            continue;
+          }
+          
+          console.log(`📡 Generating ${questionsPerDifficulty} questions for ${difficulty} difficulty...`);
+          try {
+            const questions = await openaiQuestionService.generateTopicQuestions(
+              request.skill,
+              request.domain,
+              difficulty,
+              questionsPerDifficulty
+            );
+            generatedQuestions.push(...questions);
+            console.log(`✅ Generated ${questions.length} questions for ${difficulty} difficulty`);
+          } catch (error) {
+            console.error(`❌ Error generating questions for ${difficulty}:`, error);
+          }
+        }
+      } else {
+        // Single difficulty generation
+        const aiDifficulty = request.difficulty as 'easy' | 'medium' | 'hard';
+        
+        // Check if AI generation is available for this skill/domain/difficulty combination
+        if (!isAIGenerationAvailable(request.skill, request.domain, aiDifficulty)) {
+          console.log(`AI generation not available for skill: "${request.skill}", domain: "${request.domain}", difficulty: "${aiDifficulty}"`);
+          return [];
+        }
+        console.log('🎯 AI generation parameters:', {
+          skill: request.skill,
+          domain: request.domain,
+          difficulty: aiDifficulty,
+          count: request.count
+        });
+        
+        // Test API connection first
+        console.log('🧪 Testing API connection...');
+        const isConnected = await openaiQuestionService.testConnection();
+        if (!isConnected) {
+          console.error('❌ API connection test failed, skipping AI generation');
+          return [];
+        }
+
+        // Generate questions using OpenAI
+        console.log('📡 Calling OpenAI API...');
+        generatedQuestions = await openaiQuestionService.generateTopicQuestions(
+          request.skill,
+          request.domain,
+          aiDifficulty,
+          request.count
+        );
+      }
 
       console.log('✅ OpenAI API returned:', generatedQuestions.length, 'questions');
       console.log('📋 Sample generated question:', generatedQuestions[0]);
+      console.log('🔍 Generated questions breakdown:', {
+        totalGenerated: generatedQuestions.length,
+        requestedCount: request.count,
+        questionsPerDifficulty: request.difficulty === 'mixed' ? Math.ceil(request.count / 3) : request.count
+      });
 
       if (generatedQuestions.length === 0) {
         console.log('❌ No questions generated by OpenAI API');
@@ -235,7 +406,9 @@ class InfiniteQuestionService {
       // Convert to database format
       console.log('🔄 Converting to database format...');
       const dbFormatQuestions = generatedQuestions.map((q, index) => {
-        const converted = openaiQuestionService.convertToDatabaseFormat(q, request.skill, request.domain, aiDifficulty);
+        // For mixed difficulty, use the difficulty from the generated question
+        const questionDifficulty = request.difficulty === 'mixed' ? q.difficulty || 'medium' : request.difficulty;
+        const converted = openaiQuestionService.convertToDatabaseFormat(q, request.skill, request.domain, questionDifficulty);
         console.log(`Converted question ${index + 1}:`, converted);
         return converted;
       });
@@ -423,6 +596,56 @@ class InfiniteQuestionService {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  }
+
+  /**
+   * Test API connection and prompt functionality
+   */
+  async testAPIConnection(): Promise<boolean> {
+    try {
+      console.log('🧪 Testing API connection and prompt functionality...');
+      const testRequest = {
+        subject: 'english' as const,
+        skill: 'Comprehension',
+        domain: 'Information and Ideas',
+        difficulty: 'easy' as const,
+        count: 1,
+        useAI: true
+      };
+      
+      const response = await this.generateAIQuestions(testRequest);
+      const success = response.length > 0;
+      
+      console.log(`🧪 API test result: ${success ? 'SUCCESS' : 'FAILED'}`);
+      if (success) {
+        console.log('✅ API connection working, prompt generation successful');
+      } else {
+        console.log('❌ API connection failed or no questions generated');
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('❌ API test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the count of available database questions for a skill/domain
+   */
+  async getAvailableQuestionCount(request: InfiniteQuestionRequest): Promise<number> {
+    try {
+      const allDbQuestions = await this.getAllDatabaseQuestions(request);
+      const availableDbQuestions = allDbQuestions.filter(q => 
+        !(request.excludeIds || []).includes(parseInt(q.id))
+      );
+      
+      console.log(`📊 Available questions for ${request.skill}/${request.domain}: ${availableDbQuestions.length}`);
+      return availableDbQuestions.length;
+    } catch (error) {
+      console.error('❌ Error getting available question count:', error);
+      return 0;
+    }
   }
 
   /**

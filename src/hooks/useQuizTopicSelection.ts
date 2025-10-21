@@ -9,6 +9,14 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
   const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Difficulty selection state
+  const [difficultyCounts, setDifficultyCounts] = useState({
+    easy: 0,
+    medium: 0,
+    hard: 0
+  });
+  const [useDifficultySelection, setUseDifficultySelection] = useState(false);
 
   const handleTopicToggle = (topicId: string) => {
     setSelectedTopics(prev => 
@@ -23,6 +31,37 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
     if (value > 0) {
       setQuestionCount(value);
     }
+  };
+
+  const handleDifficultyCountChange = (difficulty: 'easy' | 'medium' | 'hard', value: number) => {
+    setDifficultyCounts(prev => ({
+      ...prev,
+      [difficulty]: Math.max(0, value)
+    }));
+  };
+
+  const toggleDifficultySelection = () => {
+    setUseDifficultySelection(!useDifficultySelection);
+    if (!useDifficultySelection) {
+      // When enabling difficulty selection, distribute current question count
+      const total = questionCount;
+      const easyCount = Math.floor(total * 0.4);
+      const mediumCount = Math.floor(total * 0.4);
+      const hardCount = total - easyCount - mediumCount;
+      
+      setDifficultyCounts({
+        easy: easyCount,
+        medium: mediumCount,
+        hard: hardCount
+      });
+    }
+  };
+
+  const getTotalQuestions = () => {
+    if (useDifficultySelection) {
+      return difficultyCounts.easy + difficultyCounts.medium + difficultyCounts.hard;
+    }
+    return questionCount;
   };
 
   const loadQuizQuestions = async () => {
@@ -56,21 +95,50 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       const primaryTopic = selectedTopicObjects[0];
       console.log('Primary topic for generation:', primaryTopic);
 
-      // Use infinite question service
-      console.log('🚀 Using infinite question service...');
-      const response = await infiniteQuestionService.getInfiniteQuestions({
-        subject: subject,
-        skill: primaryTopic.skill,
-        domain: primaryTopic.domain,
-        difficulty: 'easy', // Default to easy, could be made configurable
-        count: questionCount,
-        useAI: true // Enable AI generation
-      });
+      // Generate questions based on difficulty selection
+      let allQuestions: any[] = [];
+      
+      if (useDifficultySelection) {
+        console.log('🎯 Using difficulty selection mode');
+        console.log('Difficulty counts:', difficultyCounts);
+        
+        // Generate questions for each difficulty level
+        for (const [difficulty, count] of Object.entries(difficultyCounts)) {
+          if (count > 0) {
+            console.log(`📊 Generating ${count} ${difficulty} questions...`);
+            
+            const response = await infiniteQuestionService.getInfiniteQuestions({
+              subject: subject,
+              skill: primaryTopic.skill,
+              domain: primaryTopic.domain,
+              difficulty: difficulty as 'easy' | 'medium' | 'hard',
+              count: count,
+              useAI: true
+            });
+            
+            console.log(`✅ Generated ${response.questions.length} ${difficulty} questions`);
+            allQuestions.push(...response.questions);
+          }
+        }
+      } else {
+        // Use simple mixed difficulty generation
+        console.log('🚀 Using simple mixed difficulty mode...');
+        const response = await infiniteQuestionService.getInfiniteQuestions({
+          subject: subject,
+          skill: primaryTopic.skill,
+          domain: primaryTopic.domain,
+          difficulty: 'mixed',
+          count: questionCount,
+          useAI: true
+        });
+        
+        allQuestions = response.questions;
+      }
 
-      console.log(`📊 Infinite service returned ${response.questions.length} questions`);
-      console.log(`🤖 AI was used: ${response.ai_used}`);
+      console.log(`📊 Total questions generated: ${allQuestions.length}`);
+      console.log(`📊 Requested count: ${useDifficultySelection ? getTotalQuestions() : questionCount}, Received count: ${allQuestions.length}`);
 
-      if (response.questions.length === 0) {
+      if (allQuestions.length === 0) {
         console.log('❌ No questions generated');
         setError('No questions could be generated for the selected topic. Please try a different topic or check your internet connection.');
         return [];
@@ -78,7 +146,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       // Log sample questions for debugging
       console.log('📋 Sample generated questions:');
-      response.questions.slice(0, 3).forEach((q, index) => {
+      allQuestions.slice(0, 3).forEach((q, index) => {
         console.log(`Question ${index + 1}:`, {
           id: q.id,
           skill: q.skill,
@@ -91,7 +159,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       });
 
       // Format questions for the quiz component
-      const formattedQuestions = response.questions.map((question, index) => {
+      const formattedQuestions = allQuestions.map((question, index) => {
         const formatted = {
           id: question.id,
           // For Reading and Writing questions, question_text is the passage, question_prompt is the question
@@ -139,7 +207,7 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       console.log('=== INFINITE QUIZ GENERATION COMPLETE ===');
       console.log(`🎉 Successfully generated ${formattedQuestions.length} questions`);
-      console.log(`🤖 AI was used: ${response.ai_used}`);
+      console.log(`📊 Final question count: ${formattedQuestions.length} (requested: ${useDifficultySelection ? getTotalQuestions() : questionCount})`);
       
       return formattedQuestions;
     } catch (error) {
@@ -160,6 +228,12 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
     setFeedbackPreference,
     handleTopicToggle,
     handleQuestionCountChange,
-    loadQuizQuestions
+    loadQuizQuestions,
+    // Difficulty selection
+    difficultyCounts,
+    useDifficultySelection,
+    handleDifficultyCountChange,
+    toggleDifficultySelection,
+    getTotalQuestions
   };
 };

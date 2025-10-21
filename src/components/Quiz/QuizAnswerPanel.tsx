@@ -147,24 +147,31 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
 
   // Desktop layout
   return (
-    <div className="h-full p-8 bg-white border-l border-gray-200 flex flex-col">
-      <div className="flex-1">
-        {/* Question Info Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-gray-900">Answer Options</h3>
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mark-review"
-                checked={isFlagged}
-                onCheckedChange={onToggleFlag}
-              />
-              <label htmlFor="mark-review" className="text-sm text-gray-600">
-                Mark for Review
-              </label>
+    <div className="h-full bg-gray-50 border-l border-gray-200 flex flex-col">
+      <div className="h-full p-2">
+        {/* Rounded Container with Curved Edges */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Answer Options</h3>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="mark-review"
+                    checked={isFlagged}
+                    onCheckedChange={onToggleFlag}
+                  />
+                  <label htmlFor="mark-review" className="text-sm text-gray-600">
+                    Mark for Review
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+          
+          {/* Content */}
+          <div className="flex-1 p-6 overflow-y-auto">
 
         {/* Answer Options */}
         <div className="mb-8">
@@ -259,6 +266,8 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
           }
           return null; // Return null if no feedback should be shown yet.
         })()}
+          </div>
+        </div>
       </div>
     </div>
   );

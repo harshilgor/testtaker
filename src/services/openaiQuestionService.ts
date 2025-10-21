@@ -1,7 +1,14 @@
 import { getPrompt } from '../data/questionPrompts';
 
-const OPENAI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || ''; // Using the same env var for now
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Debug environment variable loading
+console.log('🔍 Environment variables debug:');
+console.log('🔍 VITE_OPENAI_API_KEY:', import.meta.env.VITE_OPENAI_API_KEY ? 'SET' : 'NOT SET');
+console.log('🔍 VITE_OPENAI_API_KEY length:', import.meta.env.VITE_OPENAI_API_KEY?.length || 0);
+console.log('🔍 OPENAI_API_KEY:', OPENAI_API_KEY ? 'SET' : 'NOT SET');
+console.log('🔍 OPENAI_API_KEY length:', OPENAI_API_KEY.length);
 
 export interface GeneratedQuestion {
   passage: string;
@@ -258,10 +265,25 @@ class OpenAIQuestionService {
   async testConnection(): Promise<boolean> {
     try {
       console.log('🧪 Testing OpenAI API connection...');
-      console.log('🔑 API Key:', OPENAI_API_KEY.substring(0, 10) + '...');
+      console.log('🔑 API Key (first 20 chars):', OPENAI_API_KEY.substring(0, 20) + '...');
+      console.log('🔑 API Key length:', OPENAI_API_KEY.length);
       console.log('📡 API URL:', OPENAI_API_URL);
       
+      // Check if API key is properly set
+      if (!OPENAI_API_KEY || OPENAI_API_KEY.length < 10) {
+        console.error('❌ API Key is not properly set or too short');
+        return false;
+      }
+      
+      // Check API key format
+      if (!OPENAI_API_KEY.startsWith('sk-')) {
+        console.error('❌ API Key does not start with "sk-" - invalid format');
+        console.error('❌ API Key starts with:', OPENAI_API_KEY.substring(0, 5));
+        return false;
+      }
+      
       // Test with a simple prompt first
+      console.log('📡 Making API call...');
       const testResponse = await fetch(OPENAI_API_URL, {
         method: 'POST',
         headers: {
@@ -273,27 +295,34 @@ class OpenAIQuestionService {
           messages: [
             {
               role: 'user',
-              content: 'Generate a simple math question: What is 2+2? Respond with just the answer.'
+              content: 'Say "Hello"'
             }
           ],
-          max_tokens: 50
+          max_tokens: 10
         })
       });
 
       console.log('📡 Test API Response status:', testResponse.status, testResponse.statusText);
+      console.log('📡 Test API Response headers:', Object.fromEntries(testResponse.headers.entries()));
       
       if (!testResponse.ok) {
         const errorText = await testResponse.text();
-        console.error('❌ API Test Error:', errorText);
+        console.error('❌ API Test Error Response:', errorText);
+        console.error('❌ API Test Error Status:', testResponse.status, testResponse.statusText);
         return false;
       }
 
       const testData = await testResponse.json();
-      console.log('✅ API Test Success:', testData);
+      console.log('✅ API Test Success Response:', testData);
       return true;
       
     } catch (error) {
-      console.error('❌ API connection test failed:', error);
+      console.error('❌ API connection test failed with error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       return false;
     }
   }

@@ -7,6 +7,7 @@ import QuizTimer from './Quiz/QuizTimer';
 import QuizQuestionPanel from './Quiz/QuizQuestionPanel';
 import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
+import QuizSidebar from './Quiz/QuizSidebar';
 import QuizSummaryPage from './QuizSummaryPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +56,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [questionStartTimes, setQuestionStartTimes] = useState<number[]>(
     () => new Array(questions.length).fill(Date.now())
   );
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [answerCorrectness, setAnswerCorrectness] = useState<(boolean | null)[]>(new Array(questions.length).fill(null));
 
   // Track elapsed time
   useEffect(() => {
@@ -103,6 +106,16 @@ const QuizView: React.FC<QuizViewProps> = ({
     const newSubmitted = [...submittedQuestions];
     newSubmitted[currentQuestionIndex] = true;
     setSubmittedQuestions(newSubmitted);
+    
+    // Check if answer is correct
+    const currentQuestion = questions[currentQuestionIndex];
+    const selectedAnswer = answers[currentQuestionIndex];
+    const isCorrect = selectedAnswer !== null && selectedAnswer === currentQuestion.correctAnswer;
+    
+    // Update answer correctness
+    const newCorrectness = [...answerCorrectness];
+    newCorrectness[currentQuestionIndex] = isCorrect;
+    setAnswerCorrectness(newCorrectness);
   };
 
   const handleNext = () => {
@@ -305,63 +318,90 @@ const QuizView: React.FC<QuizViewProps> = ({
   }
 
   return (
-    <QuizLayout
-      topHeader={
+    <div className="min-h-screen bg-white flex">
+      {/* Left Sidebar */}
+      <QuizSidebar
+        questions={questions}
+        currentQuestionIndex={currentQuestionIndex}
+        answers={answers}
+        flaggedQuestions={flaggedQuestions}
+        onGoToQuestion={setCurrentQuestionIndex}
+        onBack={onBack}
+        subject={subject}
+        topics={topics}
+        timeRemaining={timeRemaining}
+        isCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        answerCorrectness={answerCorrectness}
+      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Header */}
         <QuizTopHeader
           topics={topics}
-          time={timeRemaining}
-          onBack={onBack}
+          time={0}
+          onBack={() => {}}
+          difficulty={currentQuestion.difficulty}
         />
-      }
-      timer={
-        <QuizTimer
-          onTimeUpdate={(time) => {
-            // Timer logic handled by useEffect above
-          }}
-        />
-      }
-      questionPanel={
-        <QuizQuestionPanel
-          question={currentQuestion}
-          isFlagged={flaggedQuestions[currentQuestionIndex]}
-          onToggleFlag={handleToggleFlag}
-        />
-      }
-      answerPanel={
-        <QuizAnswerPanel
-          question={currentQuestion}
-          selectedAnswer={answers[currentQuestionIndex]}
-          onAnswerSelect={handleAnswerSelect}
-          isFlagged={flaggedQuestions[currentQuestionIndex]}
-          onToggleFlag={handleToggleFlag}
-          currentQuestionIndex={currentQuestionIndex}
-          totalQuestions={questions.length}
-          feedbackPreference={feedbackPreference}
-          showFeedback={showFeedback}
-          isCorrect={isCorrect}
-          onNext={handleNext}
-          loading={loading}
-          isSubmitted={isSubmitted}
-        />
-      }
-      bottomNavigation={
-        <QuizBottomNavigation
-          questions={questions}
-          currentQuestionIndex={currentQuestionIndex}
-          answers={answers}
-          flaggedQuestions={flaggedQuestions}
-          onGoToQuestion={setCurrentQuestionIndex}
-          answeredCount={answeredCount}
-          selectedTopics={selectedTopics}
-          isNavigationOpen={isNavigationOpen}
-          onToggleNavigation={() => setIsNavigationOpen(!isNavigationOpen)}
-          onSubmit={handleSubmit}
-          submittedQuestions={submittedQuestions}
-          onNext={handleNext}
-          onCompleteQuiz={handleCompleteQuiz}
-        />
-      }
-    />
+        
+        {/* Main Quiz Content */}
+        <div className="flex-1 flex p-2">
+          {/* Question Panel */}
+          <div className="w-1/2 border-r border-gray-200 pr-1">
+            <QuizQuestionPanel
+              question={currentQuestion}
+              isFlagged={flaggedQuestions[currentQuestionIndex]}
+              onToggleFlag={handleToggleFlag}
+            />
+          </div>
+          
+          {/* Answer Panel */}
+          <div className="w-1/2 pl-1">
+            <QuizAnswerPanel
+              question={currentQuestion}
+              selectedAnswer={answers[currentQuestionIndex]}
+              onAnswerSelect={handleAnswerSelect}
+              isFlagged={flaggedQuestions[currentQuestionIndex]}
+              onToggleFlag={handleToggleFlag}
+              currentQuestionIndex={currentQuestionIndex}
+              totalQuestions={questions.length}
+              feedbackPreference={feedbackPreference}
+              showFeedback={showFeedback}
+              isCorrect={isCorrect}
+              onNext={handleNext}
+              loading={loading}
+              isSubmitted={isSubmitted}
+            />
+          </div>
+        </div>
+        
+        {/* Bottom Navigation - New Design */}
+        <div className="bg-white border-t border-gray-200 px-6 py-4">
+          <div className="flex justify-center items-center space-x-4">
+            {/* Submit Answer Button */}
+            <button
+              onClick={handleSubmit}
+              disabled={loading || submittedQuestions.includes(currentQuestionIndex)}
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+            >
+              {loading ? 'Submitting...' : 'Submit Answer'}
+            </button>
+            
+            {/* New Question Button */}
+            <button
+              onClick={handleNext}
+              className="px-6 py-3 bg-white text-blue-600 font-medium rounded-lg border border-blue-600 hover:bg-blue-50 transition-colors flex items-center space-x-2"
+            >
+              <span>New Question</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

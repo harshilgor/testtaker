@@ -11,6 +11,7 @@ interface TopNavigationProps {
   onExit: () => void;
   isMobile?: boolean;
   additionalContent?: React.ReactNode;
+  difficulty?: string;
 }
 
 const TopNavigation: React.FC<TopNavigationProps> = ({
@@ -20,7 +21,8 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   timeElapsed,
   onExit,
   isMobile,
-  additionalContent
+  additionalContent,
+  difficulty
 }) => {
   return (
     <div className="bg-slate-800 text-white px-6 py-3 flex items-center justify-between h-14 border-b border-gray-200">
@@ -32,6 +34,16 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           <span className={`text-sm font-medium ${isMobile ? 'truncate max-w-32' : ''}`}>
             {title}
           </span>
+        )}
+        {difficulty && (
+          <div className={`px-2 py-1 rounded text-xs font-medium ${
+            difficulty.toLowerCase() === 'easy' ? 'bg-green-600' :
+            difficulty.toLowerCase() === 'medium' ? 'bg-yellow-600' :
+            difficulty.toLowerCase() === 'hard' ? 'bg-red-600' :
+            'bg-gray-600'
+          }`}>
+            {difficulty.toUpperCase()}
+          </div>
         )}
       </div>
       

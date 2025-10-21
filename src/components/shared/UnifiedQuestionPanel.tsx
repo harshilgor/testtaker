@@ -36,52 +36,60 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
     null);
 
   return (
-    <div className={`h-full bg-white overflow-y-auto ${paddingClass}`}>
-      <div className="max-w-3xl mx-auto">
-        {/* Question Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className={`${headerSizeClass} font-medium text-gray-900`}>Question</h2>
-            
-            {/* Flag button */}
-            {onToggleFlag && (
-              <button
-                onClick={onToggleFlag}
-                className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
-                aria-label={isFlagged ? 'Remove flag' : 'Flag question'}
-              >
-                🚩
-              </button>
-            )}
+    <div className={`h-full bg-gray-50 overflow-y-auto ${isMobile ? 'p-2' : 'p-3'}`}>
+      <div className="max-w-full mx-auto">
+        {/* Rounded Container with Curved Edges */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden h-full">
+          {/* Question Header */}
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex justify-between items-center">
+              <h2 className={`${headerSizeClass} font-semibold text-gray-900`}>Question</h2>
+              
+              {/* Flag button */}
+              {onToggleFlag && (
+                <button
+                  onClick={onToggleFlag}
+                  className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
+                  aria-label={isFlagged ? 'Remove flag' : 'Flag question'}
+                >
+                  🚩
+                </button>
+              )}
+            </div>
           </div>
           
-          {/* Passage Text (for Reading and Writing questions) */}
-          {passageText && passageText !== questionText && (
-            <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-700 p-3 md:p-4 bg-gray-50 rounded-md md:rounded-lg border-l-4 border-green-400 md:border-green-500 mb-4`}>
-              {passageText}
-            </div>
-          )}
+          {/* Question Content */}
+          <div className="p-6">
+            {/* Passage Text (for Reading and Writing questions) */}
+            {passageText && passageText !== questionText && (
+              <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-700 p-4 bg-gray-50 rounded-lg border-l-4 border-green-400 mb-6`}>
+                {passageText}
+              </div>
+            )}
 
-          {/* Question Text */}
-          <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-4`}>
-            {questionText}
+            {/* Question Text */}
+            <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-6`}>
+              {questionText}
+            </div>
+
+            {/* Question Prompt (fallback for other question types) */}
+            {showPrompt && questionPrompt && questionPrompt !== questionText && (
+              <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-600 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400 mb-6`}>
+                {questionPrompt}
+              </div>
+            )}
+
+            {/* Question Image */}
+            {finalImageUrl && (
+              <div className="mb-6">
+                <QuestionImage 
+                  imageUrl={finalImageUrl} 
+                  alt="Question diagram" 
+                  className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto rounded-lg shadow-sm"
+                />
+              </div>
+            )}
           </div>
-
-          {/* Question Prompt (fallback for other question types) */}
-          {showPrompt && questionPrompt && questionPrompt !== questionText && (
-            <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-600 p-3 md:p-4 bg-gray-50 rounded-md md:rounded-lg border-l-4 border-blue-400 md:border-blue-500 mb-4`}>
-              {questionPrompt}
-            </div>
-          )}
-
-          {/* Question Image */}
-          {finalImageUrl && (
-            <QuestionImage 
-              imageUrl={finalImageUrl} 
-              alt="Question diagram" 
-              className="max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mb-4"
-            />
-          )}
         </div>
       </div>
     </div>
