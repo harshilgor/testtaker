@@ -111,3 +111,8 @@ jspm_packages/
 *.bmp
 *.tiff
 *.webp
+
+# API key files
+*API_KEY*
+*SECRET*
+*PASSWORD*
