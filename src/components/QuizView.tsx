@@ -357,7 +357,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           </div>
           
           {/* Answer Panel */}
-          <div className="w-1/2 pl-1">
+\          <div className="w-1/2 pl-1">
             <QuizAnswerPanel
               question={currentQuestion}
               selectedAnswer={answers[currentQuestionIndex]}
