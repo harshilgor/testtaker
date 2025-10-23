@@ -4,9 +4,9 @@ import { Flame, Calendar, Trophy } from 'lucide-react';
 
 const SimpleStreakWidget: React.FC = () => {
   const streakData = {
-    current: 12,
-    longest: 28,
-    thisWeek: 5
+    current: 18,
+    longest: 42,
+    thisWeek: 6
   };
 
   return (

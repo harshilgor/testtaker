@@ -4,9 +4,9 @@ import { Clock, Target, Brain, FileText } from 'lucide-react';
 
 const SimpleRecentActivityWidget: React.FC = () => {
   const activities = [
-    { type: 'marathon', title: 'Math Marathon', score: '85%', time: '2h ago', icon: Target, color: 'text-orange-500' },
-    { type: 'quiz', title: 'Algebra Quiz', score: '92%', time: '4h ago', icon: Brain, color: 'text-purple-500' },
-    { type: 'mocktest', title: 'SAT Mock Test', score: '1280 pts', time: '1d ago', icon: FileText, color: 'text-blue-500' }
+    { type: 'marathon', title: 'Math Marathon', score: '91%', time: '1h ago', icon: Target, color: 'text-orange-500' },
+    { type: 'quiz', title: 'Geometry Quiz', score: '88%', time: '3h ago', icon: Brain, color: 'text-purple-500' },
+    { type: 'mocktest', title: 'SAT Mock Test', score: '1340 pts', time: '2d ago', icon: FileText, color: 'text-blue-500' }
   ];
 
   return (

@@ -4,10 +4,10 @@ import { TrendingUp, Target, Clock, BookOpen } from 'lucide-react';
 
 const SimpleStatsWidget: React.FC = () => {
   const stats = [
-    { label: 'Questions Solved', value: '1,247', icon: BookOpen, color: 'text-blue-600' },
-    { label: 'Accuracy', value: '78.5%', icon: Target, color: 'text-green-600' },
-    { label: 'Study Time', value: '24.5h', icon: Clock, color: 'text-purple-600' },
-    { label: 'Streak', value: '12 days', icon: TrendingUp, color: 'text-orange-600' }
+    { label: 'Questions Solved', value: '2,847', icon: BookOpen, color: 'text-blue-600' },
+    { label: 'Accuracy', value: '84.2%', icon: Target, color: 'text-green-600' },
+    { label: 'Study Time', value: '47.3h', icon: Clock, color: 'text-purple-600' },
+    { label: 'Streak', value: '18 days', icon: TrendingUp, color: 'text-orange-600' }
   ];
 
   return (

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import SimpleStatsWidget from './SimpleStatsWidget';
-import SimpleProgressWidget from './SimpleProgressWidget';
+import LeaderboardRankingWidget from './LeaderboardRankingWidget';
 import SimpleStreakWidget from './SimpleStreakWidget';
 import SimpleRecentActivityWidget from './SimpleRecentActivityWidget';
 
@@ -11,7 +11,7 @@ const WidgetCarousel: React.FC = () => {
 
   const widgets = [
     { component: SimpleStatsWidget, title: 'Your Stats' },
-    { component: SimpleProgressWidget, title: 'Progress' },
+    { component: LeaderboardRankingWidget, title: 'Leaderboard' },
     { component: SimpleStreakWidget, title: 'Study Streak' },
     { component: SimpleRecentActivityWidget, title: 'Recent Activity' }
   ];
@@ -29,8 +29,7 @@ const WidgetCarousel: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header with Navigation */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-900">Dashboard</h2>
+      <div className="flex items-center justify-end mb-3">
         <div className="flex items-center gap-1">
           <Button
             variant="outline"

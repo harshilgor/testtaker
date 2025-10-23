@@ -79,8 +79,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       
       <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
         {/* Header */}
-        <div className="text-center mb-6 relative flex-shrink-0">
-          <div className="flex items-center justify-center gap-4 mb-3">
+        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+          <div className="flex items-center gap-4">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Welcome back, {userName}!
             </h1>
@@ -108,20 +108,22 @@ const Dashboard: React.FC<DashboardProps> = ({
               </Button>
             </motion.div>
           </div>
-          <p className="text-sm md:text-base text-gray-600">
-            Choose your practice mode to get started
-          </p>
           
-          {isAdmin && (
-            <Button
-              onClick={() => setShowAdminPanel(true)}
-              variant="ghost"
-              size="sm"
-              className="absolute top-0 right-0 text-gray-500 hover:text-gray-700 min-h-[40px] min-w-[40px]"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <p className="text-sm md:text-base text-gray-600 hidden md:block">
+              Choose your practice mode to get started
+            </p>
+            {isAdmin && (
+              <Button
+                onClick={() => setShowAdminPanel(true)}
+                variant="ghost"
+                size="sm"
+                className="text-gray-500 hover:text-gray-700 min-h-[40px] min-w-[40px]"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Main Content - Practice Modes + Widgets */}
