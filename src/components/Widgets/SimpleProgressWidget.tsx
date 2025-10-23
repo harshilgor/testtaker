@@ -11,27 +11,27 @@ const SimpleProgressWidget: React.FC = () => {
 
   return (
     <Card className="h-full bg-white border border-gray-200 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900">Progress</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold text-gray-900">Progress</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="space-y-4">
+        <div className="space-y-3">
           {progressData.map((item, index) => (
             <div key={index} className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-xs font-medium text-gray-700">{item.label}</span>
+                <span className="text-xs text-gray-600">
                   {item.current} / {item.target}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
-                  className={`h-2 rounded-full ${item.color} transition-all duration-300`}
+                  className={`h-1.5 rounded-full ${item.color} transition-all duration-300`}
                   style={{ width: `${Math.min(item.progress, 100)}%` }}
                 ></div>
               </div>
               <div className="text-right">
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-xs font-medium text-gray-900">
                   {item.progress.toFixed(1)}%
                 </span>
               </div>

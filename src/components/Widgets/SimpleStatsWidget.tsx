@@ -12,19 +12,19 @@ const SimpleStatsWidget: React.FC = () => {
 
   return (
     <Card className="h-full bg-white border border-gray-200 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900">Your Stats</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold text-gray-900">Your Stats</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div key={index} className="text-center">
-                <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Icon className={`h-5 w-5 ${stat.color}`} />
+                <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
-                <div className="text-xl font-bold text-gray-900 mb-1">
+                <div className="text-lg font-bold text-gray-900 mb-1">
                   {stat.value}
                 </div>
                 <div className="text-xs text-gray-600">

@@ -127,21 +127,21 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* Main Content - Practice Modes + Widgets */}
         <div className="flex-1 flex gap-6 overflow-hidden">
           {/* Practice Modes - Left Side */}
-          <div className="flex-shrink-0 w-80">
-            <div className="space-y-4 h-full">
+          <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
               {/* Marathon Mode Card */}
-              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl h-1/3">
-                <CardContent className="p-4 h-full flex flex-col justify-center">
+              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl">
+                <CardContent className="p-6 md:p-8">
                   <div className="text-center">
-                    <div className="bg-orange-50 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-                      <Zap className="h-6 w-6 text-orange-500" />
+                    <div className="bg-orange-50 rounded-full p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                      <Zap className="h-8 w-8 text-orange-500" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Marathon Mode</h3>
-                    <p className="text-gray-600 mb-4 text-xs leading-relaxed">
-                      3000+ real SAT Practice questions
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-4">Marathon Mode</h3>
+                    <p className="text-gray-600 mb-6 text-sm md:text-base leading-relaxed px-2">
+                      3000+ real SAT Practice questions with unlimited practice
                     </p>
                     
-                    <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
+                    <div className="flex items-center justify-center space-x-4 mb-6 text-xs md:text-sm text-gray-500">
                       <div className="flex items-center">
                         <Zap className="h-3 w-3 mr-1" />
                         Unlimited
@@ -154,7 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <Button 
                       onClick={onMarathonSelect} 
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 font-medium text-sm rounded-xl"
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 md:py-4 font-medium text-sm md:text-base rounded-xl min-h-[44px]"
                     >
                       Start Marathon
                     </Button>
@@ -163,18 +163,18 @@ const Dashboard: React.FC<DashboardProps> = ({
               </Card>
 
               {/* Quiz Card */}
-              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl h-1/3">
-                <CardContent className="p-4 h-full flex flex-col justify-center">
+              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl">
+                <CardContent className="p-6 md:p-8">
                   <div className="text-center">
-                    <div className="bg-purple-50 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-                      <Brain className="h-6 w-6 text-purple-500" />
+                    <div className="bg-purple-50 rounded-full p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                      <Brain className="h-8 w-8 text-purple-500" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Quiz</h3>
-                    <p className="text-gray-600 mb-4 text-xs leading-relaxed">
-                      Create custom quizzes from specific topics
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-4">Quiz</h3>
+                    <p className="text-gray-600 mb-6 text-sm md:text-base leading-relaxed px-2">
+                      Create custom quizzes from specific topics and difficulty levels
                     </p>
                     
-                    <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
+                    <div className="flex items-center justify-center space-x-4 mb-6 text-xs md:text-sm text-gray-500">
                       <div className="flex items-center">
                         <BookOpen className="h-3 w-3 mr-1" />
                         Custom
@@ -187,7 +187,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <Button 
                       onClick={onQuizSelect} 
-                      className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 font-medium text-sm rounded-xl"
+                      className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 md:py-4 font-medium text-sm md:text-base rounded-xl min-h-[44px]"
                     >
                       Create Quiz
                     </Button>
@@ -196,18 +196,18 @@ const Dashboard: React.FC<DashboardProps> = ({
               </Card>
 
               {/* Mock Test Card */}
-              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl h-1/3">
-                <CardContent className="p-4 h-full flex flex-col justify-center">
+              <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl">
+                <CardContent className="p-6 md:p-8">
                   <div className="text-center">
-                    <div className="bg-blue-50 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-blue-500" />
+                    <div className="bg-blue-50 rounded-full p-4 w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                      <FileText className="h-8 w-8 text-blue-500" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Mock Test</h3>
-                    <p className="text-gray-600 mb-4 text-xs leading-relaxed">
-                      Full SAT mock test with real timing
+                    <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-4">Mock Test</h3>
+                    <p className="text-gray-600 mb-6 text-sm md:text-base leading-relaxed px-2">
+                      Take a full SAT mock test with real timing and adaptive scoring
                     </p>
                     
-                    <div className="flex items-center justify-center space-x-3 mb-4 text-xs text-gray-500">
+                    <div className="flex items-center justify-center space-x-4 mb-6 text-xs md:text-sm text-gray-500">
                       <div className="flex items-center">
                         <FileText className="h-3 w-3 mr-1" />
                         Real Format
@@ -220,7 +220,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <Button 
                       onClick={handleMockTestSelect} 
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 font-medium text-sm rounded-xl"
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 md:py-4 font-medium text-sm md:text-base rounded-xl min-h-[44px]"
                     >
                       Take Mock Test
                     </Button>
@@ -230,8 +230,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Widgets - Right Side */}
-          <div className="flex-1 overflow-hidden">
+          {/* Widgets - Right Side - Much Smaller */}
+          <div className="flex-shrink-0 w-80 overflow-hidden">
             <WidgetCarousel />
           </div>
         </div>

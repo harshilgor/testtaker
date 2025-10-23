@@ -11,24 +11,24 @@ const SimpleRecentActivityWidget: React.FC = () => {
 
   return (
     <Card className="h-full bg-white border border-gray-200 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900">Recent Activity</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold text-gray-900">Recent Activity</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="space-y-3">
+        <div className="space-y-2">
           {activities.map((activity, index) => {
             const Icon = activity.icon;
             return (
-              <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Icon className={`h-4 w-4 ${activity.color}`} />
+              <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Icon className={`h-3 w-3 ${activity.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                  <div className="text-xs font-medium text-gray-900 truncate">
                     {activity.title}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-xs font-medium text-gray-700">
                       {activity.score}
                     </span>
                     <span className="text-xs text-gray-500">

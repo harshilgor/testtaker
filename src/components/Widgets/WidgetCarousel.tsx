@@ -29,24 +29,24 @@ const WidgetCarousel: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header with Navigation */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Dashboard</h2>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-900">Dashboard</h2>
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
             onClick={prevWidget}
-            className="h-8 w-8 p-0"
+            className="h-6 w-6 p-0"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3 w-3" />
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={nextWidget}
-            className="h-8 w-8 p-0"
+            className="h-6 w-6 p-0"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3 w-3" />
           </Button>
         </div>
       </div>
@@ -57,12 +57,12 @@ const WidgetCarousel: React.FC = () => {
       </div>
 
       {/* Dots Indicator */}
-      <div className="flex justify-center gap-1 mt-4">
+      <div className="flex justify-center gap-1 mt-3">
         {widgets.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`w-2 h-2 rounded-full transition-colors ${
+            className={`w-1.5 h-1.5 rounded-full transition-colors ${
               index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
             }`}
           />
