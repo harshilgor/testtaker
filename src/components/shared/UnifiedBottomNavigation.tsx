@@ -45,7 +45,7 @@ const UnifiedBottomNavigation: React.FC<UnifiedBottomNavigationProps> = ({
     if (!isSubmitted) {
       return 'Submit';
     } else if (isLastItem) {
-      return variant === 'sat' ? 'Complete' : 'Complete Quiz';
+      return variant === 'sat' ? 'Complete' : 'Submit Quiz';
     } else {
       return variant === 'sat' ? 'Next' : 'Next Question';
     }

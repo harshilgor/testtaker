@@ -8,7 +8,7 @@ import QuizQuestionPanel from './Quiz/QuizQuestionPanel';
 import QuizAnswerPanel from './Quiz/QuizAnswerPanel';
 import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import QuizSidebar from './Quiz/QuizSidebar';
-import QuizSummaryPage from './QuizSummaryPage';
+import QuizSummary from './Quiz/QuizSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -352,15 +352,11 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (showSummary) {
     return (
-      <QuizSummaryPage
+      <QuizSummary
         questions={questions}
         answers={answers}
-        topics={topics}
-        timeElapsed={elapsedTime}
         onRetakeQuiz={handleRetakeQuiz}
         onBackToDashboard={onBackToDashboard}
-        userName={userName}
-        subject={subject}
       />
     );
   }
