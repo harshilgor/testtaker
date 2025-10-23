@@ -36,10 +36,10 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
     null);
 
   return (
-    <div className={`h-full bg-gray-50 overflow-y-auto ${isMobile ? 'p-2' : 'p-3'}`}>
-      <div className="max-w-full mx-auto">
+    <div className={`h-full ${isMobile ? 'p-2' : 'p-3'} flex flex-col`}>
+      <div className="max-w-full mx-auto h-full flex flex-col">
         {/* Rounded Container with Curved Edges */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden h-full">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden h-full flex flex-col">
           {/* Question Header */}
           <div className="p-6 border-b border-gray-100">
             <div className="flex justify-between items-center">
@@ -59,7 +59,7 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
           </div>
           
           {/* Question Content */}
-          <div className="p-6">
+          <div className="p-6 flex-1 overflow-y-auto">
             {/* Passage Text (for Reading and Writing questions) */}
             {passageText && passageText !== questionText && (
               <div className={`${isMobile ? 'text-sm' : 'text-base'} leading-relaxed text-gray-700 p-4 bg-gray-50 rounded-lg border-l-4 border-green-400 mb-6`}>

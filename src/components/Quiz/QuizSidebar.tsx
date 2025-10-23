@@ -4,7 +4,7 @@ import { CheckCircle, Circle, Flag, Clock } from 'lucide-react';
 interface QuizSidebarProps {
   questions: any[];
   currentQuestionIndex: number;
-  answers: (string | null)[];
+  answers: (number | null)[];
   flaggedQuestions: boolean[];
   onGoToQuestion: (index: number) => void;
   onBack: () => void;
@@ -112,9 +112,9 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
 
   if (isCollapsed) {
     return (
-      <div className="w-16 bg-slate-800 text-white h-full flex flex-col">
+      <div className="w-12 bg-slate-900 text-white h-full flex flex-col">
         {/* Collapsed Header */}
-        <div className="p-4 border-b border-slate-700">
+        <div className="p-4 border-b border-slate-800">
           <button
             onClick={onToggleSidebar}
             className="w-full flex items-center justify-center p-2 hover:bg-slate-700 rounded transition-colors"
@@ -160,12 +160,12 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
   }
 
   return (
-    <div className="w-80 bg-slate-800 text-white h-full flex flex-col">
+    <div className="w-64 bg-slate-900 text-white h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700">
+      <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between mb-3">
           <div className="text-lg font-semibold text-white">
-            {subject}
+            Get1600.co
           </div>
           <button
             onClick={onToggleSidebar}
@@ -178,9 +178,16 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
             </div>
           </button>
         </div>
-        <div className="text-sm text-gray-300">
+        <div className="text-sm text-gray-300 mb-3">
           {topics.join(', ')}
         </div>
+        {/* Exit Quiz Button */}
+        <button
+          onClick={onBack}
+          className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-3 rounded transition-colors"
+        >
+          Exit Quiz
+        </button>
       </div>
 
       {/* Today's Questions */}

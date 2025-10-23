@@ -147,8 +147,8 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
 
   // Desktop layout
   return (
-    <div className="h-full bg-gray-50 border-l border-gray-200 flex flex-col">
-      <div className="h-full p-2">
+    <div className="h-full border-l border-gray-200 flex flex-col">
+      <div className="h-full p-2 flex flex-col">
         {/* Rounded Container with Curved Edges */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full flex flex-col overflow-hidden">
           {/* Header */}

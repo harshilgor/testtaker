@@ -58,6 +58,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [answerCorrectness, setAnswerCorrectness] = useState<(boolean | null)[]>(new Array(questions.length).fill(null));
+  
+  // Panel resizing state
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
+  const [isDragging, setIsDragging] = useState(false);
 
   // Track elapsed time
   useEffect(() => {
@@ -296,6 +300,50 @@ const QuizView: React.FC<QuizViewProps> = ({
     setQuestionStartTimes(new Array(questions.length).fill(Date.now()));
   };
 
+  // Drag handlers for panel resizing
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const containerWidth = window.innerWidth - (isSidebarCollapsed ? 48 : 256); // Account for sidebar
+    const mouseX = e.clientX - (isSidebarCollapsed ? 48 : 256); // Adjust for sidebar offset
+    const newLeftWidth = (mouseX / containerWidth) * 100;
+    
+    // Constrain between 20% and 80%
+    const constrainedWidth = Math.min(Math.max(newLeftWidth, 20), 80);
+    setLeftPanelWidth(constrainedWidth);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging]);
+
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = answers.filter(answer => answer !== null).length;
   const isSubmitted = submittedQuestions[currentQuestionIndex];
@@ -318,7 +366,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="h-screen bg-white flex overflow-hidden">
       {/* Left Sidebar */}
       <QuizSidebar
         questions={questions}
@@ -336,19 +384,31 @@ const QuizView: React.FC<QuizViewProps> = ({
       />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <QuizTopHeader
-          topics={topics}
-          time={0}
-          onBack={() => {}}
-          difficulty={currentQuestion.difficulty}
-        />
+      <div className="flex-1 flex flex-col h-full relative">
+        {/* Hamburger Menu Button - Only visible when sidebar is collapsed */}
+        {isSidebarCollapsed && (
+          <div className="fixed top-4 left-2 z-50">
+            <button
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="bg-slate-900 hover:bg-slate-800 text-white p-1.5 rounded transition-colors shadow-lg"
+              title="Open Sidebar"
+            >
+              <div className="w-4 h-4 flex flex-col space-y-0.5">
+                <div className="w-full h-0.5 bg-white"></div>
+                <div className="w-full h-0.5 bg-white"></div>
+                <div className="w-full h-0.5 bg-white"></div>
+              </div>
+            </button>
+          </div>
+        )}
         
         {/* Main Quiz Content */}
-        <div className="flex-1 flex p-2">
+        <div className="flex-1 flex p-2 overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
           {/* Question Panel */}
-          <div className="w-1/2 border-r border-gray-200 pr-1">
+          <div 
+            className="h-full"
+            style={{ width: `${leftPanelWidth}%` }}
+          >
             <QuizQuestionPanel
               question={currentQuestion}
               isFlagged={flaggedQuestions[currentQuestionIndex]}
@@ -356,8 +416,22 @@ const QuizView: React.FC<QuizViewProps> = ({
             />
           </div>
           
+          {/* Draggable Resizer */}
+          <div
+            className={`w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize flex items-center justify-center transition-colors ${
+              isDragging ? 'bg-gray-400' : ''
+            }`}
+            onMouseDown={handleMouseDown}
+            style={{ minWidth: '4px' }}
+          >
+            <div className="w-1 h-8 bg-gray-500 rounded-full"></div>
+          </div>
+          
           {/* Answer Panel */}
-\          <div className="w-1/2 pl-1">
+          <div 
+            className="h-full"
+            style={{ width: `${100 - leftPanelWidth}%` }}
+          >
             <QuizAnswerPanel
               question={currentQuestion}
               selectedAnswer={answers[currentQuestionIndex]}
@@ -377,27 +451,48 @@ const QuizView: React.FC<QuizViewProps> = ({
         </div>
         
         {/* Bottom Navigation - New Design */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4">
-          <div className="flex justify-center items-center space-x-4">
-            {/* Submit Answer Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={loading || submittedQuestions.includes(currentQuestionIndex)}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-            >
-              {loading ? 'Submitting...' : 'Submit Answer'}
-            </button>
+        <div className="bg-white border-t border-gray-200 px-6 py-2">
+          <div className="flex justify-between items-center">
+            {/* Question Details - Left Side */}
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Topic:</span> {currentQuestion.topic || 'N/A'}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Difficulty:</span> 
+                <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${
+                  currentQuestion.difficulty?.toLowerCase() === 'easy' ? 'bg-green-100 text-green-800' :
+                  currentQuestion.difficulty?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  currentQuestion.difficulty?.toLowerCase() === 'hard' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {currentQuestion.difficulty?.toUpperCase() || 'N/A'}
+                </span>
+              </div>
+            </div>
             
-            {/* New Question Button */}
-            <button
-              onClick={handleNext}
-              className="px-6 py-3 bg-white text-blue-600 font-medium rounded-lg border border-blue-600 hover:bg-blue-50 transition-colors flex items-center space-x-2"
-            >
-              <span>New Question</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            {/* Action Buttons - Right Side */}
+            <div className="flex items-center space-x-3">
+              {/* Submit Answer Button */}
+              <button
+                onClick={handleSubmit}
+                disabled={loading || submittedQuestions[currentQuestionIndex]}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              >
+                {loading ? 'Submitting...' : 'Submit Answer'}
+              </button>
+              
+              {/* Next Question Button */}
+              <button
+                onClick={handleNext}
+                className="px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-600 hover:bg-blue-50 transition-colors flex items-center space-x-1"
+              >
+                <span>Next Question</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
