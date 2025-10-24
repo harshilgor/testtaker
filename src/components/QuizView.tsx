@@ -478,16 +478,29 @@ const QuizView: React.FC<QuizViewProps> = ({
                 {loading ? 'Submitting...' : 'Submit Answer'}
               </button>
               
-              {/* Next Question Button */}
-              <button
-                onClick={handleNext}
-                className="px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-600 hover:bg-blue-50 transition-colors flex items-center space-x-1"
-              >
-                <span>Next Question</span>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+              {/* Next Question / Complete Quiz Button */}
+              {currentQuestionIndex === questions.length - 1 ? (
+                <button
+                  onClick={handleCompleteQuiz}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                >
+                  <span>Complete Quiz</span>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  className="px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-600 hover:bg-blue-50 transition-colors flex items-center space-x-1"
+                >
+                  <span>Next Question</span>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>

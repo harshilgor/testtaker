@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import TestWidget from './TestWidget';
 import SimpleStatsWidget from './SimpleStatsWidget';
 import LeaderboardRankingWidget from './LeaderboardRankingWidget';
 import SimpleStreakWidget from './SimpleStreakWidget';
-import SimpleRecentActivityWidget from './SimpleRecentActivityWidget';
+import WidgetErrorBoundary from './WidgetErrorBoundary';
+// import SimpleRecentActivityWidget from './SimpleRecentActivityWidget';
 
 const WidgetCarousel: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,10 +28,12 @@ const WidgetCarousel: React.FC = () => {
   const CurrentWidget = widgets[currentIndex].component;
 
   return (
-    <div className="w-80 h-64 relative">
+    <div className="w-full h-full relative">
       {/* Widget Content - Full Size */}
       <div className="w-full h-full overflow-hidden">
-        <CurrentWidget />
+        <WidgetErrorBoundary>
+          <CurrentWidget />
+        </WidgetErrorBoundary>
       </div>
 
       {/* Navigation Buttons - Overlayed inside the widget */}

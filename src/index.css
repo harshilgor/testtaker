@@ -4,6 +4,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Toast animations */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Custom animations for landing page */
 @keyframes fadeIn {
   from {

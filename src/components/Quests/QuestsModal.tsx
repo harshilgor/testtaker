@@ -8,6 +8,8 @@ import { Clock, Trophy, CheckCircle, X, TrendingUp, Play } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useSimpleToast } from '@/components/ui/simple-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 type DbQuest = Tables<'user_quests'>;
 
@@ -91,7 +93,10 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
   const [questsLoading, setQuestsLoading] = useState(true);
   const [claimingQuest, setClaimingQuest] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const navigate = useNavigate();
+  const { showToast } = useSimpleToast();
+  const queryClient = useQueryClient();
 
   // Analyze user's weak topics from performance data
   const weakTopicsAnalysis = useMemo(() => {
@@ -143,62 +148,172 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     return weakTopics;
   }, [questionAttempts]);
 
-  // Load existing quests and generate new ones based on weak areas
+  // Load founder-designed quests for ALL users
   useEffect(() => {
     const loadQuests = async () => {
-      if (loading) return;
-      
       setQuestsLoading(true);
       try {
         const { data: user } = await supabase.auth.getUser();
-        if (!user.user) return;
-
-        const userId = user.user.id;
-
-        // Manage quest expiration and generate new quests
-        await manageQuestExpiration(userId);
-
-        // Load the newly generated quests
-        const { data: finalQuests, error: finalError } = await supabase
-          .from('user_quests')
-          .select('*')
-          .eq('user_id', userId)
-          .gte('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-
-        if (finalError) {
-          console.error('Error reloading quests:', finalError);
+        if (!user.user) {
+          setQuestsLoading(false);
           return;
         }
 
-        // Convert to Quest format with additional analysis data
-        const formattedQuests: Quest[] = (finalQuests || []).map(dbQuest => {
-          const weakArea = weakTopicsAnalysis.find(w => w.topic === (dbQuest as any).target_topic || w.topic === (dbQuest as any).topic);
-          const title = (dbQuest as any).quest_title ?? (dbQuest as any).title ?? '';
-          const description = (dbQuest as any).quest_description ?? (dbQuest as any).description ?? '';
-          const topic = (dbQuest as any).target_topic ?? (dbQuest as any).topic ?? 'General';
-          const target = (dbQuest as any).target_count ?? (dbQuest as any).target_value ?? 0;
-          const progress = (dbQuest as any).current_progress ?? (dbQuest as any).progress ?? 0;
-          const points = (dbQuest as any).points_reward ?? (dbQuest as any).points ?? 0;
+        // Check for completed quests in the database
+        const { data: completedQuests } = await supabase
+          .from('quest_completions')
+          .select('quest_id')
+          .eq('user_id', user.user.id);
 
-          return {
-            id: (dbQuest as any).id,
-            title,
-            description,
-            topic,
-            difficulty: ((dbQuest as any).difficulty as 'Easy' | 'Medium' | 'Hard') ?? 'Medium',
-            type: ((dbQuest as any).quest_type as 'daily' | 'weekly') ?? 'daily',
-            target,
-            progress,
-            points,
-            completed: Boolean((dbQuest as any).completed),
-            expiresAt: new Date((dbQuest as any).expires_at),
-            subject: weakArea?.subject || 'General',
-            accuracy: weakArea?.accuracy || 0
-          };
-        });
+        const completedQuestIds = new Set(completedQuests?.map(q => q.quest_id) || []);
 
-        setUserQuests(formattedQuests);
+        // Always show founder-designed quests for ALL users
+        const founderQuests: Quest[] = [
+          {
+            id: 'welcome-quest',
+            title: "Welcome to the platform! I'm Harshil, the founder 🚀",
+            description: "I encourage you to contact me directly at harshilgor06@gmail.com with any feedback. I hope you love it LETS GET THAT 1600 !!!! 😎🙏",
+            topic: "welcome",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 50,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'leaderboard-quest',
+            title: "Visit the Leaderboard 📈",
+            description: "See how you compare with other SAT students and track your progress against the community.",
+            topic: "leaderboard",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 25,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'practice-quest',
+            title: "Explore the Practice Tab 📕",
+            description: "Navigate to the Practice section on the Home page to customize and engage with various question styles.",
+            topic: "practice",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 30,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'custom-quiz-quest',
+            title: "Create Your First Custom Quiz 💬",
+            description: "Use the Practice tool to generate a short, 10-question quiz on any topic of your choice.",
+            topic: "custom_quiz",
+            difficulty: 'Medium',
+            type: 'daily',
+            target: 10,
+            progress: 0,
+            points: 40,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'both',
+            accuracy: 0
+          },
+          {
+            id: 'learn-quest',
+            title: "Review Your Errors on the Learn Page 📜",
+            description: "Visit the Learn section to review every question you have answered incorrectly across the platform.",
+            topic: "learn",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 35,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'performance-quest',
+            title: "Analyze Your Performance 📊",
+            description: "Access the dedicated Performance page to view detailed analytics and metrics on your progress.",
+            topic: "performance",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 30,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'mock-test-explore-quest',
+            title: "Explore the Mock Test Section 📚",
+            description: "View the available full-length practice tests and understand the testing interface.",
+            topic: "mock_test_explore",
+            difficulty: 'Easy',
+            type: 'daily',
+            target: 1,
+            progress: 0,
+            points: 25,
+            completed: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            subject: 'general',
+            accuracy: 0
+          },
+          {
+            id: 'mock-test-complete-quest',
+            title: "Complete a Full Mock Test 📖",
+            description: "Schedule and take one of the available mock exams to get a baseline score.",
+            topic: "mock_test_complete",
+            difficulty: 'Hard',
+            type: 'weekly',
+            target: 1,
+            progress: 0,
+            points: 60,
+            completed: false,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            subject: 'both',
+            accuracy: 0
+          },
+          {
+            id: 'ai-analysis-quest',
+            title: "Activate AI Weakness Analysis 😎",
+            description: "Go to the Practice page, check your personalized AI Weakness Analysis, and complete the recommended quiz that targets your weakest area.",
+            topic: "ai_analysis",
+            difficulty: 'Medium',
+            type: 'weekly',
+            target: 1,
+            progress: 0,
+            points: 45,
+            completed: false,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            subject: 'both',
+            accuracy: 0
+          }
+        ];
+
+        // Update quest completion status based on database
+        const questsWithCompletionStatus = founderQuests.map(quest => ({
+          ...quest,
+          completed: completedQuestIds.has(quest.id),
+          progress: completedQuestIds.has(quest.id) ? quest.target : 0
+        }));
+
+        setUserQuests(questsWithCompletionStatus);
       } catch (error) {
         console.error('Error in loadQuests:', error);
       } finally {
@@ -207,7 +322,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     };
 
     loadQuests();
-  }, [loading, questionAttempts, weakTopicsAnalysis]);
+  }, [loading]);
 
   // New: realtime progress sync – increments quest progress on every correct attempt
   useEffect(() => {
@@ -707,15 +822,121 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
   // Handle starting a quest
   const handleStartQuest = (quest: Quest) => {
-    // Navigate to quiz with specific topic
-    navigate('/quiz', { 
-      state: { 
-        autoSelectTopic: quest.topic,
-        subject: quest.subject,
-        questionCount: quest.target
-      }
-    });
-    onClose(); // Close the modal
+    // Handle different quest types with specific navigation
+    switch (quest.topic) {
+      case 'welcome':
+        // Show welcome message and mark as done
+        showToast({
+          title: 'Welcome to the platform! 🚀',
+          description: 'I\'m Harshil, the founder. Contact me at harshilgor06@gmail.com with any feedback. LET\'S GET THAT 1600!!! 😎🙏',
+          type: 'success',
+          duration: 8000
+        });
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        break;
+      case 'leaderboard':
+        // Navigate to leaderboard page
+        navigate('/leaderboard');
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        onClose();
+        break;
+      case 'practice':
+        // Navigate to quiz page for practice
+        navigate('/quiz');
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        onClose();
+        break;
+      case 'custom_quiz':
+        // Navigate to quiz page for custom quiz
+        navigate('/quiz');
+        onClose();
+        break;
+      case 'learn':
+        // Navigate to learn page
+        navigate('/learn');
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        onClose();
+        break;
+      case 'performance':
+        // Navigate to performance page
+        navigate('/performance');
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        onClose();
+        break;
+      case 'mock_test_explore':
+        // Navigate to mock test page
+        navigate('/sat-mock-test');
+        // Mark quest as completed and show completion toast
+        handleCompleteQuest(quest.id);
+        showToast({
+          title: 'Quest Completed! 🎉',
+          description: `Congratulations! You earned ${quest.points} points!`,
+          type: 'success',
+          duration: 6000
+        });
+        onClose();
+        break;
+      case 'mock_test_complete':
+        // Navigate to mock test page
+        navigate('/sat-mock-test');
+        onClose();
+        break;
+      case 'ai_analysis':
+        // Navigate to quiz with AI analysis
+        navigate('/quiz', { 
+          state: { 
+            aiAnalysis: true,
+            subject: quest.subject
+          }
+        });
+        onClose();
+        break;
+      default:
+        // Default to quiz navigation
+        navigate('/quiz', { 
+          state: { 
+            autoSelectTopic: quest.topic,
+            subject: quest.subject,
+            questionCount: quest.target
+          }
+        });
+        onClose();
+    }
   };
 
   const handleCompleteQuest = async (questId: string) => {
@@ -723,21 +944,6 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       setClaimingQuest(questId);
       const quest = userQuests.find(q => q.id === questId);
       if (!quest) return;
-
-      // Update quest as completed and claimed
-      const { error: updateError } = await supabase
-        .from('user_quests')
-        .update({ 
-          completed: true, 
-          current_progress: quest.target,
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', questId);
-
-      if (updateError) {
-        console.error('Error updating quest:', updateError);
-        return;
-      }
 
       const { data: user } = await supabase.auth.getUser();
       const userId = user.user?.id as string;
@@ -750,12 +956,50 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
       if (pointsError) {
         console.error('Error awarding points:', pointsError);
+        showToast({
+          title: 'Error',
+          description: 'Failed to award points. Please try again.',
+          type: 'error',
+          duration: 3000
+        });
+        return;
       }
 
-      // Update local state - mark as completed and claimed
+      // Save quest completion to database for persistence
+      const { error: completionError } = await supabase
+        .from('quest_completions')
+        .insert({
+          user_id: userId,
+          quest_id: questId,
+          points_awarded: quest.points
+        });
+
+      if (completionError) {
+        console.error('Error saving quest completion:', completionError);
+        showToast({
+          title: 'Error',
+          description: 'Failed to save quest completion. Please try again.',
+          type: 'error',
+          duration: 3000
+        });
+        return;
+      }
+
+      // Update local state
       setUserQuests(prev => prev.map(q => 
         q.id === questId ? { ...q, completed: true, progress: quest.target, claimed: true } : q
       ));
+
+      // Invalidate leaderboard cache to refresh data
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+
+      // Show success notification
+      showToast({
+        title: 'Quest Completed! 🎉',
+        description: `Congratulations! You earned ${quest.points} points!`,
+        type: 'success',
+        duration: 5000
+      });
 
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
@@ -763,6 +1007,12 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       onQuestCompleted?.();
     } catch (error) {
       console.error('Error completing quest:', error);
+      showToast({
+        title: 'Error',
+        description: 'Failed to complete quest. Please try again.',
+        type: 'error',
+        duration: 3000
+      });
     } finally {
       setClaimingQuest(null);
     }
@@ -906,6 +1156,32 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             </div>
           </motion.div>
 
+          {/* Tab Navigation */}
+          <div className="px-6 py-4 border-b border-gray-200 bg-white">
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'active'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Active ({activeQuests.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'completed'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Completed ({completedQuests.length})
+              </button>
+            </div>
+          </div>
+
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto p-6">
             {userQuests.length === 0 ? (
@@ -921,8 +1197,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
               </motion.div>
             ) : (
               <div className="space-y-6">
-                {/* Active Quests */}
-                {activeQuests.length > 0 && (
+                {/* Show quests based on active tab */}
+                {activeTab === 'active' && activeQuests.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-black mb-4">Active Quests</h3>
                     <div className="space-y-4">
@@ -1029,11 +1305,24 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                                     </div>
                                     <Button
                                       onClick={() => handleStartQuest(quest)}
-                                      className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded flex items-center gap-1"
+                                      className={`text-white text-xs px-3 py-1 rounded flex items-center gap-1 ${
+                                        quest.topic === 'welcome' 
+                                          ? 'bg-green-500 hover:bg-green-600' 
+                                          : 'bg-blue-500 hover:bg-blue-600'
+                                      }`}
                                       size="sm"
                                     >
-                                      <Play className="h-3 w-3" />
-                                      Start
+                                      {quest.topic === 'welcome' ? (
+                                        <>
+                                          <CheckCircle className="h-3 w-3" />
+                                          Done
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Play className="h-3 w-3" />
+                                          Start
+                                        </>
+                                      )}
                                     </Button>
                                   </div>
                                 </div>
@@ -1047,7 +1336,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                 )}
 
                 {/* Completed Quests */}
-                {completedQuests.length > 0 && (
+                {activeTab === 'completed' && completedQuests.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-black mb-4">Completed Quests</h3>
                     <div className="space-y-4">
@@ -1056,8 +1345,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                           key={quest.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: (activeQuests.length + index) * 0.1 }}
-                          className="flex items-start gap-4 p-4 border-l-4 border-gray-300 bg-gray-100 rounded-r-lg opacity-60"
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-start gap-4 p-4 border-l-4 border-green-600 bg-green-50 rounded-r-lg"
                         >
                           {/* Checkmark */}
                           <div className="flex-shrink-0 mt-1">
@@ -1068,10 +1357,10 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-500 mb-1 line-through">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
                                   {quest.title}
                                 </h3>
-                                <p className="text-sm text-gray-400 mb-3">
+                                <p className="text-sm text-gray-600 mb-3">
                                   {quest.description}
                                 </p>
                               </div>
@@ -1084,7 +1373,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                             
                             {/* Progress bar - full */}
                             <div className="mb-2">
-                              <div className="flex items-center justify-between text-sm text-gray-400 mb-1">
+                              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                                 <span>Progress: {quest.progress}/{quest.target}</span>
                                 <span>100%</span>
                               </div>
@@ -1094,7 +1383,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                             </div>
                             
                             {/* Quest metadata */}
-                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                            <div className="flex items-center gap-4 text-xs text-gray-600">
                               <span className="font-medium text-green-600">+{quest.points} points earned</span>
                               <Badge variant="outline" className="text-xs">
                                 {quest.type === 'daily' ? 'Daily' : 'Weekly'}
@@ -1105,6 +1394,20 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* Empty state for completed tab */}
+                {activeTab === 'completed' && completedQuests.length === 0 && (
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-center py-12"
+                  >
+                    <Trophy className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-600 mb-2">No Completed Quests</h3>
+                    <p className="text-gray-500">Complete some quests to see them here!</p>
+                  </motion.div>
                 )}
               </div>
             )}

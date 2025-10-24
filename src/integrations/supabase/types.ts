@@ -322,6 +322,33 @@ export type Database = {
         }
         Relationships: []
       }
+      quest_completions: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          points_awarded: number
+          quest_id: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          points_awarded: number
+          quest_id: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          points_awarded?: number
+          quest_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       question_attempts: {
         Row: {
           created_at: string
@@ -594,7 +621,7 @@ export type Database = {
           details: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -603,7 +630,7 @@ export type Database = {
           details?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -612,7 +639,7 @@ export type Database = {
           details?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -647,6 +674,7 @@ export type Database = {
       }
       user_quests: {
         Row: {
+          claimed: boolean | null
           completed: boolean
           completed_at: string | null
           created_at: string | null
@@ -665,6 +693,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          claimed?: boolean | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string | null
@@ -683,6 +712,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          claimed?: boolean | null
           completed?: boolean
           completed_at?: string | null
           created_at?: string | null
@@ -723,6 +753,48 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_skill_progress: {
+        Row: {
+          attempts: number | null
+          correct_attempts: number | null
+          created_at: string | null
+          id: string
+          mastery_level: string | null
+          proficiency_score: number | null
+          recent_accuracy: number | null
+          skill_id: string
+          unlocked: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          correct_attempts?: number | null
+          created_at?: string | null
+          id?: string
+          mastery_level?: string | null
+          proficiency_score?: number | null
+          recent_accuracy?: number | null
+          skill_id: string
+          unlocked?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          correct_attempts?: number | null
+          created_at?: string | null
+          id?: string
+          mastery_level?: string | null
+          proficiency_score?: number | null
+          recent_accuracy?: number | null
+          skill_id?: string
+          unlocked?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -815,7 +887,7 @@ export type Database = {
         Returns: number
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
       get_questions_for_quiz: {
@@ -939,10 +1011,7 @@ export type Database = {
         Returns: number
       }
       increment_user_points: {
-        Args: {
-          p_points: number
-          p_user_id: string
-        }
+        Args: { p_points: number; p_user_id: string }
         Returns: undefined
       }
       mark_question_used_in_session: {
@@ -954,14 +1023,10 @@ export type Database = {
         }
         Returns: undefined
       }
-      refresh_all_leaderboard_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_leaderboard_stats: {
-        Args: Record<PropertyKey, never> | { target_user_id: string }
-        Returns: undefined
-      }
+      refresh_all_leaderboard_stats: { Args: never; Returns: undefined }
+      update_leaderboard_stats:
+        | { Args: { target_user_id: string }; Returns: undefined }
+        | { Args: never; Returns: undefined }
       update_leaderboard_stats_v2: {
         Args: { target_user_id: string }
         Returns: undefined
