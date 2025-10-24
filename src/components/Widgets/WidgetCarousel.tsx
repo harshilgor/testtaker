@@ -10,10 +10,9 @@ const WidgetCarousel: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const widgets = [
-    { component: SimpleStatsWidget, title: 'Your Stats' },
-    { component: LeaderboardRankingWidget, title: 'Leaderboard' },
+    { component: SimpleStatsWidget, title: 'Questions Solved' },
     { component: SimpleStreakWidget, title: 'Study Streak' },
-    { component: SimpleRecentActivityWidget, title: 'Recent Activity' }
+    { component: LeaderboardRankingWidget, title: 'Leaderboard Rank' }
   ];
 
   const nextWidget = () => {
@@ -27,36 +26,34 @@ const WidgetCarousel: React.FC = () => {
   const CurrentWidget = widgets[currentIndex].component;
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header with Navigation */}
-      <div className="flex items-center justify-end mb-3">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={prevWidget}
-            className="h-6 w-6 p-0"
-          >
-            <ChevronLeft className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={nextWidget}
-            className="h-6 w-6 p-0"
-          >
-            <ChevronRight className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Widget Content */}
-      <div className="flex-1">
+    <div className="w-80 h-64 relative">
+      {/* Widget Content - Full Size */}
+      <div className="w-full h-full overflow-hidden">
         <CurrentWidget />
       </div>
 
-      {/* Dots Indicator */}
-      <div className="flex justify-center gap-1 mt-3">
+      {/* Navigation Buttons - Overlayed inside the widget */}
+      <div className="absolute top-2 right-2 flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={prevWidget}
+          className="h-6 w-6 p-0 bg-white/80 hover:bg-white shadow-sm"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={nextWidget}
+          className="h-6 w-6 p-0 bg-white/80 hover:bg-white shadow-sm"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+      </div>
+
+      {/* Dots Indicator - Overlayed at bottom */}
+      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
         {widgets.map((_, index) => (
           <button
             key={index}

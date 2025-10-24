@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, Trophy, CheckCircle, X, TrendingUp } from 'lucide-react';
+import { Clock, Trophy, CheckCircle, X, TrendingUp, Play } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 type DbQuest = Tables<'user_quests'>;
 
@@ -90,6 +91,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
   const [questsLoading, setQuestsLoading] = useState(true);
   const [claimingQuest, setClaimingQuest] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const navigate = useNavigate();
 
   // Analyze user's weak topics from performance data
   const weakTopicsAnalysis = useMemo(() => {
@@ -703,6 +705,19 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     return quests;
   };
 
+  // Handle starting a quest
+  const handleStartQuest = (quest: Quest) => {
+    // Navigate to quiz with specific topic
+    navigate('/quiz', { 
+      state: { 
+        autoSelectTopic: quest.topic,
+        subject: quest.subject,
+        questionCount: quest.target
+      }
+    });
+    onClose(); // Close the modal
+  };
+
   const handleCompleteQuest = async (questId: string) => {
     try {
       setClaimingQuest(questId);
@@ -1005,11 +1020,21 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                                       {quest.description}
                                     </p>
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                                    <span>+{quest.points} pts</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                                    </Badge>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                      <span>+{quest.points} pts</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                                      </Badge>
+                                    </div>
+                                    <Button
+                                      onClick={() => handleStartQuest(quest)}
+                                      className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded flex items-center gap-1"
+                                      size="sm"
+                                    >
+                                      <Play className="h-3 w-3" />
+                                      Start
+                                    </Button>
                                   </div>
                                 </div>
                               )}

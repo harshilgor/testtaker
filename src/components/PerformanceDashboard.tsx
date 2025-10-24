@@ -29,7 +29,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 
 import StudyTimeCard from './Performance/StudyTimeCard';
-import QuestionTopicsDifficultyAnalytics from './Performance/QuestionTopicsDifficultyAnalytics';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -673,10 +672,6 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </div>
         </div>
 
-        {/* Question Topics & Difficulty Analytics - New Section */}
-        <div className="mb-8">
-          <QuestionTopicsDifficultyAnalytics userName={userName} />
-        </div>
 
         {/* Performance Trends Section - 2/3 + 1/3 Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

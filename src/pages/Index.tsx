@@ -167,7 +167,6 @@ const Index = () => {
       <div className="pt-16">
         <Dashboard
           userName={userName}
-          onMarathonSelect={() => navigate('/marathon')}
           onMockTestSelect={() => {}}
           onQuizSelect={() => navigate('/quiz')}
         />

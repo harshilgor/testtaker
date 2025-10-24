@@ -27,9 +27,11 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
   onBack, 
   onBackToDashboard 
 }) => {
-  const [selectedSubject, setSelectedSubject] = useState<Subject>('math');
+  const [selectedSubject, setSelectedSubject] = useState<'math' | 'english' | 'both'>('both');
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [marathonMode, setMarathonMode] = useState(false);
+  const [adaptiveLearning, setAdaptiveLearning] = useState(false);
   const { autoSelection, clearAutoSelection } = useAutoTopicSelection();
   
   const { topics, loading: topicsLoading } = useQuestionTopics(selectedSubject);
@@ -364,6 +366,133 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
                 </div>
               )}
 
+              {/* Marathon Mode Toggle */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Marathon Mode</h3>
+                    <p className="text-xs text-gray-500">Enable unlimited questions with continuous practice</p>
+                  </div>
+                  <button
+                    onClick={() => setMarathonMode(!marathonMode)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      marathonMode ? 'bg-orange-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        marathonMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Subject Focus - Only show when Marathon Mode is enabled */}
+              {marathonMode && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">Subject Focus</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Math Only */}
+                    <div
+                      onClick={() => setSelectedSubject('math')}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                        selectedSubject === 'math'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                          selectedSubject === 'math' ? 'bg-blue-100' : 'bg-gray-100'
+                        }`}>
+                          <svg className={`w-4 h-4 ${selectedSubject === 'math' ? 'text-blue-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <p className={`text-sm font-medium ${
+                          selectedSubject === 'math' ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          Math Only
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* English Only */}
+                    <div
+                      onClick={() => setSelectedSubject('english')}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                        selectedSubject === 'english'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                          selectedSubject === 'english' ? 'bg-blue-100' : 'bg-gray-100'
+                        }`}>
+                          <svg className={`w-4 h-4 ${selectedSubject === 'english' ? 'text-blue-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <p className={`text-sm font-medium ${
+                          selectedSubject === 'english' ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          English Only
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Custom */}
+                    <div
+                      onClick={() => setSelectedSubject('both')}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                        selectedSubject === 'both'
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                          selectedSubject === 'both' ? 'bg-green-100' : 'bg-gray-100'
+                        }`}>
+                          <svg className={`w-4 h-4 ${selectedSubject === 'both' ? 'text-green-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <p className={`text-sm font-medium ${
+                          selectedSubject === 'both' ? 'text-green-700' : 'text-gray-700'
+                        }`}>
+                          Custom
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Adaptive Learning Toggle */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Adaptive Learning</h3>
+                    <p className="text-xs text-gray-500">AI adjusts difficulty based on your performance</p>
+                  </div>
+                  <button
+                    onClick={() => setAdaptiveLearning(!adaptiveLearning)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      adaptiveLearning ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        adaptiveLearning ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               {/* Feedback Preference */}
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -386,14 +515,20 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
             <Button
               onClick={() => handleStartQuiz()}
               disabled={selectedTopics.length === 0 || loading}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl min-h-[44px]"
+              className={`px-8 py-3 font-medium rounded-xl min-h-[44px] ${
+                marathonMode 
+                  ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                  : adaptiveLearning
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
                 <Play className="h-4 w-4 mr-2" />
               )}
-              Start Quiz ({selectedTopics.length} topics, {useDifficultySelection ? getTotalQuestions() : questionCount} questions)
+              {marathonMode ? 'Start Marathon' : adaptiveLearning ? 'Start Adaptive Quiz' : 'Start Quiz'} ({selectedTopics.length} topics, {useDifficultySelection ? getTotalQuestions() : questionCount} questions)
             </Button>
           </div>
         </div>

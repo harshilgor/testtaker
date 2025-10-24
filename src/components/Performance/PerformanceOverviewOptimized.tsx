@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { TrendingUp, TrendingDown, Clock, Zap, Info, Calculator, BookOpen } from 'lucide-react';
-import PerformanceAnalytics from './PerformanceAnalytics';
 
 interface PerformanceOverviewOptimizedProps {
   userName: string;
@@ -348,8 +347,6 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
         </CardContent>
       </Card>
 
-      {/* Performance Analytics */}
-      <PerformanceAnalytics subject={selectedSubject} />
     </div>
   );
 };
