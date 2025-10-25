@@ -33,8 +33,8 @@ class OpenAIAnalysisService {
   private supabaseAnonKey: string;
 
   constructor() {
-    this.supabaseUrl = 'https://kpcprhkubqhslazlhgad.supabase.co';
-    this.supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
+    this.supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    this.supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   }
 
   async analyzeWeaknesses(request: OpenAIAnalysisRequest): Promise<OpenAIAnalysisResponse> {

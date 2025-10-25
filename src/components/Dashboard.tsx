@@ -71,7 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         q.id === questId ? { ...q, completed: true, progress: 100 } : q
       ));
 
-      // Update quest stats
+      // Update quest stats - increment completed count
       setQuestStats(prev => ({ ...prev, completed: prev.completed + 1 }));
 
       // Invalidate leaderboard cache to refresh data
@@ -392,6 +392,12 @@ const Dashboard: React.FC<DashboardProps> = ({
           progress: completedQuestIds.has(quest.id) ? quest.target : 0
         }));
 
+        // Update quest stats to count only active (non-completed) quests
+        const activeQuests = questsWithCompletionStatus.filter(q => !q.completed);
+        const completedCount = questsWithCompletionStatus.filter(q => q.completed).length;
+        const totalCount = questsWithCompletionStatus.length;
+        
+        setQuestStats({ completed: completedCount, total: totalCount });
         setUserQuests(questsWithCompletionStatus);
       } catch (error) {
         console.error('Error in fetchQuestStats:', error);
@@ -464,6 +470,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <div className="space-y-3 pr-1">
                           {/* Show real quests if available, otherwise show generated quests */}
                           {(userQuests.length > 0 ? userQuests : generateDynamicQuests())
+                            .filter(quest => !quest.completed) // Filter out completed quests
                             .sort((a, b) => {
                               // Sort started quests (progress > 0) to the top
                               if (a.progress > 0 && b.progress === 0) return -1;
