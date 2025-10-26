@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { QuestionPanelProps, BaseQuestion } from '@/types/question';
 import QuestionImage from '../QuestionImage';

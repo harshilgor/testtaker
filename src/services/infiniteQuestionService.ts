@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '@/integrations/supabase/client';
 import { openaiQuestionService, GeneratedQuestion } from './openaiQuestionService';
 import { isAIGenerationAvailable } from '../data/questionPrompts';

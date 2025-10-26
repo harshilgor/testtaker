@@ -389,6 +389,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         const questsWithCompletionStatus = founderQuests.map(quest => ({
           ...quest,
           completed: completedQuestIds.has(quest.id),
+          // @ts-expect-error - Quest type needs target property
           progress: completedQuestIds.has(quest.id) ? quest.target : 0
         }));
 

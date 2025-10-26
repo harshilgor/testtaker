@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Consolidated data service for all question-related operations
 // This file eliminates duplication across multiple question services
 

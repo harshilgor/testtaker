@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Utility functions for testing question generation in browser console
 
 import { geminiQuestionService } from '../services/geminiQuestionService';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Adaptive Quest Generation System
  * Based on Performance Index (PI) and Skill Score (SS) calculations

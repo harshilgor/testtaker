@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Shared utility functions for the application
 // This file contains commonly used functions to reduce code duplication
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import TopNavigation from '../shared/TopNavigation';

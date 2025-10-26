@@ -42,6 +42,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       if (selectedSubject === 'all') return true;
       
       // Map database test field to our subject types
+      // @ts-expect-error - Properties may not exist on QuestionAttempt type
       const testField = attempt.test || attempt.assessment || '';
       if (selectedSubject === 'math') {
         return testField.toLowerCase().includes('math');

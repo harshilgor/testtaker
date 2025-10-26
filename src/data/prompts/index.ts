@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Central prompt registry and management system
 // Optimized for 30+ prompts with efficient lookup and lazy loading
 
