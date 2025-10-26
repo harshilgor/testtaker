@@ -168,7 +168,7 @@ Please provide weakness analysis in JSON format:
     
     return new Response(JSON.stringify({
       error: 'Analysis failed',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

@@ -343,7 +343,6 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
                     <option value="end">Show answers at the end</option>
                   </select>
                 </div>
-              </div>
             </CardContent>
           </Card>
 
