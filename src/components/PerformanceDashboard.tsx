@@ -29,6 +29,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 
 import StudyTimeCard from './Performance/StudyTimeCard';
+import QuestionTopicsDifficulty from './Performance/QuestionTopicsDifficulty';
+import MathTopicsDifficulty from './Performance/MathTopicsDifficulty';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -683,148 +685,16 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           </div>
         </div>
 
-        {/* Practice Summary */}
+        {/* Question Topics & Difficulty Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Practice Summary</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Quiz Mode */}
-            <Card className="bg-gradient-to-br from-white to-gray-50/50 border-0 shadow-sm hover:shadow-md transition-all duration-300">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xs font-semibold">?</span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-gray-800">Quiz Mode</h3>
-                  </div>
-                  <div className="text-xs text-gray-500">Last: Aug 1</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{quizStats.totalQuestions}</div>
-                    <div className="text-xs text-gray-500">Questions</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{quizStats.averageAccuracy}%</div>
-                    <div className="text-xs text-gray-500">Accuracy</div>
-                  </div>
-                </div>
-                
-                <Accordion type="single" collapsible className="border-t border-gray-100 pt-3">
-                  <AccordionItem value="quiz-difficulty" className="border-0">
-                    <AccordionTrigger className="text-xs text-gray-600 hover:text-gray-800 py-1">
-                      Difficulty breakdown
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <div className="text-sm font-bold text-green-600">{difficultyBreakdown.quiz.easy}</div>
-                          <div className="text-xs text-gray-500">Easy</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-blue-600">{difficultyBreakdown.quiz.medium}</div>
-                          <div className="text-xs text-gray-500">Medium</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-purple-600">{difficultyBreakdown.quiz.hard}</div>
-                          <div className="text-xs text-gray-500">Hard</div>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-
-            {/* Marathon Mode */}
-            <Card className="bg-gradient-to-br from-white to-gray-50/50 border-0 shadow-sm hover:shadow-md transition-all duration-300">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xs font-semibold">⚡</span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-gray-800">Marathon Mode</h3>
-                  </div>
-                  <div className="text-xs text-gray-500">Longest: 45</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{marathonStats.totalQuestions}</div>
-                    <div className="text-xs text-gray-500">Questions</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{avgTimePerQuestion}</div>
-                    <div className="text-xs text-gray-500">Avg Time</div>
-                  </div>
-                </div>
-                
-                <Accordion type="single" collapsible className="border-t border-gray-100 pt-3">
-                  <AccordionItem value="marathon-difficulty" className="border-0">
-                    <AccordionTrigger className="text-xs text-gray-600 hover:text-gray-800 py-1">
-                      Difficulty breakdown
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <div className="text-sm font-bold text-green-600">{difficultyBreakdown.marathon.easy}</div>
-                          <div className="text-xs text-gray-500">Easy</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-blue-600">{difficultyBreakdown.marathon.medium}</div>
-                          <div className="text-xs text-gray-500">Medium</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-purple-600">{difficultyBreakdown.marathon.hard}</div>
-                          <div className="text-xs text-gray-500">Hard</div>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-
-            {/* Mock Tests */}
-            <Card className="bg-gradient-to-br from-white to-gray-50/50 border-0 shadow-sm hover:shadow-md transition-all duration-300">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xs font-semibold">📄</span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-gray-800">Mock Tests</h3>
-                  </div>
-                  <div className="text-xs text-gray-500">Last: Jul 25</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{mockTestResults.length}</div>
-                    <div className="text-xs text-gray-500">Completed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">{
-                      mockTestResults.length > 0 
-                        ? Math.round(mockTestResults.reduce((sum, result) => sum + ((result.mathScore || 0) + (result.englishScore || 0)), 0) / mockTestResults.length)
-                        : 0
-                    }</div>
-                    <div className="text-xs text-gray-500">Avg Score</div>
-                  </div>
-                </div>
-                
-                <div className="border-t border-gray-100 pt-3">
-                  <div className="text-xs text-gray-500 text-center">
-                    Full-length practice tests
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <QuestionTopicsDifficulty />
         </div>
+
+        {/* Math Topics & Difficulty Section */}
+        <div className="mb-8">
+          <MathTopicsDifficulty />
+        </div>
+
         </div>
       </div>
 

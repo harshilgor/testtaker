@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Target, Brain, FileText } from 'lucide-react';
 import { useRecentSessions } from '@/hooks/useRecentSessions';
+import SessionSummary from './SessionSummary';
 
 interface RecentSessionsProps {
   userName: string;
@@ -11,6 +12,8 @@ interface RecentSessionsProps {
 }
 
 const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends }) => {
+  const [selectedSession, setSelectedSession] = useState<{ id: string; type: 'marathon' | 'quiz' | 'mocktest' } | null>(null);
+  
   // Use the optimized hook for instant loading with caching
   const { 
     sessions: recentSessions, 
@@ -71,6 +74,14 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
     return 'text-red-600';
   };
 
+  const handleSessionClick = (sessionId: string, sessionType: 'marathon' | 'quiz' | 'mocktest') => {
+    setSelectedSession({ id: sessionId, type: sessionType });
+  };
+
+  const handleCloseSessionSummary = () => {
+    setSelectedSession(null);
+  };
+
   return (
     <Card className="bg-white h-full">
       <CardHeader className="pb-4">
@@ -103,7 +114,11 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
             )}
             
             {recentSessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+              <div 
+                key={session.id} 
+                className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => handleSessionClick(session.id, session.type)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50">
                     {getSessionIcon(session.type)}
@@ -153,6 +168,15 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
           </div>
         )}
       </CardContent>
+      
+      {/* Session Summary Modal */}
+      {selectedSession && (
+        <SessionSummary
+          sessionId={selectedSession.id}
+          sessionType={selectedSession.type}
+          onClose={handleCloseSessionSummary}
+        />
+      )}
     </Card>
   );
 };

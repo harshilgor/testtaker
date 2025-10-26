@@ -20,6 +20,7 @@ import SkillLearnPage from "./pages/SkillLearnPage";
 import TargetWeakness from "./pages/TargetWeakness";
 import QuestionGenerationTest from "./pages/QuestionGenerationTest";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import QuestionTopicsPage from "./pages/QuestionTopicsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -60,6 +61,7 @@ const App = () => {
                   <Route path="/learn/skill" element={<SkillLearnPage />} />
                   <Route path="/target-weakness" element={<TargetWeakness />} />
                   <Route path="/test-questions" element={<QuestionGenerationTest />} />
+                  <Route path="/question-topics" element={<QuestionTopicsPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

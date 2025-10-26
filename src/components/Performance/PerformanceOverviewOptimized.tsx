@@ -17,7 +17,7 @@ interface TopicPerformance {
 }
 
 type MetricType = 'best' | 'needs_work' | 'time_intensive' | 'quick';
-type SubjectType = 'all' | 'math' | 'reading_writing';
+type SubjectType = 'all' | 'math' | 'reading_and_writing';
 
 const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> = ({ userName }) => {
   const { questionAttempts, marathonSessions, loading: dataLoading } = useData();
@@ -45,7 +45,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       const testField = attempt.test || attempt.assessment || '';
       if (selectedSubject === 'math') {
         return testField.toLowerCase().includes('math');
-      } else if (selectedSubject === 'reading_writing') {
+      } else if (selectedSubject === 'reading_and_writing') {
         return testField.toLowerCase().includes('reading') || testField.toLowerCase().includes('writing');
       }
       return true;
@@ -191,7 +191,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
     // Add subject indicator if not showing all subjects
     if (selectedSubject === 'math') {
       return `${baseTitle} - Math`;
-    } else if (selectedSubject === 'reading_writing') {
+    } else if (selectedSubject === 'reading_and_writing') {
       return `${baseTitle} - Reading & Writing`;
     }
     
@@ -299,13 +299,13 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
               Math
             </Button>
             <Button
-              variant={selectedSubject === 'reading_writing' ? 'default' : 'outline'}
+              variant={selectedSubject === 'reading_and_writing' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedSubject('reading_writing')}
+              onClick={() => setSelectedSubject('reading_and_writing')}
               className="flex items-center gap-2 text-xs"
             >
               <BookOpen className="h-3 w-3" />
-              Reading & Writing
+              Reading and Writing
             </Button>
           </div>
           

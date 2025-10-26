@@ -29,7 +29,7 @@ interface Insight {
 }
 
 const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
-  const [activeFilter, setActiveFilter] = useState<'All' | 'Math' | 'Verbal'>('All');
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Math' | 'Reading and Writing'>('All');
   const [activeView, setActiveView] = useState<'accuracy' | 'time' | 'volume'>('accuracy');
   const [selectedTimeRange, setSelectedTimeRange] = useState<'7d' | '14d' | '30d'>('14d');
   const [showComparison, setShowComparison] = useState(false);
@@ -395,7 +395,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
 
           {/* Filter Buttons */}
           <div className="flex gap-1">
-            {(['All', 'Math', 'Verbal'] as const).map((filter) => (
+            {(['All', 'Math', 'Reading and Writing'] as const).map((filter) => (
               <Button
                 key={filter}
                 variant={activeFilter === filter ? 'default' : 'ghost'}
