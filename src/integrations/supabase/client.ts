@@ -3,18 +3,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Use environment variables for Supabase credentials
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Validate environment variables
-if (!SUPABASE_URL || SUPABASE_URL === 'your_supabase_project_url_here') {
-  console.error('❌ VITE_SUPABASE_URL is not set in environment variables');
-}
-
-if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY === 'your_supabase_anon_key_here') {
-  console.error('❌ VITE_SUPABASE_ANON_KEY is not set in environment variables');
-}
+// Use hardcoded Supabase credentials (Lovable doesn't support VITE_ env vars)
+const SUPABASE_URL = 'https://kpcprhkubqhslazlhgad.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3ByaGt1YnFoc2xhemxoZ2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODkzNTIsImV4cCI6MjA2Mzk2NTM1Mn0.kqHLbGSNGdwtxBKkjqw5Cod6si0j_qnrvpw5u_Q860Q';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
