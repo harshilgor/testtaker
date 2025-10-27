@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, Settings, Trophy, Target } from 'lucide-react';
+import { FileText, Zap, Clock, BookOpen, Brain, Settings, Trophy, Target, Calendar } from 'lucide-react';
 import AdminPanel from './AdminPanel';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { useNavigate } from 'react-router-dom';
 import QuestsModal from './Quests/QuestsModal';
+import ConfettiAnimation from './ConfettiAnimation';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import RecentSessionsPrefetcher from './Performance/RecentSessionsPrefetcher';
@@ -18,18 +19,24 @@ interface DashboardProps {
   userName: string;
   onMockTestSelect: () => void;
   onQuizSelect: () => void;
+  onNavigateToLeaderboard: () => void;
+  onNavigateToStudyPlan: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
   onMockTestSelect,
-  onQuizSelect
+  onQuizSelect,
+  onNavigateToLeaderboard,
+  onNavigateToStudyPlan
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showQuestsModal, setShowQuestsModal] = useState(false);
   const [questStats, setQuestStats] = useState({ completed: 0, total: 0 });
   const [loadingQuests, setLoadingQuests] = useState(true);
   const [userQuests, setUserQuests] = useState<any[]>([]);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedQuest, setSelectedQuest] = useState<any>(null);
   const { isAdmin } = useSecureAdminAccess();
   const navigate = useNavigate();
   const { showToast } = useSimpleToast();
@@ -73,6 +80,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       // Update quest stats - increment completed count
       setQuestStats(prev => ({ ...prev, completed: prev.completed + 1 }));
+
+      // Trigger confetti animation
+      setShowConfetti(true);
 
       // Invalidate leaderboard cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
@@ -243,6 +253,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     ];
   };
 
+  // Handle quest click
+  const handleQuestClick = (quest: any) => {
+    setSelectedQuest(quest);
+    handleStartQuest(quest);
+  };
+
   // Handle starting a quest
   const handleStartQuest = async (quest: any) => {
     try {
@@ -282,8 +298,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           });
           break;
         case 'leaderboard':
-          // Navigate to leaderboard page
-          navigate('/leaderboard');
+          // Navigate to leaderboard page using state-based navigation
+          onNavigateToLeaderboard();
           break;
         case 'performance':
           // Navigate to performance dashboard
@@ -479,7 +495,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                               return 0;
                             })
                             .map((quest, index) => (
-                            <div key={quest.id || index} className="bg-gray-50 rounded border border-gray-200 p-3">
+                            <div 
+                              key={quest.id || index} 
+                              className="bg-gray-50 rounded border border-gray-200 p-3 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+                              onClick={() => handleQuestClick(quest)}
+                            >
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-xs font-medium text-gray-900">{quest.title}</span>
                                 <span className="text-xs text-blue-600 font-medium">+{quest.points}</span>
@@ -587,6 +607,36 @@ const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Study Plan Card */}
+                  <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl flex-1">
+                    <CardContent className="p-4 lg:p-6 h-full flex flex-col justify-center">
+                      <div className="flex items-center gap-4 lg:gap-6">
+                        <div className="bg-green-50 rounded-full p-3 lg:p-4 w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center flex-shrink-0">
+                          <Calendar className="h-6 w-6 lg:h-8 lg:w-8 text-green-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg lg:text-xl font-semibold text-gray-800 mb-2">Study Plan</h3>
+                          <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500 mb-4">
+                            <div className="flex items-center">
+                              <Target className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                              Goal Setting
+                            </div>
+                            <div className="flex items-center">
+                              <BookOpen className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                              Personalized
+                            </div>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={onNavigateToStudyPlan} 
+                          className="bg-green-500 hover:bg-green-600 text-white px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg flex-shrink-0"
+                        >
+                          Create Plan
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
 
@@ -604,6 +654,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         open={showQuestsModal}
         onClose={() => setShowQuestsModal(false)}
         userName={userName}
+        onNavigateToLeaderboard={onNavigateToLeaderboard}
             onQuestCompleted={() => {
               // Refresh quest stats and quest list when a quest is completed
               const fetchQuestStats = async () => {
@@ -655,6 +706,13 @@ const Dashboard: React.FC<DashboardProps> = ({
               fetchQuestStats();
             }}
       />
+
+      {/* Confetti Animation */}
+      <ConfettiAnimation 
+        trigger={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
+
     </div>
   );
 };

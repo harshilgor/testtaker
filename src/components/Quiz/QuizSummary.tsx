@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUpRight, CheckCircle, XCircle, Clock, Target } from 'lucide-react';
+import { ArrowUpRight, CheckCircle, XCircle, Clock, Target, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { QuizQuestion } from '@/types/question';
 
 interface QuizSummaryProps {
@@ -10,6 +10,7 @@ interface QuizSummaryProps {
   answers: (number | null)[];
   onRetakeQuiz: () => void;
   onBackToDashboard: () => void;
+  onTakeSimilarQuiz?: () => void;
 }
 
 interface MistakeCategory {
@@ -24,7 +25,8 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
   questions,
   answers,
   onRetakeQuiz,
-  onBackToDashboard
+  onBackToDashboard,
+  onTakeSimilarQuiz
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -39,11 +41,33 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
     const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
     const timeSpent = 0; // This would come from actual timing data
 
+    // Calculate points earned based on difficulty
+    const pointsEarned = questions.reduce((total, question, index) => {
+      const userAnswer = answers[index];
+      const isCorrect = userAnswer !== null && question.correct_answer === userAnswer;
+      
+      if (isCorrect) {
+        const difficulty = question.difficulty?.toLowerCase() || 'medium';
+        switch (difficulty) {
+          case 'easy':
+            return total + 3;
+          case 'medium':
+            return total + 6;
+          case 'hard':
+            return total + 9;
+          default:
+            return total + 6; // Default to medium
+        }
+      }
+      return total;
+    }, 0);
+
     return {
       totalQuestions,
       correctAnswers,
       accuracy,
-      timeSpent
+      timeSpent,
+      pointsEarned
     };
   }, [questions, answers]);
 
@@ -116,6 +140,10 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
               <div className="text-2xl font-bold text-red-600">{quizStats.totalQuestions - quizStats.correctAnswers}</div>
               <div className="text-sm text-gray-600">Mistakes</div>
             </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{quizStats.pointsEarned}</div>
+              <div className="text-sm text-gray-600">Points Earned</div>
+            </div>
           </div>
         </div>
 
@@ -164,6 +192,108 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
           ))}
         </div>
 
+        {/* Detailed Question Breakdown */}
+        {selectedCategory && (
+          <div className="mb-8">
+            <Card className="border-2 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Detailed Question Review</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedCategory(null)}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {mistakeCategories
+                  .find(cat => cat.category === selectedCategory)
+                  ?.questions.map((question, index) => {
+                    const questionIndex = questions.indexOf(question);
+                    const userAnswer = answers[questionIndex];
+                    const isCorrect = userAnswer !== null && question.correct_answer === userAnswer;
+                    
+                    return (
+                      <div key={index} className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900">
+                            Question {questionIndex + 1}
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              question.difficulty?.toLowerCase() === 'easy' ? 'bg-green-100 text-green-800' :
+                              question.difficulty?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {question.difficulty || 'Medium'}
+                            </span>
+                            {isCorrect ? (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <p className="text-gray-800 mb-3">{question.question}</p>
+                        </div>
+                        
+                        <div className="space-y-2 mb-3">
+                          {question.options?.map((option, optIndex) => (
+                            <div
+                              key={optIndex}
+                              className={`p-2 rounded border ${
+                                optIndex === question.correct_answer
+                                  ? 'bg-green-100 border-green-300 text-green-800'
+                                  : optIndex === userAnswer
+                                  ? 'bg-red-100 border-red-300 text-red-800'
+                                  : 'bg-white border-gray-200 text-gray-700'
+                              }`}
+                            >
+                              <span className="font-medium">{String.fromCharCode(65 + optIndex)}.</span> {option}
+                              {optIndex === question.correct_answer && (
+                                <span className="ml-2 text-xs font-medium">✓ Correct Answer</span>
+                              )}
+                              {optIndex === userAnswer && optIndex !== question.correct_answer && (
+                                <span className="ml-2 text-xs font-medium">✗ Your Answer</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Rationale Section */}
+                        <div className="mt-3 space-y-2">
+                          <div className="p-3 bg-green-50 rounded border-l-4 border-green-400">
+                            <p className="text-sm text-green-800">
+                              <strong>✓ Correct Rationale:</strong> {question.explanation || 'This is the correct answer based on the question requirements.'}
+                            </p>
+                          </div>
+                          
+                          {!isCorrect && userAnswer !== null && (
+                            <div className="p-3 bg-red-50 rounded border-l-4 border-red-400">
+                              <p className="text-sm text-red-800">
+                                <strong>✗ Why Your Answer Was Incorrect:</strong> {
+                                  question.explanation 
+                                    ? `The correct answer is ${String.fromCharCode(65 + question.correct_answer)}. ${question.explanation}` 
+                                    : `The correct answer is ${String.fromCharCode(65 + question.correct_answer)}. Your answer ${String.fromCharCode(65 + userAnswer)} was incorrect because it doesn't match the question requirements.`
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+
         {/* No Mistakes Message */}
         {mistakeCategories.length === 0 && (
           <Card className="text-center py-12">
@@ -176,7 +306,7 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center gap-4 flex-wrap">
           <Button
             onClick={onRetakeQuiz}
             variant="outline"

@@ -15,7 +15,7 @@ const LeaderboardRankingWidget: React.FC = () => {
     loading: true
   });
 
-  // Fetch real leaderboard data
+  // Fetch real leaderboard data with real-time updates
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       if (!user?.id) return;
@@ -84,6 +84,39 @@ const LeaderboardRankingWidget: React.FC = () => {
     if (user?.id && questionAttempts) {
       fetchLeaderboardData();
     }
+
+    // Set up real-time subscription for immediate updates
+    const channel = supabase
+      .channel('leaderboard-widget-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'question_attempts_v2'
+        },
+        () => {
+          console.log('Question attempt detected, refreshing leaderboard widget');
+          fetchLeaderboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quest_completions'
+        },
+        () => {
+          console.log('Quest completion detected, refreshing leaderboard widget');
+          fetchLeaderboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id, questionAttempts]);
 
   const rankingData = useMemo(() => {

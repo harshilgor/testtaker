@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Crown, Trophy, Medal } from 'lucide-react';
+import PointChangeIndicator from '../PointChangeIndicator';
 
 interface UserScore {
   id: string;
@@ -18,6 +19,22 @@ interface LeaderboardEntryProps {
 }
 
 const LeaderboardEntry: React.FC<LeaderboardEntryProps> = ({ user, position, currentUserName }) => {
+  const [previousPoints, setPreviousPoints] = useState<number | undefined>(undefined);
+
+  // Track point changes
+  useEffect(() => {
+    if (previousPoints !== undefined && user.total_points !== previousPoints) {
+      // Points changed, update previous points after a delay
+      const timer = setTimeout(() => {
+        setPreviousPoints(user.total_points);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else if (previousPoints === undefined) {
+      // Initial load
+      setPreviousPoints(user.total_points);
+    }
+  }, [user.total_points, previousPoints]);
+
   const getRankIcon = (position: number) => {
     switch (position) {
       case 1:
@@ -70,7 +87,11 @@ const LeaderboardEntry: React.FC<LeaderboardEntryProps> = ({ user, position, cur
       </div>
       <div className="text-right flex-shrink-0 ml-2">
         <div className={`px-3 py-1 rounded-full text-sm font-bold ${getPointsBadge(user.total_points)}`}>
-          {user.total_points}
+          <PointChangeIndicator 
+            points={user.total_points} 
+            previousPoints={previousPoints}
+            className="text-inherit"
+          />
         </div>
         <p className="text-xs md:text-sm text-slate-600 mt-1">points</p>
       </div>

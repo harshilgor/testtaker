@@ -13,8 +13,9 @@ import StreakPopup from '@/components/StreakPopup';
 import WelcomePopup from '@/components/WelcomePopup';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useWelcomePopup } from '@/hooks/useWelcomePopup';
+import StudyPlan from '@/components/StudyPlan';
 
-export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends' | 'study-plan';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -156,6 +157,25 @@ const Index = () => {
     );
   }
 
+  if (currentScreen === 'study-plan') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          userName={userName}
+          onSignOut={handleSignOut}
+        />
+        <div className="pt-16">
+          <StudyPlan
+            userName={userName}
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
@@ -169,6 +189,8 @@ const Index = () => {
           userName={userName}
           onMockTestSelect={() => {}}
           onQuizSelect={() => navigate('/quiz')}
+          onNavigateToLeaderboard={() => setCurrentScreen('leaderboard')}
+          onNavigateToStudyPlan={() => setCurrentScreen('study-plan')}
         />
       </div>
       

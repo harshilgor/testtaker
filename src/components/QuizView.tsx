@@ -25,6 +25,7 @@ interface QuizViewProps {
   userName: string;
   subject: Subject;
   onBackToDashboard: () => void;
+  onTakeSimilarQuiz?: () => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -35,7 +36,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   topics,
   userName,
   subject,
-  onBackToDashboard
+  onBackToDashboard,
+  onTakeSimilarQuiz
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -300,6 +302,22 @@ const QuizView: React.FC<QuizViewProps> = ({
     setQuestionStartTimes(new Array(questions.length).fill(Date.now()));
   };
 
+  const handleTakeSimilarQuiz = () => {
+    if (onTakeSimilarQuiz) {
+      onTakeSimilarQuiz();
+    } else {
+      // Default behavior: navigate to quiz page with similar parameters
+      navigate('/quiz', {
+        state: {
+          autoSelectTopic: topics.length > 0 ? topics[0] : undefined,
+          subject: subject,
+          questionCount: questions.length,
+          similarQuiz: true
+        }
+      });
+    }
+  };
+
   // Drag handlers for panel resizing
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -357,6 +375,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         answers={answers}
         onRetakeQuiz={handleRetakeQuiz}
         onBackToDashboard={onBackToDashboard}
+        onTakeSimilarQuiz={handleTakeSimilarQuiz}
       />
     );
   }

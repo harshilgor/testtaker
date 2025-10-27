@@ -24,33 +24,70 @@ export class RealTimePerformanceService {
    * Calculate difficulty performance data from question attempts
    */
   static calculateDifficultyData(attempts: DataContextQuestionAttempt[]): DifficultyData[] {
+    // Debug: Log unique difficulty values found in attempts
+    const uniqueDifficulties = [...new Set(attempts.map(a => a.difficulty))];
+    console.log('🔍 Unique difficulty values found:', uniqueDifficulties);
+    
     const difficultyStats = attempts.reduce((acc, attempt) => {
-      const difficulty = attempt.difficulty || 'Unknown';
+      // Normalize difficulty to ensure consistent casing
+      const normalizedDifficulty = this.normalizeDifficulty(attempt.difficulty || 'Unknown');
       
-      if (!acc[difficulty]) {
-        acc[difficulty] = {
-          difficulty,
+      if (!acc[normalizedDifficulty]) {
+        acc[normalizedDifficulty] = {
+          difficulty: normalizedDifficulty,
           correct: 0,
           total: 0,
           accuracy: 0
         };
       }
       
-      acc[difficulty].total++;
+      acc[normalizedDifficulty].total++;
       if (attempt.is_correct) {
-        acc[difficulty].correct++;
+        acc[normalizedDifficulty].correct++;
       }
       
       return acc;
     }, {} as Record<string, any>);
 
-    // Calculate accuracy and format data
-    return Object.values(difficultyStats).map((stat: any) => ({
+    // Debug: Log the stats before processing
+    console.log('📊 Difficulty stats before processing:', difficultyStats);
+
+    // Calculate accuracy and format data, then sort by difficulty order
+    const result = Object.values(difficultyStats).map((stat: any) => ({
       difficulty: stat.difficulty,
       correct: stat.correct,
       total: stat.total,
       accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
     }));
+
+    // Debug: Log the result before sorting
+    console.log('📈 Result before sorting:', result);
+
+    // Remove duplicates by difficulty level (in case there are any)
+    const uniqueResult = result.reduce((acc, item) => {
+      const existing = acc.find(existing => existing.difficulty === item.difficulty);
+      if (existing) {
+        // Merge the data if there are duplicates
+        existing.correct += item.correct;
+        existing.total += item.total;
+        existing.accuracy = existing.total > 0 ? Math.round((existing.correct / existing.total) * 100) : 0;
+        console.log(`🔄 Merged duplicate ${item.difficulty}: ${item.correct}/${item.total} + ${existing.correct}/${existing.total} = ${existing.correct}/${existing.total}`);
+      } else {
+        acc.push(item);
+      }
+      return acc;
+    }, [] as DifficultyData[]);
+
+    // Sort by difficulty order: Easy, Medium, Hard
+    const sortedResult = uniqueResult.sort((a, b) => {
+      const order = { 'Easy': 1, 'Medium': 2, 'Hard': 3, 'Unknown': 4 };
+      return (order[a.difficulty as keyof typeof order] || 4) - (order[b.difficulty as keyof typeof order] || 4);
+    });
+
+    // Debug: Log the final result
+    console.log('🎯 Final sorted result:', sortedResult);
+
+    return sortedResult;
   }
 
   /**
@@ -211,6 +248,41 @@ export class RealTimePerformanceService {
       total: stat.total,
       accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
     }));
+  }
+
+  /**
+   * Normalize difficulty string to ensure consistent casing and format
+   */
+  private static normalizeDifficulty(difficulty: string): string {
+    if (!difficulty) return 'Unknown';
+    
+    const normalized = difficulty.toLowerCase().trim();
+    
+    // Debug: Log the normalization process
+    console.log(`🔄 Normalizing difficulty: "${difficulty}" -> "${normalized}"`);
+    
+    // Map common variations to standard format
+    switch (normalized) {
+      case 'easy':
+      case 'e':
+      case '1':
+        console.log(`✅ Mapped to: Easy`);
+        return 'Easy';
+      case 'medium':
+      case 'med':
+      case 'm':
+      case '2':
+        console.log(`✅ Mapped to: Medium`);
+        return 'Medium';
+      case 'hard':
+      case 'h':
+      case '3':
+        console.log(`✅ Mapped to: Hard`);
+        return 'Hard';
+      default:
+        console.log(`⚠️ Unknown difficulty, mapped to: Unknown`);
+        return 'Unknown';
+    }
   }
 
   /**

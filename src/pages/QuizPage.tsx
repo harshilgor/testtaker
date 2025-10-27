@@ -50,6 +50,17 @@ const QuizPage: React.FC = () => {
 
   const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'User';
 
+  // Handle taking a similar quiz
+  const handleTakeSimilarQuiz = () => {
+    // Navigate to quiz page with similar parameters
+    navigate('/quiz', {
+      state: {
+        similarQuiz: true,
+        // You can add more parameters here based on the current quiz context
+      }
+    });
+  };
+
   // Handle weakness practice mode
   if (quizMode === 'weakness-practice' || location.state?.mode === 'weakness-practice') {
     try {
@@ -179,6 +190,7 @@ const QuizPage: React.FC = () => {
       <Quiz
         userName={userName}
         onBack={() => navigate('/')}
+        onTakeSimilarQuiz={handleTakeSimilarQuiz}
       />
     </div>
   );

@@ -21,12 +21,14 @@ interface UnifiedQuizCreationProps {
   userName: string;
   onBack: () => void;
   onBackToDashboard: () => void;
+  onTakeSimilarQuiz?: () => void;
 }
 
 const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({ 
   userName, 
   onBack, 
-  onBackToDashboard 
+  onBackToDashboard,
+  onTakeSimilarQuiz
 }) => {
   const [selectedSubject, setSelectedSubject] = useState<'math' | 'english' | 'both'>('both');
   const [showQuiz, setShowQuiz] = useState(false);
@@ -124,6 +126,7 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
         userName={userName}
         onBack={handleQuizEnd}
         onBackToDashboard={onBackToDashboard}
+        onTakeSimilarQuiz={onTakeSimilarQuiz}
         feedbackPreference={feedbackPreference}
         selectedTopics={selectedTopics}
       />

@@ -7,6 +7,7 @@ import LeaderboardHeader from './Leaderboard/LeaderboardHeader';
 import UserRankCard from './Leaderboard/UserRankCard';
 import LeaderboardList from './Leaderboard/LeaderboardList';
 import LeaderboardStats from './Leaderboard/LeaderboardStats';
+import { useSimpleToast } from '@/components/ui/simple-toast';
 
 interface LeaderboardProps {
   userName: string;
@@ -28,6 +29,73 @@ type TimeFrame = 'all-time' | 'weekly' | 'monthly';
 const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('all-time');
+  const { showToast } = useSimpleToast();
+
+  // Check for first-time leaderboard visit and award points
+  useEffect(() => {
+    const checkFirstTimeVisit = async () => {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) return;
+
+        // Check if user has already visited the leaderboard
+        const { data: existingVisit, error: checkError } = await supabase
+          .from('quest_completions')
+          .select('id')
+          .eq('user_id', user.user.id)
+          .eq('quest_id', 'leaderboard-quest')
+          .single();
+
+        if (checkError && checkError.code === 'PGRST116') {
+          // No existing visit found - this is their first time!
+          console.log('First-time leaderboard visit detected for user:', user.user.id);
+          
+          // Award points for visiting leaderboard
+          const { error: pointsError } = await supabase.rpc('increment_user_points', {
+            p_points: 25, // Same points as the quest
+            p_user_id: user.user.id
+          });
+
+          if (pointsError) {
+            console.error('Error awarding leaderboard visit points:', pointsError);
+            return;
+          }
+
+          // Record the completion
+          const { error: completionError } = await supabase
+            .from('quest_completions')
+            .insert({
+              user_id: user.user.id,
+              quest_id: 'leaderboard-quest',
+              points_awarded: 25
+            });
+
+          if (completionError) {
+            console.error('Error recording leaderboard visit:', completionError);
+            return;
+          }
+
+          // Show congratulatory notification
+          showToast({
+            title: 'Welcome to the Leaderboard! 🎉',
+            description: 'You earned 25 points for visiting the leaderboard for the first time!',
+            type: 'success',
+            duration: 6000
+          });
+
+          console.log('Successfully awarded leaderboard visit points and notification');
+        } else if (checkError) {
+          console.error('Error checking leaderboard visit:', checkError);
+        } else {
+          console.log('User has already visited leaderboard before');
+        }
+      } catch (error) {
+        console.error('Error in checkFirstTimeVisit:', error);
+      }
+    };
+
+    checkFirstTimeVisit();
+  }, [showToast]);
 
   // Initialize periodic stats for current user when component mounts
   useEffect(() => {
@@ -202,8 +270,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         return [];
       }
     },
-    staleTime: 1000 * 60 * 2, // 2 minutes - shorter for more frequent updates
-    refetchInterval: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30, // 30 seconds - very short for real-time updates
+    refetchInterval: 1000 * 30, // 30 seconds - refresh every 30 seconds
   });
 
   // Set up real-time subscription for leaderboard updates
@@ -242,6 +310,42 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         (payload) => {
           console.log('Question attempt recorded, updating leaderboard:', payload);
           // Small delay to allow database functions to complete
+          setTimeout(() => refetch(), 1000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quest_completions'
+        },
+        (payload) => {
+          console.log('Quest completion recorded, updating leaderboard:', payload);
+          setTimeout(() => refetch(), 1000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quiz_results'
+        },
+        (payload) => {
+          console.log('Quiz result recorded, updating leaderboard:', payload);
+          setTimeout(() => refetch(), 1000);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'marathon_sessions'
+        },
+        (payload) => {
+          console.log('Marathon session recorded, updating leaderboard:', payload);
           setTimeout(() => refetch(), 1000);
         }
       )

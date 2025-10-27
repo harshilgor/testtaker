@@ -35,6 +35,7 @@ interface QuestsModalProps {
   onClose: () => void;
   userName: string;
   onQuestCompleted?: () => void;
+  onNavigateToLeaderboard?: () => void;
 }
 
 // Helper: random pick N from array
@@ -87,7 +88,7 @@ const fetchAllTopics = async (): Promise<string[]> => {
   }
 };
 
-const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQuestCompleted }) => {
+const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQuestCompleted, onNavigateToLeaderboard }) => {
   const { questionAttempts, quizResults, marathonSessions, loading } = useData();
   const [userQuests, setUserQuests] = useState<Quest[]>([]);
   const [questsLoading, setQuestsLoading] = useState(true);
@@ -158,6 +159,9 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           setQuestsLoading(false);
           return;
         }
+
+        // Manage quest expiration and generate new quests to ensure user always has 10 quests
+        await manageQuestExpiration(user.user.id);
 
         // Check for completed quests in the database
         const { data: completedQuests } = await supabase
@@ -306,14 +310,50 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           }
         ];
 
+        // Load database quests (daily/monthly)
+        const { data: dbQuests, error: dbError } = await supabase
+          .from('user_quests')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .gte('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
+
+        if (dbError) {
+          console.error('Error loading database quests:', dbError);
+        }
+
+        // Convert database quests to Quest format
+        const databaseQuests: Quest[] = (dbQuests || []).map(dbQuest => ({
+          id: dbQuest.id.toString(),
+          title: dbQuest.quest_title || 'Untitled Quest',
+          description: dbQuest.quest_description || 'No description available',
+          topic: dbQuest.target_topic || 'general',
+          difficulty: (dbQuest.difficulty === 'Easy' || dbQuest.difficulty === 'Medium' || dbQuest.difficulty === 'Hard') 
+            ? dbQuest.difficulty as 'Easy' | 'Medium' | 'Hard'
+            : 'Medium',
+          type: (dbQuest.quest_type === 'daily' || dbQuest.quest_type === 'weekly') 
+            ? dbQuest.quest_type as 'daily' | 'weekly'
+            : 'daily' as 'daily' | 'weekly',
+          target: dbQuest.target_count || 1,
+          progress: dbQuest.current_progress || 0,
+          points: dbQuest.points_reward || 10,
+          completed: dbQuest.completed || false,
+          expiresAt: new Date(dbQuest.expires_at),
+          subject: 'general', // Default subject since it's not in the database schema
+          accuracy: 0
+        }));
+
         // Update quest completion status based on database
-        const questsWithCompletionStatus = founderQuests.map(quest => ({
+        const founderQuestsWithCompletion = founderQuests.map(quest => ({
           ...quest,
           completed: completedQuestIds.has(quest.id),
           progress: completedQuestIds.has(quest.id) ? quest.target : 0
         }));
 
-        setUserQuests(questsWithCompletionStatus);
+        // Combine founder quests and database quests
+        const allQuests = [...founderQuestsWithCompletion, ...databaseQuests];
+
+        setUserQuests(allQuests);
       } catch (error) {
         console.error('Error in loadQuests:', error);
       } finally {
@@ -575,10 +615,16 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
       // Count remaining monthly quests (these carry forward)
       const remainingMonthlyQuests = monthlyQuests.filter(q => new Date(q.expires_at) > now);
-      const monthlyQuestsToCreate = Math.max(0, 10 - remainingMonthlyQuests.length);
-
+      
+      // Ensure user always has 10 total quests (5 daily + 5 monthly)
+      const totalActiveQuests = dailyQuests.length + remainingMonthlyQuests.length;
+      const questsNeeded = Math.max(0, 10 - totalActiveQuests);
+      
       // Generate new daily quests (always 5 per day, but only if we have less than 5)
       const dailyQuestsToCreate = Math.max(0, 5 - dailyQuests.length);
+      
+      // Generate new monthly quests to fill remaining slots
+      const monthlyQuestsToCreate = Math.max(0, questsNeeded - dailyQuestsToCreate);
       const newDailyQuests = dailyQuestsToCreate > 0 ? 
         await generateDailyQuests(userId, dailyQuestsToCreate) : [];
       
@@ -842,9 +888,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         });
         break;
       case 'leaderboard':
-        // Navigate to leaderboard page
-        navigate('/leaderboard');
-        // Mark quest as completed and show completion toast
+        // Mark quest as completed and show completion toast with confetti
         handleCompleteQuest(quest.id);
         showToast({
           title: 'Quest Completed! 🎉',
@@ -852,7 +896,17 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           type: 'success',
           duration: 6000
         });
-        onClose();
+        
+        // Delay navigation and modal close to allow user to see confetti and notification
+        setTimeout(() => {
+          // Navigate to leaderboard page using state-based navigation
+          if (onNavigateToLeaderboard) {
+            onNavigateToLeaderboard();
+          } else {
+            navigate('/leaderboard');
+          }
+          onClose();
+        }, 2500); // Wait 2.5 seconds for confetti and notification
         break;
       case 'practice':
         // Navigate to quiz page for practice

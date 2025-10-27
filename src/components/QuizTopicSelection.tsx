@@ -21,6 +21,7 @@ interface QuizTopicSelectionProps {
   userName: string;
   onBack: () => void;
   onBackToDashboard: () => void;
+  onTakeSimilarQuiz?: () => void;
   autoSelection?: {
     subject: 'math' | 'english';
     topic: string;
@@ -33,7 +34,8 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
   userName, 
   onBack, 
   onBackToDashboard,
-  autoSelection 
+  onTakeSimilarQuiz,
+  autoSelection
 }) => {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
@@ -111,6 +113,7 @@ const QuizTopicSelection: React.FC<QuizTopicSelectionProps> = ({
         userName={userName}
         onBack={handleQuizEnd}
         onBackToDashboard={onBackToDashboard}
+        onTakeSimilarQuiz={onTakeSimilarQuiz}
         feedbackPreference={feedbackPreference}
         selectedTopics={selectedTopics}
       />
