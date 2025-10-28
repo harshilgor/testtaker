@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import ReviewMistakes from '@/components/Performance/ReviewMistakes';
+import DebugQuestionAttempts from '@/components/DebugQuestionAttempts';
 import { useHasSolvedQuestions } from '@/hooks/useHasSolvedQuestions';
 // import QuestsSection from '@/components/Quests/QuestsSection';
 
@@ -38,6 +39,11 @@ const LearnPage: React.FC<LearnPageProps> = ({ userName, onBack }) => {
 
         {/* Content area - blur only this section */}
         <div className={`${!hasSolvedQuestions ? 'blur-sm pointer-events-none' : ''}`}>
+          {/* Debug Section - Temporary */}
+          <div className="mb-8">
+            <DebugQuestionAttempts />
+          </div>
+          
           {/* Review Mistakes Section */}
           <div className="mb-8">
             <ReviewMistakes userName={userName} />

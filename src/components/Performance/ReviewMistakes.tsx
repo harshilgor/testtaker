@@ -156,12 +156,24 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   // Use cached data from DataContext for instant loading
   const userAttempts = useMemo(() => {
     if (!isInitialized || !questionAttempts.length) {
+      console.log('🔍 ReviewMistakes: No data available', { isInitialized, questionAttemptsLength: questionAttempts.length });
       return [];
     }
     
     // Filter to only incorrect attempts (mistakes)
     const mistakes = questionAttempts.filter(attempt => !attempt.is_correct);
     console.log(`🚀 Using cached data: ${mistakes.length} mistakes loaded instantly`);
+    console.log('🔍 ReviewMistakes debug:', {
+      totalAttempts: questionAttempts.length,
+      correctAttempts: questionAttempts.filter(a => a.is_correct).length,
+      incorrectAttempts: mistakes.length,
+      sampleMistakes: mistakes.slice(0, 3).map(m => ({
+        id: m.id,
+        question_id: m.question_id,
+        is_correct: m.is_correct,
+        created_at: m.created_at
+      }))
+    });
     return mistakes;
   }, [questionAttempts, isInitialized]);
 

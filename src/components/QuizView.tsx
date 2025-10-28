@@ -10,6 +10,7 @@ import QuizBottomNavigation from './Quiz/QuizBottomNavigation';
 import QuizSidebar from './Quiz/QuizSidebar';
 import QuizSummary from './Quiz/QuizSummary';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Subject } from '@/types/common';
@@ -41,6 +42,7 @@ const QuizView: React.FC<QuizViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { refreshPerformanceData } = useData();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -219,6 +221,13 @@ const QuizView: React.FC<QuizViewProps> = ({
         });
 
         console.log('Saving question attempts...', questionAttempts);
+        console.log('Question attempts details:', {
+          total: questionAttempts.length,
+          correct: questionAttempts.filter(a => a.is_correct).length,
+          incorrect: questionAttempts.filter(a => !a.is_correct).length,
+          user_id: user.id
+        });
+        
         const { error: attemptsError } = await supabase
           .from('question_attempts_v2')
           .insert(questionAttempts);
@@ -228,6 +237,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           // Don't throw error, continue to save locally
         } else {
           console.log('Question attempts saved successfully');
+          console.log('✅ Saved incorrect attempts:', questionAttempts.filter(a => !a.is_correct).length);
         }
 
         // Invalidate React Query cache for immediate UI updates
@@ -238,9 +248,15 @@ const QuizView: React.FC<QuizViewProps> = ({
         queryClient.invalidateQueries({ queryKey: ['quiz-results-performance', userName] });
         queryClient.invalidateQueries({ queryKey: ['performance-analysis', userName] });
         queryClient.invalidateQueries({ queryKey: ['all-attempts', userName] });
+        queryClient.invalidateQueries({ queryKey: ['questionAttempts', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['quizResults', user.id] });
         queryClient.invalidateQueries({ queryKey: ['difficulty-breakdown', userName] });
         queryClient.invalidateQueries({ queryKey: ['marathon-sessions-performance', userName] });
         queryClient.invalidateQueries({ queryKey: ['user-mistakes', userName] });
+        
+        // Refresh DataContext to ensure learn page gets updated data
+        console.log('🔄 Refreshing DataContext performance data...');
+        await refreshPerformanceData();
         
         // Clear recent sessions cache to force refresh
         try {

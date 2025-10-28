@@ -272,6 +272,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         streakData: streakDataResponse.data?.length || 0,
         mockTests: mockTestsResponse.data?.length || 0,
       });
+      
+      // Debug question attempts specifically
+      const incorrectAttempts = questionAttemptsResponse.data?.filter(a => !a.is_correct) || [];
+      console.log('🔍 Question attempts debug:', {
+        total: questionAttemptsResponse.data?.length || 0,
+        correct: questionAttemptsResponse.data?.filter(a => a.is_correct).length || 0,
+        incorrect: incorrectAttempts.length,
+        sampleIncorrect: incorrectAttempts.slice(0, 3).map(a => ({
+          id: a.id,
+          question_id: a.question_id,
+          is_correct: a.is_correct,
+          created_at: a.created_at
+        }))
+      });
 
     } catch (error) {
       console.error('❌ Data fetch failed:', error);
