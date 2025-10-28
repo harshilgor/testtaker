@@ -9,33 +9,67 @@ const DebugQuestionAttempts: React.FC = () => {
   const [dbAttempts, setDbAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchDbAttempts = async () => {
+  const testTableAccess = async () => {
     if (!user?.id) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // First, try to insert a test record
+      const testAttempt = {
+        user_id: user.id,
+        question_id: 'test-123',
+        session_id: 'test-session',
+        session_type: 'quiz',
+        subject: 'test',
+        topic: 'test',
+        difficulty: 'easy',
+        is_correct: false,
+        time_spent: 30,
+        points_earned: 0
+      };
 
-      if (error) {
-        console.error('Error fetching attempts:', error);
+      console.log('🧪 Testing table access with:', testAttempt);
+      
+      const { data: insertData, error: insertError } = await supabase
+        .from('question_attempts_v2')
+        .insert([testAttempt])
+        .select();
+
+      if (insertError) {
+        console.error('❌ Insert test failed:', insertError);
+        console.error('❌ Insert error details:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint
+        });
       } else {
-        setDbAttempts(data || []);
-        console.log('🔍 Direct DB fetch results:', data);
+        console.log('✅ Insert test succeeded:', insertData);
+        
+        // Now try to fetch the data
+        const { data, error } = await supabase
+          .from('question_attempts_v2')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) {
+          console.error('❌ Select test failed:', error);
+        } else {
+          console.log('✅ Select test succeeded:', data);
+          setDbAttempts(data || []);
+        }
       }
     } catch (error) {
-      console.error('Error in fetchDbAttempts:', error);
+      console.error('❌ Test failed:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDbAttempts();
+    testTableAccess();
   }, [user?.id]);
 
   const incorrectDbAttempts = dbAttempts.filter(a => !a.is_correct);
@@ -75,10 +109,10 @@ const DebugQuestionAttempts: React.FC = () => {
             ))}
           </div>
           <button 
-            onClick={fetchDbAttempts}
+            onClick={testTableAccess}
             className="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
           >
-            Refresh DB Data
+            Test Table Access
           </button>
         </div>
       </div>

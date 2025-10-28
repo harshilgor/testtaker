@@ -212,8 +212,8 @@ const QuizView: React.FC<QuizViewProps> = ({
             session_id: sessionId,
             session_type: 'quiz',
             subject: subjectForAttempt,
-            topic: question.topic,
-            difficulty: question.difficulty,
+            topic: question.topic || 'general', // Ensure topic is never null/undefined
+            difficulty: question.difficulty || 'medium', // Ensure difficulty is never null/undefined
             is_correct: isCorrect,
             time_spent: timeSpent,
             points_earned: isCorrect ? (question.difficulty === 'hard' ? 9 : question.difficulty === 'medium' ? 6 : 3) : 0
@@ -233,10 +233,17 @@ const QuizView: React.FC<QuizViewProps> = ({
           .insert(questionAttempts);
 
         if (attemptsError) {
-          console.error('Error saving question attempts:', attemptsError);
+          console.error('❌ Error saving question attempts:', attemptsError);
+          console.error('❌ Error details:', {
+            code: attemptsError.code,
+            message: attemptsError.message,
+            details: attemptsError.details,
+            hint: attemptsError.hint
+          });
+          console.error('❌ Sample attempt data:', questionAttempts[0]);
           // Don't throw error, continue to save locally
         } else {
-          console.log('Question attempts saved successfully');
+          console.log('✅ Question attempts saved successfully');
           console.log('✅ Saved incorrect attempts:', questionAttempts.filter(a => !a.is_correct).length);
         }
 
