@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -274,6 +275,7 @@ const SATResults: React.FC<SATResultsProps> = ({
           <div className="bg-white rounded-lg shadow-sm p-4">
             <div className="flex items-center mb-2">
               <Brain className="h-5 w-5 text-purple-600 mr-2" />
+              
               <span className="text-sm font-medium text-gray-700">Overall Accuracy</span>
             </div>
             <div className="text-2xl font-bold text-gray-900">

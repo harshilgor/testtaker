@@ -116,31 +116,86 @@ export const VerticalBarChart: React.FC<VerticalBarChartProps> = ({
   className = '',
   maxHeight = 120
 }) => {
-  const maxAccuracy = Math.max(...data.map(d => d.accuracy), 0);
+  const [hoveredBar, setHoveredBar] = React.useState<string | null>(null);
+
+  // Ensure we always have all difficulty levels
+  const allDifficulties = ['Easy', 'Medium', 'Hard'];
+  const completeData = allDifficulties.map(difficulty => {
+    const existingData = data.find(d => d.difficulty === difficulty);
+    return existingData || {
+      difficulty,
+      correct: 0,
+      total: 0,
+      accuracy: 0
+    };
+  });
+
+  const maxValue = viewMode === 'accuracy' 
+    ? Math.max(...completeData.map(d => d.accuracy), 0)
+    : Math.max(...completeData.map(d => d.total), 0);
 
   return (
-    <div className={`h-56 flex items-end justify-center space-x-12 px-4 ${className}`}>
-      {data.map((item) => {
-        const barHeight = maxAccuracy > 0 
-          ? Math.max((item.accuracy / maxAccuracy) * maxHeight, 15)
+    <div className={`h-56 flex items-end justify-center space-x-6 ${className}`}>
+      {completeData.map((item) => {
+        const barHeight = maxValue > 0 
+          ? Math.max(((viewMode === 'accuracy' ? item.accuracy : item.total) / maxValue) * maxHeight, 15)
           : 15;
+        const isHovered = hoveredBar === item.difficulty;
 
         return (
           <div key={item.difficulty} className="flex flex-col items-center space-y-3">
             <div className="relative flex flex-col items-center">
-              <div 
-                className={`w-16 rounded-t transition-all duration-500 ${getAccuracyColor(item.accuracy)}`}
-                style={{ height: `${barHeight}px` }}
-              />
+              {viewMode === 'count' ? (
+                // Questions mode: nested bars
+                <div 
+                  className="relative cursor-pointer group"
+                  onMouseEnter={() => setHoveredBar(item.difficulty)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
+                  {/* Outer bar (total questions) */}
+                  <div 
+                    className="w-12 rounded-t bg-gray-200 transition-all duration-500"
+                    style={{ height: `${barHeight}px` }}
+                  />
+                  {/* Inner bar (correct questions) - changed from green to baby blue */}
+                  {item.total > 0 && (
+                    <div 
+                      className="absolute bottom-0 w-12 rounded-t bg-sky-300 transition-all duration-500"
+                      style={{ 
+                        height: `${Math.max((item.correct / item.total) * barHeight, 2)}px` 
+                      }}
+                    />
+                  )}
+                  {/* Tooltip */}
+                  {isHovered && item.total > 0 && (
+                    <div 
+                      className="absolute z-50 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg pointer-events-none whitespace-nowrap"
+                      style={{
+                        bottom: `${barHeight + 10}px`,
+                        left: '50%',
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      {item.correct} correct out of {item.total}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Accuracy mode: single colored bar
+                <div 
+                  className={`w-12 rounded-t transition-all duration-500 ${getAccuracyColor(item.accuracy)}`}
+                  style={{ height: `${barHeight}px` }}
+                />
+              )}
               
-              <div className="absolute -top-8 text-center">
+              <div className="absolute -top-10 text-center">
                 {viewMode === 'accuracy' ? (
                   <div className="text-sm font-bold text-gray-900">
                     {item.accuracy}%
                   </div>
                 ) : (
                   <>
-                    <div className="text-sm font-bold text-gray-900">
+                    <div className="text-sm font-bold text-gray-900 mb-1">
                       {item.total}
                     </div>
                     {item.correct > 0 && (
@@ -164,6 +219,239 @@ export const VerticalBarChart: React.FC<VerticalBarChartProps> = ({
 };
 
 // ============================================================================
+// VERTICAL DOMAIN/SUBDOMAIN BAR CHART COMPONENT
+// ============================================================================
+
+interface VerticalDomainBarChartProps {
+  data: DomainData[] | SubdomainData[];
+  viewMode?: ViewMode;
+  className?: string;
+  maxHeight?: number;
+}
+
+export const VerticalDomainBarChart: React.FC<VerticalDomainBarChartProps> = ({
+  data,
+  viewMode = 'accuracy',
+  className = '',
+  maxHeight = 150
+}) => {
+  const maxValue = viewMode === 'accuracy' 
+    ? Math.max(...data.map(d => d.accuracy), 100)
+    : Math.max(...data.map(d => d.total), 1);
+
+  return (
+    <div className={`h-56 flex items-end justify-center space-x-6 ${className}`}>
+      {data.map((item) => {
+        const displayValue = viewMode === 'accuracy' ? item.accuracy : item.total;
+        const barHeight = maxValue > 0 
+          ? Math.max((displayValue / maxValue) * maxHeight, 10)
+          : 10;
+        
+        const displayColor = viewMode === 'accuracy' 
+          ? getAccuracyColor(item.accuracy)
+          : 'bg-sky-300';
+
+        return (
+          <div key={item.domain || item.subdomain} className="flex flex-col items-center space-y-3">
+            <div className="relative flex flex-col items-center">
+              <div 
+                className={`w-12 rounded-t transition-all duration-500 ${displayColor}`}
+                style={{ height: `${barHeight}px` }}
+              />
+              
+              {/* Value label above bar */}
+              <div className="absolute -top-8 text-center">
+                <div className={`text-xs font-semibold ${viewMode === 'accuracy' ? getAccuracyTextColor(item.accuracy) : 'text-gray-900'}`}>
+                  {displayValue}{viewMode === 'accuracy' ? '%' : ''}
+                </div>
+              </div>
+            </div>
+            
+            {/* Domain/Subdomain label - positioned at bottom like difficulty labels */}
+            <div className="text-[9px] font-medium text-gray-700 text-center max-w-[90px] leading-tight">
+              {item.domain || item.subdomain}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Math-specific vertical chart with pastel purple
+interface VerticalMathBarChartProps {
+  data: DifficultyData[];
+  viewMode: ViewMode;
+  className?: string;
+  maxHeight?: number;
+}
+
+export const VerticalMathBarChart: React.FC<VerticalMathBarChartProps> = ({
+  data,
+  viewMode,
+  className = '',
+  maxHeight = 120
+}) => {
+  const [hoveredBar, setHoveredBar] = React.useState<string | null>(null);
+
+  // Ensure we always have all difficulty levels
+  const allDifficulties = ['Easy', 'Medium', 'Hard'];
+  const completeData = allDifficulties.map(difficulty => {
+    const existingData = data.find(d => d.difficulty === difficulty);
+    return existingData || {
+      difficulty,
+      correct: 0,
+      total: 0,
+      accuracy: 0
+    };
+  });
+
+  const maxValue = viewMode === 'accuracy' 
+    ? Math.max(...completeData.map(d => d.accuracy), 0)
+    : Math.max(...completeData.map(d => d.total), 0);
+
+  return (
+    <div className={`h-56 flex items-end justify-center space-x-6 ${className}`}>
+      {completeData.map((item) => {
+        const barHeight = maxValue > 0 
+          ? Math.max(((viewMode === 'accuracy' ? item.accuracy : item.total) / maxValue) * maxHeight, 15)
+          : 15;
+        const isHovered = hoveredBar === item.difficulty;
+
+        return (
+          <div key={item.difficulty} className="flex flex-col items-center space-y-3">
+            <div className="relative flex flex-col items-center">
+              {viewMode === 'count' ? (
+                // Questions mode: nested bars
+                <div 
+                  className="relative cursor-pointer group"
+                  onMouseEnter={() => setHoveredBar(item.difficulty)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
+                  {/* Outer bar (total questions) */}
+                  <div 
+                    className="w-12 rounded-t bg-gray-200 transition-all duration-500"
+                    style={{ height: `${barHeight}px` }}
+                  />
+                  {/* Inner bar (correct questions) - pastel purple */}
+                  {item.total > 0 && (
+                    <div 
+                      className="absolute bottom-0 w-12 rounded-t bg-purple-300 transition-all duration-500"
+                      style={{ 
+                        height: `${Math.max((item.correct / item.total) * barHeight, 2)}px` 
+                      }}
+                    />
+                  )}
+                  {/* Tooltip */}
+                  {isHovered && item.total > 0 && (
+                    <div 
+                      className="absolute z-50 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg pointer-events-none whitespace-nowrap"
+                      style={{
+                        bottom: `${barHeight + 10}px`,
+                        left: '50%',
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      {item.correct} correct out of {item.total}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Accuracy mode: single colored bar
+                <div 
+                  className={`w-12 rounded-t transition-all duration-500 ${getAccuracyColor(item.accuracy)}`}
+                  style={{ height: `${barHeight}px` }}
+                />
+              )}
+              
+              <div className="absolute -top-10 text-center">
+                {viewMode === 'accuracy' ? (
+                  <div className="text-sm font-bold text-gray-900">
+                    {item.accuracy}%
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-sm font-bold text-gray-900 mb-1">
+                      {item.total}
+                    </div>
+                    {item.correct > 0 && (
+                      <div className="text-xs text-gray-500">
+                        {item.correct} Correct
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="text-sm font-medium text-gray-700">
+              {item.difficulty}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Math-specific domain chart with pastel purple
+interface VerticalMathDomainBarChartProps {
+  data: DomainData[] | SubdomainData[];
+  viewMode?: ViewMode;
+  className?: string;
+  maxHeight?: number;
+}
+
+export const VerticalMathDomainBarChart: React.FC<VerticalMathDomainBarChartProps> = ({
+  data,
+  viewMode = 'accuracy',
+  className = '',
+  maxHeight = 150
+}) => {
+  const maxValue = viewMode === 'accuracy' 
+    ? Math.max(...data.map(d => d.accuracy), 100)
+    : Math.max(...data.map(d => d.total), 1);
+
+  return (
+    <div className={`h-56 flex items-end justify-center space-x-6 ${className}`}>
+      {data.map((item) => {
+        const displayValue = viewMode === 'accuracy' ? item.accuracy : item.total;
+        const barHeight = maxValue > 0 
+          ? Math.max((displayValue / maxValue) * maxHeight, 10)
+          : 10;
+        
+        const displayColor = viewMode === 'accuracy' 
+          ? getAccuracyColor(item.accuracy)
+          : 'bg-purple-300';
+
+        return (
+          <div key={item.domain || item.subdomain} className="flex flex-col items-center space-y-3">
+            <div className="relative flex flex-col items-center">
+              <div 
+                className={`w-12 rounded-t transition-all duration-500 ${displayColor}`}
+                style={{ height: `${barHeight}px` }}
+              />
+              
+              {/* Value label above bar */}
+              <div className="absolute -top-8 text-center">
+                <div className={`text-xs font-semibold ${viewMode === 'accuracy' ? getAccuracyTextColor(item.accuracy) : 'text-gray-900'}`}>
+                  {displayValue}{viewMode === 'accuracy' ? '%' : ''}
+                </div>
+              </div>
+            </div>
+            
+            {/* Domain/Subdomain label - positioned at bottom like difficulty labels */}
+            <div className="text-[9px] font-medium text-gray-700 text-center max-w-[90px] leading-tight">
+              {item.domain || item.subdomain}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
 // HORIZONTAL PROGRESS BARS COMPONENT
 // ============================================================================
 
@@ -171,14 +459,18 @@ interface HorizontalProgressBarsProps {
   data: DomainData[] | SubdomainData[];
   className?: string;
   showGridLines?: boolean;
+  viewMode?: ViewMode;
 }
 
 export const HorizontalProgressBars: React.FC<HorizontalProgressBarsProps> = ({
   data,
   className = '',
-  showGridLines = true
+  showGridLines = true,
+  viewMode = 'accuracy'
 }) => {
-  const maxAccuracy = Math.max(...data.map(d => d.accuracy), 0);
+  const maxValue = viewMode === 'accuracy' 
+    ? Math.max(...data.map(d => d.accuracy), 0)
+    : Math.max(...data.map(d => d.total), 0);
 
   return (
     <div className={`space-y-4 relative ${className}`}>
@@ -195,9 +487,17 @@ export const HorizontalProgressBars: React.FC<HorizontalProgressBarsProps> = ({
       )}
       
       {data.map((item) => {
-        const barWidth = maxAccuracy > 0 
-          ? (item.accuracy / maxAccuracy) * 100
+        const barWidth = maxValue > 0 
+          ? viewMode === 'accuracy'
+            ? (item.accuracy / maxValue) * 100
+            : (item.total / maxValue) * 100
           : 0;
+        
+        const displayValue = viewMode === 'accuracy' ? item.accuracy : item.total;
+        const displayLabel = viewMode === 'accuracy' ? '%' : '';
+        const displayColor = viewMode === 'accuracy' 
+          ? getAccuracyColor(item.accuracy)
+          : 'bg-green-500';
 
         return (
           <div key={item.domain || item.subdomain} className="space-y-2 relative z-10">
@@ -205,13 +505,20 @@ export const HorizontalProgressBars: React.FC<HorizontalProgressBarsProps> = ({
               <span className="text-sm font-medium text-gray-700">
                 {item.domain || item.subdomain}
               </span>
-              <span className={`text-sm font-semibold ${getAccuracyTextColor(item.accuracy)}`}>
-                {item.accuracy}%
-              </span>
+              <div className="flex items-center gap-2">
+                {viewMode === 'count' && (
+                  <span className="text-xs text-gray-500">
+                    {item.correct} Correct
+                  </span>
+                )}
+                <span className={`text-sm font-semibold ${viewMode === 'accuracy' ? getAccuracyTextColor(item.accuracy) : 'text-gray-900'}`}>
+                  {displayValue}{displayLabel}
+                </span>
+              </div>
             </div>
             <div className="relative w-full bg-gray-200 rounded-full h-2">
               <div 
-                className={`h-2 rounded-full transition-all duration-500 ${getAccuracyColor(item.accuracy)}`}
+                className={`h-2 rounded-full transition-all duration-500 ${displayColor}`}
                 style={{ width: `${barWidth}%` }}
               />
             </div>
@@ -240,14 +547,14 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({
   className = ''
 }) => {
   return (
-    <Card className={`shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl ${className}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg font-semibold text-gray-800 flex items-center">
+    <Card className={`rounded-2xl border border-gray-200 shadow-sm h-full flex flex-col ${className}`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
+        <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
           <Icon className="w-5 h-5 mr-2 text-blue-600" />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0 flex-1 flex flex-col">
         {children}
       </CardContent>
     </Card>
@@ -311,20 +618,20 @@ export const ViewModeToggle: React.FC<ViewModeToggleProps> = ({
   return (
     <div className={`flex gap-2 ${className}`}>
       <Button
+        variant={viewMode === 'count' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onViewModeChange('count')}
+        className="text-xs"
+      >
+        # Questions
+      </Button>
+      <Button
         variant={viewMode === 'accuracy' ? 'default' : 'outline'}
         size="sm"
         onClick={() => onViewModeChange('accuracy')}
         className="text-xs"
       >
         % Accuracy
-      </Button>
-      <Button
-        variant={viewMode === 'count' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => onViewModeChange('count')}
-        className="text-xs"
-      >
-        Count
       </Button>
     </div>
   );

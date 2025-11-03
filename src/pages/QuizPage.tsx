@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Quiz from '@/components/Quiz';
 import QuizSummaryPage from '@/components/QuizSummaryPage';
 import MistakesQuizView from '@/components/MistakesQuizView';
+import QuizView from '@/components/QuizView';
+import { Subject } from '@/types/common';
 
 const QuizPage: React.FC = () => {
   const navigate = useNavigate();
@@ -117,6 +119,54 @@ const QuizPage: React.FC = () => {
     
     // If no practice data found, redirect back
     navigate('/performance-dashboard');
+    return null;
+  }
+
+  // Handle target weakness mode
+  if (quizMode === 'target-weakness' || location.state?.mode === 'target-weakness') {
+    try {
+      const questions = location.state?.questions || [];
+      const targetWeakness = location.state?.targetWeakness;
+      
+      if (questions && questions.length > 0) {
+        // Questions are already in the correct format from ReviewMistakes
+        const quizQuestions = questions.map((q: any, index: number) => ({
+          id: typeof q.id === 'number' ? q.id : (parseInt(String(q.id)) || index + 1),
+          question: q.question || q.question_text || '',
+          options: q.options || [],
+          correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 
+            (q.correct_answer === 'A' ? 0 : q.correct_answer === 'B' ? 1 : q.correct_answer === 'C' ? 2 : 3),
+          explanation: q.explanation || q.correct_rationale || '',
+          topic: q.topic || q.skill || '',
+          subject: q.subject || 'english',
+          difficulty: q.difficulty || 'medium'
+        }));
+
+        // Determine subject from questions
+        const subject: Subject = quizQuestions[0]?.subject === 'math' ? 'math' : 'english';
+        const topics = [...new Set(quizQuestions.map(q => q.topic).filter(Boolean))];
+
+        return (
+          <div className="min-h-screen bg-gray-50">
+            <QuizView
+              questions={quizQuestions}
+              selectedTopics={topics.map((t, i) => `topic-${i}`)}
+              feedbackPreference="immediate"
+              onBack={() => navigate('/learn')}
+              topics={topics}
+              userName={userName}
+              subject={subject}
+              onBackToDashboard={() => navigate('/')}
+            />
+          </div>
+        );
+      }
+    } catch (error) {
+      console.error('Error loading target weakness quiz:', error);
+    }
+    
+    // If no questions found, redirect back
+    navigate('/learn');
     return null;
   }
 

@@ -27,10 +27,12 @@ import StreakCalendar from './StreakCalendar';
 import SATGoalDialog from './Goals/SATGoalDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 import StudyTimeCard from './Performance/StudyTimeCard';
 import QuestionTopicsDifficulty from './Performance/QuestionTopicsDifficulty';
 import MathTopicsDifficulty from './Performance/MathTopicsDifficulty';
+import MasteryPerformance from './Performance/MasteryPerformance';
 
 interface PerformanceDashboardProps {
   userName: string;
@@ -88,6 +90,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   const { toast } = useToast();
   const { quizResults: dataQuizResults, marathonSessions: dataMarathonSessions, mockTests: dataMockTests, loading: dataLoading } = useData();
   const { hasSolvedQuestions, loading: hasSolvedQuestionsLoading } = useHasSolvedQuestions(user);
+  const { trackEvent } = useQuestTracking();
+
+  // Track performance page visit for quest completion
+  useEffect(() => {
+    if (user?.id) {
+      trackEvent('visit_performance');
+    }
+  }, [user?.id, trackEvent]);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [mockTestResults, setMockTestResults] = useState<MockTestResult[]>([]);
   const [marathonStats, setMarathonStats] = useState<MarathonStats>({
@@ -470,11 +480,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Performance Dashboard</h1>
+          <p className="text-gray-600">Track your performance across different topics and difficulty levels</p>
         </div>
 
         {/* Content area - blur only this section */}
@@ -485,12 +496,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Current Streak */}
           <Card 
-            className="bg-white relative h-full cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white border-0 shadow-sm h-full cursor-pointer hover:shadow-md transition-shadow"
             onClick={widgetsMinimized ? handleWidgetExpand : undefined}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600">Current Streak</h3>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Current Streak</h3>
                 {/* Settings button to view calendar (replaces bottom View Calendar) */}
                 {!widgetsMinimized && (
                 <button
@@ -498,10 +509,10 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                       e.stopPropagation();
                       setShowStreakCalendar(true);
                     }}
-                  className="p-1 rounded hover:bg-orange-50"
+                  className="p-1 rounded hover:bg-orange-50 transition-colors"
                   title="View calendar"
                 >
-                  <Settings className="w-4 h-4 text-orange-500" />
+                  <Settings className="w-4 h-4 text-gray-400" />
                 </button>
                 )}
               </div>
@@ -510,14 +521,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                   {streakData?.current_streak || 0}
                 </div>
                 <Flame 
-                  className={`text-5xl ${
+                  className={`text-5xl transition-all ${
                     questionsToday >= 5 
-                      ? 'text-orange-500 drop-shadow-lg' 
-                      : 'text-gray-400'
+                      ? 'text-orange-500' 
+                      : 'text-gray-300'
                   }`}
                 />
               </div>
-              <div className="text-sm text-gray-500 mb-4">Day Streak</div>
+              <div className="text-xs text-gray-600 mb-2">Day Streak</div>
               
               {!widgetsMinimized && (
                 <>
@@ -565,12 +576,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                 </div>
               
               {questionsToday < 5 ? (
-                <div className="text-xs text-orange-600 font-medium mb-3">
+                <div className="text-xs text-orange-600 font-medium mb-3 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
                   Solve {5 - questionsToday} more questions to count today's streak!
                 </div>
               ) : (
-                <div className="text-xs text-green-600 font-medium mb-3">
-                  Great! Today's streak counted ✓
+                <div className="text-xs text-green-700 font-medium mb-3 px-3 py-2 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
+                  <span>✓</span> Great! Today's streak counted
                 </div>
               )}
 
@@ -582,48 +593,48 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
           {/* Predicted SAT Score */}
           <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
             onClick={widgetsMinimized ? handleWidgetExpand : undefined}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600">Predicted SAT Score</h3>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Predicted SAT Score</h3>
                 <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
                 </div>
               </div>
               <div className="text-4xl font-bold text-gray-900 mb-1">{scorePrediction.totalScore}</div>
-              <div className="text-sm text-gray-500 mb-4">Based on your performance</div>
+              <div className="text-xs text-gray-600 mb-2">Based on your performance</div>
               
               {!widgetsMinimized && (
                 <>
               {/* Score breakdown */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <div className="text-lg font-semibold text-gray-900">{scorePrediction.readingWritingScore}</div>
-                  <div className="text-xs text-gray-500">Reading & Writing</div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <div className="text-lg font-bold text-gray-900">{scorePrediction.readingWritingScore}</div>
+                  <div className="text-xs text-gray-600">Reading & Writing</div>
                 </div>
-                <div>
-                  <div className="text-lg font-semibold text-gray-900">{scorePrediction.mathScore}</div>
-                  <div className="text-xs text-gray-500">Math</div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <div className="text-lg font-bold text-gray-900">{scorePrediction.mathScore}</div>
+                  <div className="text-xs text-gray-600">Math</div>
                 </div>
               </div>
 
               {/* Goal progress */}
               {goalProgress && (
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">Goal Progress</span>
-                    <span className="text-sm font-medium text-gray-900">{Math.round(goalProgress.progress)}%</span>
+                <div className="mb-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-medium text-gray-700">Goal Progress</span>
+                    <span className="text-xs font-semibold text-gray-900">{Math.round(goalProgress.progress)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-100 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${goalProgress.onTrack ? 'bg-green-500' : 'bg-orange-500'}`}
+                      className={`h-2 rounded-full transition-all ${goalProgress.onTrack ? 'bg-green-500' : 'bg-orange-500'}`}
                       style={{ width: `${goalProgress.progress}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {goalProgress.onTrack ? 'On track!' : `Need ${goalProgress.requiredDailyQuestions} questions/day`}
+                  <div className="text-xs text-gray-600 mt-1">
+                    {goalProgress.onTrack ? <span className="font-medium">On track!</span> : `Need ${goalProgress.requiredDailyQuestions} questions/day`}
                   </div>
                 </div>
               )}
@@ -636,7 +647,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
                       e.stopPropagation();
                       setShowGoalDialog(true);
                     }}
-                className="w-full"
+                className="w-full border-gray-300 hover:bg-gray-50"
               >
                 {satGoal ? `Update Goal (${satGoal})` : 'Set Goal'}
               </Button>
@@ -661,8 +672,18 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
           />
         </div>
 
+        {/* Mastery Section - 2/3 + 1/3 Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div className="lg:col-span-2 h-full">
+            <MasteryPerformance />
+          </div>
+          <div className="lg:col-span-1 h-full">
+            {/* Empty space or other component if needed */}
+          </div>
+        </div>
+
         {/* Best Performing Topics & Recent Sessions - Top Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Best Performing Topics */}
           <div className="lg:col-span-2 h-full">
             <PerformanceOverviewOptimized userName={userName} />
@@ -676,7 +697,7 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
 
         {/* Performance Trends Section - 2/3 + 1/3 Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           <div className="lg:col-span-2 h-full">
             <PerformanceTrends userName={userName} />
           </div>
@@ -686,12 +707,12 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
         </div>
 
         {/* Question Topics & Difficulty Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <QuestionTopicsDifficulty />
         </div>
 
         {/* Math Topics & Difficulty Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <MathTopicsDifficulty />
         </div>
 
@@ -723,14 +744,14 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
       {/* Simple overlay message when user hasn't solved questions */}
       {!hasSolvedQuestions && (
         <div className="fixed top-20 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-auto text-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-auto text-center border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Solve some questions first</h2>
             <p className="text-gray-600 mb-6">
               Take a practice quiz to unlock all performance features and get personalized analytics.
             </p>
             <button
               onClick={handleTakeQuiz}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-sm"
             >
               Start Practice Quiz
             </button>

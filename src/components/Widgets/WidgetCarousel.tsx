@@ -5,7 +5,9 @@ import TestWidget from './TestWidget';
 import SimpleStatsWidget from './SimpleStatsWidget';
 import LeaderboardRankingWidget from './LeaderboardRankingWidget';
 import SimpleStreakWidget from './SimpleStreakWidget';
+import TotalXPWidget from './TotalXPWidget';
 import WidgetErrorBoundary from './WidgetErrorBoundary';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // import SimpleRecentActivityWidget from './SimpleRecentActivityWidget';
 
 const WidgetCarousel: React.FC = () => {
@@ -14,7 +16,8 @@ const WidgetCarousel: React.FC = () => {
   const widgets = [
     { component: SimpleStatsWidget, title: 'Questions Solved' },
     { component: SimpleStreakWidget, title: 'Study Streak' },
-    { component: LeaderboardRankingWidget, title: 'Leaderboard Rank' }
+    { component: LeaderboardRankingWidget, title: 'Leaderboard Rank' },
+    { component: TotalXPWidget, title: 'Total XP' }
   ];
 
   const nextWidget = () => {
@@ -28,47 +31,57 @@ const WidgetCarousel: React.FC = () => {
   const CurrentWidget = widgets[currentIndex].component;
 
   return (
-    <div className="w-full h-full relative">
-      {/* Widget Content - Full Size */}
-      <div className="w-full h-full overflow-hidden">
-        <WidgetErrorBoundary>
-          <CurrentWidget />
-        </WidgetErrorBoundary>
-      </div>
-
-      {/* Navigation Buttons - Overlayed inside the widget */}
-      <div className="absolute top-2 right-2 flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={prevWidget}
-          className="h-6 w-6 p-0 bg-white/80 hover:bg-white shadow-sm"
-        >
-          <ChevronLeft className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={nextWidget}
-          className="h-6 w-6 p-0 bg-white/80 hover:bg-white shadow-sm"
-        >
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {/* Dots Indicator - Overlayed at bottom */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-        {widgets.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-1.5 h-1.5 rounded-full transition-colors ${
-              index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
+    <Card className="rounded-2xl border border-gray-200 shadow-sm w-full h-full">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-gray-900 truncate">
+            {widgets[currentIndex].title}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={prevWidget}
+              className="h-6 w-6 p-0 bg-white hover:bg-white"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextWidget}
+              className="h-6 w-6 p-0 bg-white hover:bg-white"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="w-full min-h-[200px] relative">
+          {/* Widget Content */}
+          <div className="w-full h-full overflow-visible">
+            <WidgetErrorBoundary>
+              {/* Render widgets in 'bare' variant to avoid nested cards and overlap */}
+              { /* @ts-expect-error - pass variant prop optionally */ }
+              <CurrentWidget variant="bare" />
+            </WidgetErrorBoundary>
+          </div>
+          {/* Dots Indicator */}
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+            {widgets.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

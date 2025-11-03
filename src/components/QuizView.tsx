@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Subject } from '@/types/common';
 import { QuizQuestion } from '@/types/question';
 import { useQueryClient } from '@tanstack/react-query';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 interface QuizViewProps {
   questions: QuizQuestion[];
@@ -42,9 +43,10 @@ const QuizView: React.FC<QuizViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { refreshPerformanceData } = useData();
+  const { refreshPerformanceData, invalidateCache } = useData();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { trackEvent } = useQuestTracking();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(questions.length).fill(null));
@@ -198,6 +200,18 @@ const QuizView: React.FC<QuizViewProps> = ({
           }
           // Dispatch event to refresh question counts
           window.dispatchEvent(new CustomEvent('quiz-completed'));
+          
+          // Track quiz completion for quest completion (non-blocking)
+          try {
+            await trackEvent('complete_quiz', {
+              totalQuestions: questions.length,
+              correctAnswers: correctAnswers,
+              scorePercentage: scorePercentage
+            });
+          } catch (error) {
+            console.error('Error tracking quiz completion for quests:', error);
+            // Don't let quest tracking errors break quiz completion
+          }
         }
 
         // Record individual question attempts for performance tracking
@@ -206,17 +220,22 @@ const QuizView: React.FC<QuizViewProps> = ({
           const userAnswer = answers[index];
           const isCorrect = userAnswer === question.correctAnswer;
           
+          // Better topic assignment with fallbacks - ALWAYS prefer skill
+          let topic = (question as any).skill || question.topic || (question as any).domain;
+          
           return {
             user_id: user.id,
             question_id: question.id.toString(), // Now properly saved as text
             session_id: sessionId,
             session_type: 'quiz',
             subject: subjectForAttempt,
-            topic: question.topic || 'general', // Ensure topic is never null/undefined
+            topic: topic, // Now properly assigned topic
             difficulty: question.difficulty || 'medium', // Ensure difficulty is never null/undefined
             is_correct: isCorrect,
             time_spent: timeSpent,
-            points_earned: isCorrect ? (question.difficulty === 'hard' ? 9 : question.difficulty === 'medium' ? 6 : 3) : 0
+            points_earned: isCorrect
+              ? ((question.difficulty || 'medium') === 'hard' ? 50 : (question.difficulty || 'medium') === 'medium' ? 25 : 10)
+              : -15
           };
         });
 
@@ -225,7 +244,8 @@ const QuizView: React.FC<QuizViewProps> = ({
           total: questionAttempts.length,
           correct: questionAttempts.filter(a => a.is_correct).length,
           incorrect: questionAttempts.filter(a => !a.is_correct).length,
-          user_id: user.id
+          user_id: user.id,
+          topics: [...new Set(questionAttempts.map(a => a.topic))]
         });
         
         const { error: attemptsError } = await supabase
@@ -261,8 +281,9 @@ const QuizView: React.FC<QuizViewProps> = ({
         queryClient.invalidateQueries({ queryKey: ['marathon-sessions-performance', userName] });
         queryClient.invalidateQueries({ queryKey: ['user-mistakes', userName] });
         
-        // Refresh DataContext to ensure learn page gets updated data
-        console.log('🔄 Refreshing DataContext performance data...');
+        // Invalidate cache and refresh DataContext to ensure learn page gets updated data
+        console.log('🔄 Invalidating cache and refreshing DataContext performance data...');
+        invalidateCache();
         await refreshPerformanceData();
         
         // Clear recent sessions cache to force refresh
@@ -494,7 +515,7 @@ const QuizView: React.FC<QuizViewProps> = ({
             {/* Question Details - Left Side */}
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">Topic:</span> {currentQuestion.topic || 'N/A'}
+                <span className="font-medium">Topic:</span> {currentQuestion.skill || currentQuestion.topic || 'N/A'}
               </div>
               <div className="text-sm text-gray-600">
                 <span className="font-medium">Difficulty:</span> 

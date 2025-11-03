@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Zap, Clock, BookOpen, Brain, Settings, Trophy, Target, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Zap, Clock, BookOpen, Brain, Settings, Trophy } from 'lucide-react';
 import AdminPanel from './AdminPanel';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { useNavigate } from 'react-router-dom';
@@ -11,9 +11,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import RecentSessionsPrefetcher from './Performance/RecentSessionsPrefetcher';
 import WidgetCarousel from './Widgets/WidgetCarousel';
+import LearningPlanCard from '@/components/LearningPlanCard';
+import MasteryCard from '@/components/MasteryCard';
+import TargetMyWeakness from '@/components/TargetMyWeakness';
 import { generateAdaptiveQuest, calculateSkillScore, SkillScore } from '@/utils/adaptiveQuestSystem';
 import { useSimpleToast } from '@/components/ui/simple-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useQuests } from '@/hooks/useQuests';
 
 interface DashboardProps {
   userName: string;
@@ -32,15 +36,72 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showQuestsModal, setShowQuestsModal] = useState(false);
-  const [questStats, setQuestStats] = useState({ completed: 0, total: 0 });
-  const [loadingQuests, setLoadingQuests] = useState(true);
-  const [userQuests, setUserQuests] = useState<any[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<any>(null);
   const { isAdmin } = useSecureAdminAccess();
   const navigate = useNavigate();
   const { showToast } = useSimpleToast();
   const queryClient = useQueryClient();
+
+  // Get user ID for quest caching
+  const [userId, setUserId] = useState<string>('');
+  
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (user.user) {
+        setUserId(user.user.id);
+      }
+    };
+    getUser();
+  }, []);
+
+  // Use quest caching hook
+  const { quests: cachedQuests, questStats: cachedQuestStats, isLoading: questsLoading, refreshQuests } = useQuests({ 
+    userId, 
+    enabled: !!userId 
+  });
+
+  // Optimistic quest state for instant UI updates (0ms latency)
+  const [optimisticQuests, setOptimisticQuests] = useState<any[]>([]);
+  const [optimisticStats, setOptimisticStats] = useState({ completed: 0, total: 0 });
+
+  // Sync optimistic state with cached quests
+  useEffect(() => {
+    setOptimisticQuests(cachedQuests);
+    setOptimisticStats(cachedQuestStats);
+  }, [cachedQuests, cachedQuestStats]);
+
+  // Listen for quest completion events - INSTANT optimistic update (0ms latency)
+  useEffect(() => {
+    const handleQuestCompleted = (event: CustomEvent) => {
+      const completedQuestIds = event.detail?.questIds || [];
+      
+      if (completedQuestIds.length > 0) {
+        // INSTANT UPDATE - Remove completed quests immediately (0ms)
+        setOptimisticQuests(prev => {
+          const filtered = prev.filter(q => !completedQuestIds.includes(q.id));
+          return filtered;
+        });
+
+        // INSTANT UPDATE - Update stats immediately
+        setOptimisticStats(prev => ({
+          completed: prev.completed + completedQuestIds.length,
+          total: prev.total
+        }));
+
+        console.log('⚡ INSTANT: Removed completed quests from Live Quests display');
+      }
+
+      // Refresh from database in background (non-blocking)
+      refreshQuests();
+    };
+    
+    window.addEventListener('quest-completed', handleQuestCompleted as EventListener);
+    return () => {
+      window.removeEventListener('quest-completed', handleQuestCompleted as EventListener);
+    };
+  }, [refreshQuests]);
 
   // Handle quest completion and award points
   const handleQuestCompletion = async (questId: string, questPoints: number) => {
@@ -73,13 +134,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         return;
       }
 
-      // Update local state to mark quest as completed
-      setUserQuests(prev => prev.map(q => 
-        q.id === questId ? { ...q, completed: true, progress: 100 } : q
-      ));
+      // Quest data is now managed by the useQuests hook
 
-      // Update quest stats - increment completed count
-      setQuestStats(prev => ({ ...prev, completed: prev.completed + 1 }));
+      // Quest stats are now managed by the useQuests hook
 
       // Trigger confetti animation
       setShowConfetti(true);
@@ -94,6 +151,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         type: 'success',
         duration: 6000
       });
+
+      // Refresh cached quests
+      refreshQuests();
 
     } catch (error) {
       console.error('Error completing quest:', error);
@@ -262,20 +322,17 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Handle starting a quest
   const handleStartQuest = async (quest: any) => {
     try {
-      // If it's a real quest from the database, update its progress
-      if (quest.id) {
+      // If it's a database quest (UUID id), update its progress
+      const isUuid = typeof quest.id === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(quest.id);
+      if (isUuid) {
         const { data: user } = await supabase.auth.getUser();
         if (user?.user) {
-          // Update quest progress to mark it as started
           await supabase
             .from('user_quests')
             .update({ current_progress: 1 })
             .eq('id', quest.id);
-          
-          // Update local state to show the quest as started
-          setUserQuests(prev => prev.map(q => 
-            q.id === quest.id ? { ...q, progress: 1, progressText: `1/${q.target_count || 10} questions` } : q
-          ));
+          // Refresh quests cache for Live Quests card
+          refreshQuests();
         }
       }
       
@@ -364,67 +421,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // Fetch quest statistics
-  useEffect(() => {
-    const fetchQuestStats = async () => {
-      try {
-        const { data: user } = await supabase.auth.getUser();
-        if (!user.user) return;
-
-        const { data: quests, error } = await supabase
-          .from('user_quests')
-          .select('*')
-          .eq('user_id', user.user.id)
-          .gte('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false })
-          .limit(3); // Show only 3 most recent quests
-
-        if (error) {
-          console.error('Error fetching quest stats:', error);
-          return;
-        }
-
-        const dailyQuests = quests?.filter(q => q.quest_type === 'daily') || [];
-        const completed = dailyQuests.filter(q => q.completed).length;
-        const total = dailyQuests.length;
-
-        setQuestStats({ completed, total });
-        
-        // Check for completed quests in the database
-        const { data: completedQuests } = await supabase
-          .from('quest_completions')
-          .select('quest_id')
-          .eq('user_id', user.user.id);
-
-        const completedQuestIds = new Set(completedQuests?.map(q => q.quest_id) || []);
-
-        // Always show founder-designed quests for ALL users
-        const founderQuests = generateDynamicQuests();
-        
-        // Update quest completion status based on database
-        const questsWithCompletionStatus = founderQuests.map(quest => ({
-          ...quest,
-          completed: completedQuestIds.has(quest.id),
-          // @ts-expect-error - Quest type needs target property
-          progress: completedQuestIds.has(quest.id) ? quest.target : 0
-        }));
-
-        // Update quest stats to count only active (non-completed) quests
-        const activeQuests = questsWithCompletionStatus.filter(q => !q.completed);
-        const completedCount = questsWithCompletionStatus.filter(q => q.completed).length;
-        const totalCount = questsWithCompletionStatus.length;
-        
-        setQuestStats({ completed: completedCount, total: totalCount });
-        setUserQuests(questsWithCompletionStatus);
-      } catch (error) {
-        console.error('Error in fetchQuestStats:', error);
-      } finally {
-        setLoadingQuests(false);
-      }
-    };
-
-    fetchQuestStats();
-  }, []);
+  // Quest loading is now handled by the useQuests hook
 
   if (showAdminPanel) {
     return <AdminPanel />;
@@ -435,7 +432,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-        <div className="h-screen flex flex-col px-4 py-6 overflow-hidden">
+        <div className="min-h-screen flex flex-col px-4 py-6 overflow-y-auto">
           {/* Pre-fetch recent sessions data for instant loading on Performance page */}
           <RecentSessionsPrefetcher userName={userName} />
           
@@ -466,182 +463,151 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex-1 flex flex-col xl:flex-row items-start gap-4 xl:gap-6 overflow-hidden">
               {/* Left Side - Live Quests (Responsive) */}
               <div className="w-full xl:w-80 xl:flex-shrink-0">
-                <Card className="w-full xl:w-80 h-96 xl:h-[32rem] bg-white border-gray-200 flex flex-col">
-                  <CardContent className="p-4 flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-3">
+                <Card className="w-full xl:w-80 rounded-2xl border border-gray-200 shadow-sm bg-white flex flex-col">
+                  <CardContent className="p-4 flex flex-col">
+                    <div className="flex items-center gap-2 mb-3 flex-shrink-0">
                       <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                         <Trophy className="h-3 w-3 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-900">Live Quests</h3>
-                        <p className="text-xs text-gray-600">{questStats.completed}/9 completed</p>
+                        <h3 className="text-lg font-semibold text-gray-900">Live Quests</h3>
+                        <p className="text-sm text-gray-600">{(optimisticStats.completed || cachedQuestStats.completed)}/{(optimisticStats.total || cachedQuestStats.total)} completed</p>
                       </div>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                      {loadingQuests ? (
+                    <div className="flex-1 overflow-hidden">
+                      {questsLoading ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                         </div>
                       ) : (
-                        <div className="space-y-3 pr-1">
-                          {/* Show real quests if available, otherwise show generated quests */}
-                          {(userQuests.length > 0 ? userQuests : generateDynamicQuests())
-                            .filter(quest => !quest.completed) // Filter out completed quests
-                            .sort((a, b) => {
-                              // Sort started quests (progress > 0) to the top
-                              if (a.progress > 0 && b.progress === 0) return -1;
-                              if (a.progress === 0 && b.progress > 0) return 1;
-                              return 0;
-                            })
-                            .map((quest, index) => (
-                            <div 
-                              key={quest.id || index} 
-                              className="bg-gray-50 rounded border border-gray-200 p-3 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
-                              onClick={() => handleQuestClick(quest)}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-gray-900">{quest.title}</span>
-                                <span className="text-xs text-blue-600 font-medium">+{quest.points}</span>
-                              </div>
-                              {/* Show description for onboarding quests */}
-                              {quest.description && (
-                                <div className="text-xs text-gray-600 mb-1">
-                                  {quest.description}
+                        <div className="space-y-2.5">
+                          {/* Show only first 3 active quests that fit in the container */}
+                          {/* Use optimistic state for instant updates (0ms latency) */}
+                          {(() => {
+                            const activeQuests = (optimisticQuests.length > 0 ? optimisticQuests : cachedQuests)
+                              .filter(quest => {
+                                // Only show active (non-completed) quests
+                                if (quest.completed) return false;
+                                // Also filter out expired quests
+                                if (quest.expiresAt && new Date(quest.expiresAt) < new Date()) return false;
+                                return true;
+                              })
+                              .sort((a, b) => {
+                                // Sort started quests (progress > 0) to the top
+                                if (a.progress > 0 && b.progress === 0) return -1;
+                                if (a.progress === 0 && b.progress > 0) return 1;
+                                return 0;
+                              })
+                              .slice(0, 3); // Limit to 3 quests max to ensure button is visible
+
+                            if (activeQuests.length === 0) {
+                              return (
+                                <div className="text-center py-4">
+                                  <p className="text-sm text-gray-500">No active quests. Complete more to unlock new ones!</p>
                                 </div>
-                              )}
-                              {/* Only show progress bar if quest has been started */}
-                              {quest.progress > 0 && (
-                                <>
-                                  <div className="w-full bg-gray-200 rounded-full h-1">
-                                    <div 
-                                      className="bg-blue-500 h-1 rounded-full" 
-                                      style={{ width: `${quest.progress}%` }}
-                                    ></div>
+                              );
+                            }
+
+                            return activeQuests.map((quest, index) => (
+                              <div 
+                                key={quest.id || index} 
+                                className="rounded-xl border border-gray-200 bg-white p-2.5 cursor-pointer hover:shadow-sm transition-all duration-200"
+                                onClick={() => handleQuestClick(quest)}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium text-gray-900 line-clamp-1 flex-1">{quest.title}</span>
+                                  <span className="text-xs text-blue-600 font-semibold ml-2 flex-shrink-0">+{quest.points}</span>
+                                </div>
+                                {quest.description && (
+                                  <div className="text-xs text-gray-600 mb-1.5 line-clamp-2">
+                                    {quest.description}
                                   </div>
-                                  <div className="text-xs text-gray-500 mt-1">{quest.progressText}</div>
-                                </>
-                              )}
-                              
-                              {/* Quest completion status */}
-                              {quest.completed && (
-                                <div className="mt-2 flex justify-end">
-                                  <span className="text-xs text-green-600 font-medium">✓ Completed</span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                )}
+                                {quest.progress > 0 && (
+                                  <>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                                      <div 
+                                        className="bg-blue-500 h-1.5 rounded-full transition-all" 
+                                        style={{ width: `${(quest.progress / (quest.target || 1)) * 100}%` }}
+                                      ></div>
+                                    </div>
+                                    <div className="text-xs text-gray-500">{quest.progressText || `${quest.progress}/${quest.target || 1}`}</div>
+                                  </>
+                                )}
+                              </div>
+                            ));
+                          })()}
                         </div>
                       )}
                     </div>
                     
-                    <Button 
+                    <button 
                       onClick={() => setShowQuestsModal(true)}
-                      className="w-full mt-auto bg-gray-600 hover:bg-gray-700 text-white text-xs py-2 rounded"
+                      className="w-full mt-3 pt-3 border-t border-gray-200 text-blue-600 text-sm font-medium hover:underline text-left flex-shrink-0"
                     >
-                      View All Quests
-                    </Button>
+                      View all quests
+                    </button>
                   </CardContent>
                 </Card>
+                
+                {/* Mastery Card - Below Live Quests */}
+                <div className="mt-4">
+                  <MasteryCard />
+                </div>
               </div>
 
               {/* Center - Practice Modes - Stacked Vertically */}
               <div className="w-full xl:flex-1 xl:max-w-md">
                 <div className="space-y-4 xl:space-y-6 h-full">
                   {/* Practice Card */}
-                  <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl flex-1">
-                    <CardContent className="p-4 lg:p-6 h-full flex flex-col justify-center">
-                      <div className="flex items-center gap-4 lg:gap-6">
-                        <div className="bg-purple-50 rounded-full p-3 lg:p-4 w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center flex-shrink-0">
-                          <Brain className="h-6 w-6 lg:h-8 lg:w-8 text-purple-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg lg:text-xl font-semibold text-gray-800 mb-2">Practice</h3>
-                          <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500 mb-4">
-                            <div className="flex items-center">
-                              <BookOpen className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Custom
-                            </div>
-                            <div className="flex items-center">
-                              <Brain className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Targeted
-                            </div>
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={onQuizSelect} 
-                          className="bg-purple-500 hover:bg-purple-600 text-white px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg flex-shrink-0"
-                        >
-                          Create
-                        </Button>
-                      </div>
+                  <Card className="rounded-2xl border border-gray-200 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-semibold text-gray-900">Practice</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-gray-600 text-sm mb-4">
+                        Custom and targeted practice sessions tailored to your needs.
+                      </p>
+                      <Button 
+                        onClick={onQuizSelect} 
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Create
+                      </Button>
                     </CardContent>
                   </Card>
 
                   {/* Mock Test Card */}
-                  <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl flex-1">
-                    <CardContent className="p-4 lg:p-6 h-full flex flex-col justify-center">
-                      <div className="flex items-center gap-4 lg:gap-6">
-                        <div className="bg-blue-50 rounded-full p-3 lg:p-4 w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-blue-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg lg:text-xl font-semibold text-gray-800 mb-2">Mock Test</h3>
-                          <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500 mb-4">
-                            <div className="flex items-center">
-                              <FileText className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Real Format
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Timed
-                            </div>
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={handleMockTestSelect} 
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg flex-shrink-0"
-                        >
-                          Take Test
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Study Plan Card */}
-                  <Card className="hover:shadow-lg transition-shadow border border-gray-100 rounded-xl flex-1">
-                    <CardContent className="p-4 lg:p-6 h-full flex flex-col justify-center">
-                      <div className="flex items-center gap-4 lg:gap-6">
-                        <div className="bg-green-50 rounded-full p-3 lg:p-4 w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center flex-shrink-0">
-                          <Calendar className="h-6 w-6 lg:h-8 lg:w-8 text-green-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg lg:text-xl font-semibold text-gray-800 mb-2">Study Plan</h3>
-                          <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500 mb-4">
-                            <div className="flex items-center">
-                              <Target className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Goal Setting
-                            </div>
-                            <div className="flex items-center">
-                              <BookOpen className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                              Personalized
-                            </div>
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={onNavigateToStudyPlan} 
-                          className="bg-green-500 hover:bg-green-600 text-white px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg flex-shrink-0"
-                        >
-                          Create Plan
-                        </Button>
-                      </div>
+                  <Card className="rounded-2xl border border-gray-200 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-semibold text-gray-900">Mock Test</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-gray-600 text-sm mb-4">
+                        Full-length timed practice tests in real SAT format.
+                      </p>
+                      <Button 
+                        onClick={handleMockTestSelect} 
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Take Test
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Target My Weakness Component */}
+                <div className="mt-4">
+                  <TargetMyWeakness />
+                </div>
               </div>
 
-              {/* Right Side - Your Stats Widget */}
+              {/* Right Side - Learning Plan + Your Stats Widget */}
               <div className="w-full xl:w-80 xl:flex-shrink-0">
+                <div className="mb-4">
+                  <LearningPlanCard onEdit={onNavigateToStudyPlan} />
+                </div>
                 <div className="w-full xl:w-80 h-64 xl:h-64 overflow-hidden">
                   <WidgetCarousel />
                 </div>
@@ -655,56 +621,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         onClose={() => setShowQuestsModal(false)}
         userName={userName}
         onNavigateToLeaderboard={onNavigateToLeaderboard}
-            onQuestCompleted={() => {
-              // Refresh quest stats and quest list when a quest is completed
-              const fetchQuestStats = async () => {
-                try {
-                  const { data: user } = await supabase.auth.getUser();
-                  if (!user.user) return;
-
-                  const { data: quests, error } = await supabase
-                    .from('user_quests')
-                    .select('*')
-                    .eq('user_id', user.user.id)
-                    .gte('expires_at', new Date().toISOString())
-                    .order('created_at', { ascending: false })
-                    .limit(3);
-
-                  if (error) {
-                    console.error('Error fetching quest stats:', error);
-                    return;
-                  }
-
-                  const dailyQuests = quests?.filter(q => q.quest_type === 'daily') || [];
-                  const completed = dailyQuests.filter(q => q.completed).length;
-                  const total = dailyQuests.length;
-
-                  setQuestStats({ completed, total });
-                  
-                  // Update quest list with fresh data
-                  if (quests && quests.length > 0) {
-                    const formattedQuests = quests.map(quest => ({
-                      id: quest.id,
-                      title: quest.quest_title,
-                      points: quest.points_reward,
-                      progress: quest.current_progress || 0,
-                      progressText: `${quest.current_progress || 0}/${quest.target_count} questions`,
-                      topic: quest.target_topic,
-                      subject: quest.target_topic?.toLowerCase().includes('algebra') || 
-                              quest.target_topic?.toLowerCase().includes('geometry') || 
-                              quest.target_topic?.toLowerCase().includes('math') ? 'math' : 'english',
-                      completed: quest.completed,
-                      expiresAt: new Date(quest.expires_at)
-                    }));
-                    setUserQuests(formattedQuests);
-                  }
-                } catch (error) {
-                  console.error('Error in fetchQuestStats:', error);
-                }
-              };
-
-              fetchQuestStats();
-            }}
+        onQuestCompleted={() => {
+          // Refresh cached quests when a quest is completed
+          refreshQuests();
+        }}
       />
 
       {/* Confetti Animation */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Target, BookOpen, Clock, ArrowLeft, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface StudyPlanProps {
   userName: string;
@@ -13,13 +16,86 @@ interface StudyPlanProps {
 }
 
 const StudyPlan: React.FC<StudyPlanProps> = ({ userName, onBack }) => {
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [testDate, setTestDate] = useState('');
-  const [readingWritingCurrent, setReadingWritingCurrent] = useState(200);
-  const [readingWritingGoal, setReadingWritingGoal] = useState(350);
-  const [mathCurrent, setMathCurrent] = useState(200);
-  const [mathGoal, setMathGoal] = useState(350);
+  const [selectedTestDate, setSelectedTestDate] = useState('');
+  const [readingWritingCurrent, setReadingWritingCurrent] = useState(600);
+  const [readingWritingGoal, setReadingWritingGoal] = useState(700);
+  const [mathCurrent, setMathCurrent] = useState(600);
+  const [mathGoal, setMathGoal] = useState(700);
   const [mockExamDay, setMockExamDay] = useState('');
+
+  // SAT dates for 2025 and 2026
+  const satDates = [
+    { value: '2025-08-23', label: 'August 23, 2025' },
+    { value: '2025-09-13', label: 'September 13, 2025' },
+    { value: '2025-10-04', label: 'October 4, 2025' },
+    { value: '2025-11-08', label: 'November 8, 2025' },
+    { value: '2025-12-06', label: 'December 6, 2025' },
+    { value: '2026-03-14', label: 'March 14, 2026' },
+    { value: '2026-05-02', label: 'May 2, 2026' },
+    { value: '2026-06-06', label: 'June 6, 2026' },
+  ];
+
+  // Fetch user attempts to calculate current score
+  const { data: userAttempts = [] } = useQuery({
+    queryKey: ['user-attempts-study-plan', userName],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('question_attempts_v2')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching user attempts:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
+  // Calculate predicted scores based on performance
+  useEffect(() => {
+    if (userAttempts.length === 0) return;
+
+    // Calculate accuracy from attempts
+    const totalAttempts = userAttempts.length;
+    const correctAttempts = userAttempts.filter(attempt => attempt.is_correct).length;
+    const accuracy = totalAttempts > 0 ? correctAttempts / totalAttempts : 0.5;
+
+    // Calculate average time per question
+    const totalTime = userAttempts.reduce((sum, attempt) => sum + (attempt.time_spent || 0), 0);
+    const avgTimePerQuestion = totalAttempts > 0 ? totalTime / totalAttempts : 120;
+
+    // Base score calculation
+    const baseScore = 800 + (accuracy * 800);
+    
+    // Adjust based on time (faster = better score)
+    const timeAdjustment = Math.max(-100, Math.min(100, (120 - avgTimePerQuestion) * 2));
+    
+    // Adjust based on difficulty of questions attempted
+    const difficultyAdjustment = userAttempts.reduce((sum, attempt) => {
+      const difficulty = attempt.difficulty?.toLowerCase();
+      if (difficulty === 'easy') return sum + 0;
+      if (difficulty === 'medium') return sum + 50;
+      if (difficulty === 'hard') return sum + 100;
+      return sum;
+    }, 0) / Math.max(1, totalAttempts);
+
+    const totalScore = Math.min(1600, Math.max(400, baseScore + timeAdjustment + difficultyAdjustment));
+    
+    // Split into sections
+    const readingWritingPredicted = Math.round(totalScore * 0.52);
+    const mathPredicted = Math.round(totalScore * 0.48);
+
+    // Set current scores
+    setReadingWritingCurrent(readingWritingPredicted);
+    setMathCurrent(mathPredicted);
+  }, [userAttempts]);
 
   const handleNext = () => {
     if (currentStep < 3) {
@@ -34,16 +110,28 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ userName, onBack }) => {
   };
 
   const handleCommitGoal = () => {
-    // Here you would typically save the study plan to the database
-    console.log('Study plan committed:', {
-      testDate,
+    // Save the study plan to localStorage
+    const learningPlan = {
+      testDate: selectedTestDate,
       readingWritingCurrent,
       readingWritingGoal,
       mathCurrent,
       mathGoal,
-      mockExamDay
-    });
-    // For now, just go back to dashboard
+      mockExamDay,
+      days: {
+        M: true,
+        T: true,
+        W: true,
+        T2: true,
+        F: true,
+        S: true,
+        S2: true,
+      },
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('userLearningPlan', JSON.stringify(learningPlan));
+    console.log('Study plan committed:', learningPlan);
+    // Go back to dashboard
     onBack();
   };
 
@@ -57,18 +145,22 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ userName, onBack }) => {
       <div className="space-y-4">
         <div>
           <Label htmlFor="testDate" className="text-lg font-semibold text-gray-800 mb-2 block">
-            Enter Your Test Date
+            Select Your Test Date
           </Label>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              id="testDate"
-              type="date"
-              value={testDate}
-              onChange={(e) => setTestDate(e.target.value)}
-              className="pl-10 h-12 text-lg"
-              placeholder="Select a test date"
-            />
+            <Select value={selectedTestDate} onValueChange={setSelectedTestDate}>
+              <SelectTrigger className="pl-10 h-12 text-lg">
+                <SelectValue placeholder="Select a test date" />
+              </SelectTrigger>
+              <SelectContent>
+                {satDates.map((date) => (
+                  <SelectItem key={date.value} value={date.value}>
+                    {date.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -76,7 +168,7 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ userName, onBack }) => {
       <div className="flex justify-end">
         <Button 
           onClick={handleNext}
-          disabled={!testDate}
+          disabled={!selectedTestDate}
           className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
         >
           Next
@@ -88,7 +180,8 @@ const StudyPlan: React.FC<StudyPlanProps> = ({ userName, onBack }) => {
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter Your Current and Goal Scores</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter Your Dream Scores</h2>
+        <p className="text-gray-600">Your current scores are auto-calculated based on your performance</p>
       </div>
 
       {/* Reading & Writing Section */}

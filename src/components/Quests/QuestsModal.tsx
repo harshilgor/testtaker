@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useSimpleToast } from '@/components/ui/simple-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { questTrackingService } from '@/services/questTrackingService';
 
 type DbQuest = Tables<'user_quests'>;
 
@@ -91,6 +93,7 @@ const fetchAllTopics = async (): Promise<string[]> => {
 const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQuestCompleted, onNavigateToLeaderboard }) => {
   const { questionAttempts, quizResults, marathonSessions, loading } = useData();
   const [userQuests, setUserQuests] = useState<Quest[]>([]);
+  const [completedQuestsList, setCompletedQuestsList] = useState<Quest[]>([]); // Separate state for completed quests
   const [questsLoading, setQuestsLoading] = useState(true);
   const [claimingQuest, setClaimingQuest] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -163,13 +166,22 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         // Manage quest expiration and generate new quests to ensure user always has 10 quests
         await manageQuestExpiration(user.user.id);
 
-        // Check for completed quests in the database
-        const { data: completedQuests } = await supabase
+        // Check for completed quests in the database - get full completion data
+        const { data: completedQuestsData, error: completedError } = await supabase
           .from('quest_completions')
-          .select('quest_id')
-          .eq('user_id', user.user.id);
+          .select('quest_id, points_awarded, completed_at')
+          .eq('user_id', user.user.id)
+          .order('completed_at', { ascending: false });
 
-        const completedQuestIds = new Set(completedQuests?.map(q => q.quest_id) || []);
+        if (completedError) {
+          console.error('Error fetching completed quests:', completedError);
+        }
+
+        const completedQuestIds = new Set(completedQuestsData?.map(q => q.quest_id) || []);
+        const completedQuestsMap = new Map(
+          completedQuestsData?.map(q => [q.quest_id, { points: q.points_awarded, completedAt: q.completed_at }]) || []
+        );
+        console.log('📋 Loaded completed quest IDs:', Array.from(completedQuestIds));
 
         // Always show founder-designed quests for ALL users
         const founderQuests: Quest[] = [
@@ -201,7 +213,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             completed: false,
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
             subject: 'general',
-            accuracy: 0
+            accuracy: 0,
+            feature: 'leaderboard' // For auto-detection
           },
           {
             id: 'practice-quest',
@@ -310,50 +323,102 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
           }
         ];
 
-        // Load database quests (daily/monthly)
+        // Load database quests (daily/monthly) - also check completion status from user_quests
         const { data: dbQuests, error: dbError } = await supabase
           .from('user_quests')
           .select('*')
           .eq('user_id', user.user.id)
-          .gte('expires_at', new Date().toISOString())
+          .or('expires_at.is.null,expires_at.gte.' + new Date().toISOString())
           .order('created_at', { ascending: false });
 
         if (dbError) {
           console.error('Error loading database quests:', dbError);
         }
 
+        // Get completed quest IDs from user_quests table (for database quests)
+        const completedDbQuestIds = new Set(
+          (dbQuests || []).filter(q => q.completed).map(q => q.id.toString())
+        );
+
+        // Also check quest_completions for ALL quests (both founder and database)
+        const allCompletedQuestIds = new Set([
+          ...Array.from(completedQuestIds),
+          ...Array.from(completedDbQuestIds)
+        ]);
+
         // Convert database quests to Quest format
-        const databaseQuests: Quest[] = (dbQuests || []).map(dbQuest => ({
-          id: dbQuest.id.toString(),
-          title: dbQuest.quest_title || 'Untitled Quest',
-          description: dbQuest.quest_description || 'No description available',
-          topic: dbQuest.target_topic || 'general',
-          difficulty: (dbQuest.difficulty === 'Easy' || dbQuest.difficulty === 'Medium' || dbQuest.difficulty === 'Hard') 
-            ? dbQuest.difficulty as 'Easy' | 'Medium' | 'Hard'
-            : 'Medium',
-          type: (dbQuest.quest_type === 'daily' || dbQuest.quest_type === 'weekly') 
-            ? dbQuest.quest_type as 'daily' | 'weekly'
-            : 'daily' as 'daily' | 'weekly',
-          target: dbQuest.target_count || 1,
-          progress: dbQuest.current_progress || 0,
-          points: dbQuest.points_reward || 10,
-          completed: dbQuest.completed || false,
-          expiresAt: new Date(dbQuest.expires_at),
-          subject: 'general', // Default subject since it's not in the database schema
-          accuracy: 0
-        }));
+        // Only include non-completed quests
+        const databaseQuests: Quest[] = (dbQuests || [])
+          .filter(dbQuest => !dbQuest.completed) // Filter out completed database quests
+          .map(dbQuest => ({
+            id: dbQuest.id.toString(),
+            title: dbQuest.quest_title || 'Untitled Quest',
+            description: dbQuest.quest_description || 'No description available',
+            topic: dbQuest.target_topic || 'general',
+            difficulty: (dbQuest.difficulty === 'Easy' || dbQuest.difficulty === 'Medium' || dbQuest.difficulty === 'Hard') 
+              ? dbQuest.difficulty as 'Easy' | 'Medium' | 'Hard'
+              : 'Medium',
+            type: (dbQuest.quest_type === 'daily' || dbQuest.quest_type === 'weekly') 
+              ? dbQuest.quest_type as 'daily' | 'weekly'
+              : 'daily' as 'daily' | 'weekly',
+            target: dbQuest.target_count || 1,
+            progress: dbQuest.current_progress || 0,
+            points: dbQuest.points_reward || 10,
+            completed: false, // Already filtered above
+            expiresAt: new Date(dbQuest.expires_at),
+            subject: 'general', // Default subject since it's not in the database schema
+            accuracy: 0
+          }));
 
-        // Update quest completion status based on database
-        const founderQuestsWithCompletion = founderQuests.map(quest => ({
-          ...quest,
-          completed: completedQuestIds.has(quest.id),
-          progress: completedQuestIds.has(quest.id) ? quest.target : 0
-        }));
+        // Update founder quest completion status - check BOTH quest_completions and user_quests
+        const founderQuestsWithCompletion = founderQuests.map(quest => {
+          const isCompleted = allCompletedQuestIds.has(quest.id);
+          const completionData = completedQuestsMap.get(quest.id);
+          if (isCompleted) {
+            console.log(`✅ Quest ${quest.id} (${quest.title}) is already completed`);
+          }
+          return {
+            ...quest,
+            completed: isCompleted,
+            progress: isCompleted ? quest.target : 0,
+            completedAt: completionData?.completedAt ? new Date(completionData.completedAt) : undefined,
+            pointsAwarded: completionData?.points || quest.points
+          };
+        });
 
-        // Combine founder quests and database quests
-        const allQuests = [...founderQuestsWithCompletion, ...databaseQuests];
+        // Separate active and completed quests
+        const activeQuests = [...founderQuestsWithCompletion, ...databaseQuests]
+          .filter(q => {
+            // Only include non-completed quests
+            if (q.completed) {
+              console.log(`🚫 Filtering out completed quest: ${q.id} (${q.title})`);
+              return false;
+            }
+            // Also filter out expired quests
+            if (q.expiresAt && new Date(q.expiresAt) < new Date()) {
+              console.log(`⏰ Filtering out expired quest: ${q.id} (${q.title})`);
+              return false;
+            }
+            return true;
+          });
 
-        setUserQuests(allQuests);
+        // Separate completed quests for the Completed tab
+        const completedQuests = [...founderQuestsWithCompletion, ...databaseQuests]
+          .filter(q => {
+            // Only include completed quests
+            if (!q.completed) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            // Sort by completion time (most recent first) if available
+            const aTime = (a as any).completedAt ? new Date((a as any).completedAt).getTime() : 0;
+            const bTime = (b as any).completedAt ? new Date((b as any).completedAt).getTime() : 0;
+            return bTime - aTime;
+          });
+
+        console.log(`📊 Setting ${activeQuests.length} active quests and ${completedQuests.length} completed quests`);
+        setUserQuests(activeQuests);
+        setCompletedQuestsList(completedQuests);
       } catch (error) {
         console.error('Error in loadQuests:', error);
       } finally {
@@ -362,6 +427,27 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     };
 
     loadQuests();
+    
+    // Listen for quest completion events to reload quests
+    const handleQuestCompleted = async () => {
+      console.log('🔄 Reloading quests due to quest-completed event');
+      // Refresh quest cache in background for instant future checks
+      const { data: user } = await supabase.auth.getUser();
+      if (user?.user) {
+        questTrackingService.preloadQuestCache(user.user.id).catch(err => {
+          console.error('Error refreshing quest cache:', err);
+        });
+      }
+      loadQuests();
+    };
+    
+    window.addEventListener('quest-completed', handleQuestCompleted);
+    window.addEventListener('quest-list-updated', handleQuestCompleted);
+    
+    return () => {
+      window.removeEventListener('quest-completed', handleQuestCompleted);
+      window.removeEventListener('quest-list-updated', handleQuestCompleted);
+    };
   }, [loading]);
 
   // New: realtime progress sync – increments quest progress on every correct attempt
@@ -386,22 +472,152 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             const attemptTopic = String(attempt.topic || attempt.subject || '');
             if (!attemptTopic) return;
 
-            // Find matching active quests locally
-            const matching = userQuests.filter(q => !q.completed && q.expiresAt > new Date() && q.progress < q.target && q.topic.toLowerCase() === attemptTopic.toLowerCase());
+            // Find matching active quests - match quests that count questions/solved questions
+            const matching = userQuests.filter(q => {
+              if (q.completed) return false;
+              if (q.expiresAt && new Date(q.expiresAt) < new Date()) return false;
+              if (q.progress >= q.target) return false;
+              
+              // Check if quest is about solving questions (count-based quests)
+              const questTitleLower = q.title?.toLowerCase() || '';
+              const questTopicLower = q.topic?.toLowerCase() || '';
+              
+              // Match quests that are about:
+              // 1. Solving questions (any number)
+              // 2. Quiz-related quests (count questions)
+              // 3. General practice (count questions)
+              // 4. Exact topic match
+              const isQuestionCountQuest = questTitleLower.includes('question') || 
+                                          questTitleLower.includes('solve') ||
+                                          questTitleLower.includes('complete') ||
+                                          questTopicLower.includes('quiz') ||
+                                          questTopicLower === 'general practice' ||
+                                          questTopicLower === 'practice';
+              
+              return isQuestionCountQuest || questTopicLower === attemptTopic.toLowerCase();
+            });
+            
             if (matching.length === 0) return;
 
+            // Track which quests were completed
+            const completedQuestsList: Quest[] = [];
+            
             // Increment each matching quest by 1 (cap at target)
             for (const q of matching) {
+              const wasIncomplete = q.progress < q.target;
               const newProgress = Math.min(q.target, q.progress + 1);
-              await supabase.from('user_quests').update({ current_progress: newProgress }).eq('id', q.id);
+              const isCompleted = newProgress >= q.target && wasIncomplete;
+              
+              // Update progress and completion status
+              const updateData: any = { 
+                current_progress: newProgress,
+                updated_at: new Date().toISOString()
+              };
+              
+              if (isCompleted) {
+                updateData.completed = true;
+                updateData.completed_at = new Date().toISOString();
+                
+                // Award points
+                const { error: pointsError } = await supabase.rpc('increment_user_points', {
+                  p_points: q.points || 0,
+                  p_user_id: userId
+                });
+                
+                if (!pointsError) {
+                  // Record quest completion
+                  await supabase
+                    .from('quest_completions')
+                    .insert({
+                      user_id: userId,
+                      quest_id: q.id,
+                      points_awarded: q.points || 0,
+                      completed_at: new Date().toISOString()
+                    })
+                    .catch(err => console.error('Error recording quest completion:', err));
+                  
+                  completedQuestsList.push(q);
+                }
+              }
+              
+              // Only update database quests (not founder quests)
+              // Founder quests use quest_id string, database quests use id
+              if (q.id && q.id !== 'welcome-quest' && q.id !== 'leaderboard-quest' && 
+                  q.id !== 'learn-quest' && q.id !== 'performance-quest' &&
+                  q.id !== 'practice-quest' && q.id !== 'custom-quiz-quest' &&
+                  q.id !== 'mock-test-explore-quest' && q.id !== 'mock-test-complete-quest' &&
+                  q.id !== 'ai-analysis-quest') {
+                await supabase.from('user_quests').update(updateData).eq('id', q.id).catch(err => {
+                  console.error('Error updating quest progress:', err);
+                });
+              } else if (isCompleted) {
+                // For founder quests that are completed, record in quest_completions
+                await supabase
+                  .from('quest_completions')
+                  .insert({
+                    user_id: userId,
+                    quest_id: q.id,
+                    points_awarded: q.points || 0,
+                    completed_at: new Date().toISOString()
+                  })
+                  .catch(err => {
+                    if (err.code !== '23505') {
+                      console.error('Error recording founder quest completion:', err);
+                    }
+                  });
+              }
             }
 
-            // Optimistic local update
-            setUserQuests(prev => prev.map(q => {
-              const match = q.topic.toLowerCase() === attemptTopic.toLowerCase() && !q.completed && q.expiresAt > new Date();
-              if (!match) return q;
-              return { ...q, progress: Math.min(q.target, q.progress + 1) };
-            }));
+            // Update local state immediately to remove completed quests
+            if (completedQuestsList.length > 0 || matching.some(q => {
+              const wasIncomplete = q.progress < q.target;
+              const newProgress = Math.min(q.target, q.progress + 1);
+              return newProgress >= q.target && wasIncomplete;
+            })) {
+              setUserQuests(prev => {
+                return prev.map(q => {
+                  const matchingQuest = matching.find(m => m.id === q.id);
+                  if (!matchingQuest) return q;
+                  
+                  const wasIncomplete = matchingQuest.progress < matchingQuest.target;
+                  const newProgress = Math.min(matchingQuest.target, matchingQuest.progress + 1);
+                  const isCompleted = newProgress >= matchingQuest.target && wasIncomplete;
+                  
+                  if (isCompleted) {
+                    // Mark as completed and exclude from list
+                    return { ...q, completed: true, progress: newProgress };
+                  }
+                  
+                  return { ...q, progress: newProgress };
+                }).filter(q => !q.completed); // Remove completed quests immediately
+              });
+              
+              // Show toast notification for completed quests
+              if (completedQuestsList.length > 0) {
+                const totalPoints = completedQuestsList.reduce((sum, q) => sum + (q.points || 0), 0);
+                const questNames = completedQuestsList.map(q => q.title).join(', ');
+                showToast({
+                  title: 'Quest Completed! 🎉',
+                  description: `You completed: ${questNames}. Earned ${totalPoints} points!`,
+                  type: 'success',
+                  duration: 6000
+                });
+                
+                // Trigger quest refresh
+                window.dispatchEvent(new CustomEvent('quest-completed'));
+              }
+            } else {
+              // Just update progress for non-completed quests
+              setUserQuests(prev => prev.map(q => {
+                const matchingQuest = matching.find(m => m.id === q.id);
+                if (!matchingQuest) return q;
+                const newProgress = Math.min(matchingQuest.target, matchingQuest.progress + 1);
+                return { ...q, progress: newProgress };
+              }));
+            }
+
+            // Trigger refresh in Dashboard to update Live Quests
+            window.dispatchEvent(new CustomEvent('quest-list-updated'));
           } catch (e) {
             console.warn('Quest progress sync failed:', e);
           }
@@ -616,9 +832,9 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       // Count remaining monthly quests (these carry forward)
       const remainingMonthlyQuests = monthlyQuests.filter(q => new Date(q.expires_at) > now);
       
-      // Ensure user always has 10 total quests (5 daily + 5 monthly)
+      // Ensure user always has 15 total quests (5 daily + 10 weekly)
       const totalActiveQuests = dailyQuests.length + remainingMonthlyQuests.length;
-      const questsNeeded = Math.max(0, 10 - totalActiveQuests);
+      const questsNeeded = Math.max(0, 15 - totalActiveQuests);
       
       // Generate new daily quests (always 5 per day, but only if we have less than 5)
       const dailyQuestsToCreate = Math.max(0, 5 - dailyQuests.length);
@@ -628,7 +844,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       const newDailyQuests = dailyQuestsToCreate > 0 ? 
         await generateDailyQuests(userId, dailyQuestsToCreate) : [];
       
-      // Generate new monthly quests if needed (limit to 10 total)
+      // Generate new monthly quests if needed (limit to 15 total)
       const newMonthlyQuests = monthlyQuestsToCreate > 0 ? 
         await generateMonthlyQuests(userId, monthlyQuestsToCreate) : [];
 
@@ -1039,10 +1255,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         return;
       }
 
-      // Update local state
-      setUserQuests(prev => prev.map(q => 
-        q.id === questId ? { ...q, completed: true, progress: quest.target, claimed: true } : q
-      ));
+      // Reload quests to update both active and completed lists
+      window.dispatchEvent(new CustomEvent('quest-completed'));
 
       // Invalidate leaderboard cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
@@ -1072,10 +1286,12 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     }
   };
 
-  const activeQuests = userQuests.filter(q => !q.completed);
-  const completedQuests = userQuests.filter(q => q.completed);
+  // Active quests are already filtered when loading (stored in userQuests state)
+  // Completed quests are stored separately in completedQuestsList state
+  const activeQuests = userQuests;
+  const completedQuests = completedQuestsList;
   const totalPointsAvailable = activeQuests.reduce((sum, q) => sum + q.points, 0);
-  const totalPointsEarned = completedQuests.reduce((sum, q) => sum + q.points, 0);
+  const totalPointsEarned = completedQuests.reduce((sum, q) => sum + (q.points || 0), 0);
 
   const getTimeRemaining = (expiresAt: Date) => {
     const now = new Date();
@@ -1126,40 +1342,39 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
   if (loading || questsLoading) {
     return (
-      <>
+      <AnimatePresence>
         {open && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 z-40"
-            onClick={onClose}
-          />
-        )}
-        
-        <motion.div 
-          initial={{ x: "100%" }}
-          animate={{ x: open ? 0 : "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:w-2/5 bg-white shadow-2xl z-50"
-        >
-          <div className="h-full flex flex-col items-center justify-center">
+          <>
             <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="rounded-full h-12 w-12 border-b-2 border-yellow-600"
-            />
-            <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mt-4 text-gray-600"
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              Loading your quests...
-            </motion.p>
-          </div>
-        </motion.div>
-      </>
+              <Card className="w-full max-w-4xl rounded-2xl border border-gray-200 shadow-sm p-8">
+                <div className="flex flex-col items-center justify-center">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="rounded-full h-12 w-12 border-b-2 border-blue-600"
+                  />
+                  <p className="mt-4 text-gray-600 text-sm">
+                    Loading your quests...
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     );
   }
 
@@ -1167,373 +1382,281 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     <TooltipProvider>
       <AnimatePresence>
         {open && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 z-40"
-            onClick={onClose}
-          />
-        )}
-      </AnimatePresence>
-      
-      <motion.div 
-        initial={{ x: "100%" }}
-        animate={{ x: open ? 0 : "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:w-2/5 bg-white shadow-2xl z-50 overflow-hidden"
-      >
-        <div className="h-full flex flex-col">
-          {/* Header */}
-          <motion.div 
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center justify-between p-6 border-b border-gray-200 bg-white"
-          >
-            <div className="flex items-center gap-3">
-              <Trophy className="h-6 w-6 text-blue-600" />
-              <h2 className="text-2xl font-bold text-black">Your Quests</h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-black border-gray-300 font-medium bg-white">
-                {activeQuests.length} active
-              </Badge>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={onClose}
-                className="rounded-full h-8 w-8 p-0 flex items-center justify-center hover:bg-gray-100"
-              >
-                <X className="h-4 w-4" />
-              </motion.button>
-            </div>
-          </motion.div>
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Card className="w-full max-w-4xl max-h-[90vh] rounded-2xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+                <CardHeader className="pb-2 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-blue-600" />
+                      Your Quests
+                    </CardTitle>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-sm border-gray-300 font-medium">
+                        {activeQuests.length} active
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClose}
+                        className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
 
-          {/* Tab Navigation */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab('active')}
-                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'active'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Active ({activeQuests.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('completed')}
-                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'completed'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Completed ({completedQuests.length})
-              </button>
-            </div>
-          </div>
+                <CardContent className="pt-4 flex-1 overflow-y-auto">
+                  {/* Tab Navigation */}
+                  <div className="mb-6">
+                    <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
+                      <button
+                        onClick={() => setActiveTab('active')}
+                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                          activeTab === 'active'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Active ({activeQuests.length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('completed')}
+                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                          activeTab === 'completed'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Completed ({completedQuests.length})
+                      </button>
+                    </div>
+                  </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {userQuests.length === 0 ? (
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-center py-12"
-              >
-                <Trophy className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-black mb-2">No Quests Available</h3>
-                <p className="text-gray-600">New quests will be generated based on your performance.</p>
-              </motion.div>
-            ) : (
-              <div className="space-y-6">
-                {/* Show quests based on active tab */}
-                {activeTab === 'active' && activeQuests.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-black mb-4">Active Quests</h3>
-                    <div className="space-y-4">
-                      {activeQuests.map((quest, index) => {
-                        const hasStarted = quest.progress > 0;
-                        
-                        return (
-                          <motion.div
-                            key={quest.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className={hasStarted 
-                              ? "flex items-start gap-4 p-4 border-l-4 border-blue-600 bg-gray-50 rounded-r-lg"
-                              : "flex items-start gap-3 py-2"
-                            }
-                          >
-                            {/* Bullet point */}
-                            <div className="flex-shrink-0 mt-1">
-                              <div className={`w-3 h-3 rounded-full ${hasStarted ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
-                            </div>
-                            
-                            {/* Quest content */}
-                            <div className="flex-1 min-w-0">
-                              {hasStarted ? (
-                                // Card view for started quests
-                                <>
-                                  <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold text-black mb-1">
-                                        {quest.title}
-                                      </h3>
-                                      <p className="text-sm text-gray-600 mb-3">
-                                        {quest.description}
-                                      </p>
-                                    </div>
-                                    
-                                    {/* Claim button */}
-                                    {quest.progress >= quest.target && !quest.completed && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={() => handleCompleteQuest(quest.id)}
-                                            disabled={claimingQuest === quest.id}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm disabled:opacity-50"
-                                          >
-                                            {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
-                                          </motion.button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Claim your reward (+{quest.points} points)</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Progress bar */}
-                                  <div className="mb-2">
-                                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                      <span>Progress: {quest.progress}/{quest.target}</span>
-                                      <span>{Math.round(getProgressPercentage(quest.progress, quest.target))}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                      <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${getProgressPercentage(quest.progress, quest.target)}%` }}
-                                        transition={{ duration: 0.6, ease: "easeOut" }}
-                                        className="h-2 bg-blue-600 rounded-full"
-                                      />
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Quest metadata */}
-                                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {getTimeRemaining(quest.expiresAt)}
-                                    </span>
-                                    <span className="font-medium text-blue-600">+{quest.points} points</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                                    </Badge>
-                                  </div>
-                                </>
-                              ) : (
-                                // Bullet point view for unstarted quests
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h4 className="text-sm font-medium text-gray-900">
+                  {/* Quest Content */}
+                  {activeTab === 'active' && activeQuests.length === 0 && (
+                    <div className="text-center py-12">
+                      <Trophy className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Quests</h3>
+                      <p className="text-sm text-gray-600">New quests will be generated based on your performance.</p>
+                    </div>
+                  )}
+                  {activeTab === 'completed' && completedQuests.length === 0 && (
+                    <div className="text-center py-12">
+                      <Trophy className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Completed Quests Yet</h3>
+                      <p className="text-sm text-gray-600">Complete quests to see them here!</p>
+                    </div>
+                  )}
+                  {((activeTab === 'active' && activeQuests.length > 0) || (activeTab === 'completed' && completedQuests.length > 0)) && (
+                    <div className="space-y-3">
+                      {/* Active Quests */}
+                      {activeTab === 'active' && activeQuests.length > 0 && (
+                        activeQuests.map((quest, index) => {
+                          const hasStarted = quest.progress > 0;
+                          const progressPercent = getProgressPercentage(quest.progress, quest.target);
+                          
+                          return (
+                            <Card 
+                              key={quest.id}
+                              className="rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all"
+                            >
+                              <CardContent className="pt-4">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2">
                                       {quest.title}
-                                    </h4>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
                                       {quest.description}
                                     </p>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                                      <span>+{quest.points} pts</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                                      </Badge>
-                                    </div>
+                                  {quest.progress >= quest.target && !quest.completed && (
+                                    <Button
+                                      onClick={() => handleCompleteQuest(quest.id)}
+                                      disabled={claimingQuest === quest.id}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm ml-3 flex-shrink-0"
+                                      size="sm"
+                                    >
+                                      {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
+                                    </Button>
+                                  )}
+                                  {!hasStarted && (
                                     <Button
                                       onClick={() => handleStartQuest(quest)}
-                                      className={`text-white text-xs px-3 py-1 rounded flex items-center gap-1 ${
+                                      className={`ml-3 flex-shrink-0 ${
                                         quest.topic === 'welcome' 
-                                          ? 'bg-green-500 hover:bg-green-600' 
-                                          : 'bg-blue-500 hover:bg-blue-600'
-                                      }`}
+                                          ? 'bg-green-500 hover:bg-green-600 text-white' 
+                                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                      } px-4 py-2 rounded-lg text-sm`}
                                       size="sm"
                                     >
                                       {quest.topic === 'welcome' ? (
                                         <>
-                                          <CheckCircle className="h-3 w-3" />
+                                          <CheckCircle className="h-4 w-4 mr-1" />
                                           Done
                                         </>
                                       ) : (
                                         <>
-                                          <Play className="h-3 w-3" />
+                                          <Play className="h-4 w-4 mr-1" />
                                           Start
                                         </>
                                       )}
                                     </Button>
-                                  </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                                
+                                {hasStarted && (
+                                  <>
+                                    <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
+                                      <span>Progress: {quest.progress}/{quest.target}</span>
+                                      <span>{Math.round(progressPercent)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
+                                      <div 
+                                        className="h-2 bg-blue-600 rounded-full transition-all duration-500"
+                                        style={{ width: `${progressPercent}%` }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                                
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {getTimeRemaining(quest.expiresAt)}
+                                  </span>
+                                  <span className="font-medium text-blue-600">+{quest.points} points</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                                  </Badge>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                      )}
 
-                {/* Completed Quests */}
-                {activeTab === 'completed' && completedQuests.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-black mb-4">Completed Quests</h3>
-                    <div className="space-y-4">
-                      {completedQuests.map((quest, index) => (
-                        <motion.div
-                          key={quest.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start gap-4 p-4 border-l-4 border-green-600 bg-green-50 rounded-r-lg"
-                        >
-                          {/* Checkmark */}
-                          <div className="flex-shrink-0 mt-1">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          </div>
-                          
-                          {/* Quest content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                  {quest.title}
-                                </h3>
-                                <p className="text-sm text-gray-600 mb-3">
-                                  {quest.description}
-                                </p>
+                      {/* Completed Quests */}
+                      {activeTab === 'completed' && completedQuests.length > 0 && (
+                        completedQuests.map((quest) => (
+                          <Card 
+                            key={quest.id}
+                            className="rounded-2xl border border-gray-200 shadow-sm bg-gray-50"
+                          >
+                            <CardContent className="pt-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2">
+                                    {quest.title}
+                                  </h3>
+                                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                    {quest.description}
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-300 flex-shrink-0 ml-3">
+                                  Completed
+                                </Badge>
                               </div>
                               
-                              {/* Completed badge */}
-                              <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-300">
-                                Completed
-                              </Badge>
-                            </div>
-                            
-                            {/* Progress bar - full */}
-                            <div className="mb-2">
-                              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                <span>Progress: {quest.progress}/{quest.target}</span>
-                                <span>100%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                              <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
                                 <div className="h-2 bg-green-600 rounded-full w-full" />
                               </div>
-                            </div>
-                            
-                            {/* Quest metadata */}
-                            <div className="flex items-center gap-4 text-xs text-gray-600">
-                              <span className="font-medium text-green-600">+{quest.points} points earned</span>
-                              <Badge variant="outline" className="text-xs">
-                                {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                              
+                              <div className="flex items-center gap-3 text-xs text-gray-600">
+                                <span className="font-medium text-green-600">+{quest.points} points earned</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Empty state for completed tab */}
-                {activeTab === 'completed' && completedQuests.length === 0 && (
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-center py-12"
-                  >
-                    <Trophy className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-600 mb-2">No Completed Quests</h3>
-                    <p className="text-gray-500">Complete some quests to see them here!</p>
-                  </motion.div>
-                )}
-              </div>
-            )}
-
-            {/* Performance Summary */}
-            {weakTopicsAnalysis.length > 0 && (
-              <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200"
-              >
-                <h3 className="text-lg font-semibold text-black mb-3 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-600" />
-                  Your Focus Areas
-                </h3>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {weakTopicsAnalysis.slice(0, 6).map((area, index) => (
-                    <motion.div 
-                      key={area.topic}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      className="text-xs bg-white rounded-lg p-3 border shadow-sm"
-                    >
-                      <div className="font-medium text-black">{area.topic}</div>
-                      <div className="text-gray-600">{area.accuracy}% accuracy</div>
-                    </motion.div>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-600">
-                  💡 Quests are automatically generated based on these areas where you need the most improvement.
-                </p>
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        {/* Confetti Animation */}
-        {showConfetti && (
-          <div className="fixed inset-0 pointer-events-none z-50">
-            {[...Array(50)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ 
-                  x: Math.random() * window.innerWidth,
-                  y: -10,
-                  opacity: 1,
-                  scale: 0
-                }}
-                animate={{ 
-                  y: window.innerHeight + 10,
-                  opacity: 0,
-                  scale: 1,
-                  rotate: Math.random() * 360
-                }}
-                transition={{ 
-                  duration: 3,
-                  ease: "easeOut"
-                }}
-                className="absolute text-2xl"
-                style={{
-                  left: Math.random() * window.innerWidth,
-                  color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'][Math.floor(Math.random() * 5)]
-                }}
-              >
-                {['🎉', '⭐', '🎊', '🏆', '💎'][Math.floor(Math.random() * 5)]}
-              </motion.div>
-            ))}
-          </div>
+                  {/* Performance Summary */}
+                  {weakTopicsAnalysis.length > 0 && activeTab === 'active' && (
+                    <Card className="mt-6 rounded-2xl border border-blue-200 bg-blue-50">
+                      <CardContent className="pt-4">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-blue-600" />
+                          Your Focus Areas
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {weakTopicsAnalysis.slice(0, 6).map((area) => (
+                            <div 
+                              key={area.topic}
+                              className="text-xs bg-white rounded-lg p-2 border border-gray-200"
+                            >
+                              <div className="font-medium text-gray-900">{area.topic}</div>
+                              <div className="text-gray-600">{area.accuracy}% accuracy</div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          💡 Quests are automatically generated based on these areas where you need the most improvement.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </>
         )}
-      </motion.div>
+      </AnimatePresence>
+
+      {/* Confetti Animation */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {[...Array(50)].map((_, i) => (
+            <motion.div
+              key={i}
+              initial={{ 
+                x: Math.random() * window.innerWidth,
+                y: -10,
+                opacity: 1,
+                scale: 0
+              }}
+              animate={{ 
+                y: window.innerHeight + 10,
+                opacity: 0,
+                scale: 1,
+                rotate: Math.random() * 360
+              }}
+              transition={{ 
+                duration: 3,
+                ease: "easeOut"
+              }}
+              className="absolute text-2xl"
+              style={{
+                left: Math.random() * window.innerWidth,
+                color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'][Math.floor(Math.random() * 5)]
+              }}
+            >
+              {['🎉', '⭐', '🎊', '🏆', '💎'][Math.floor(Math.random() * 5)]}
+            </motion.div>
+          ))}
+        </div>
+      )}
     </TooltipProvider>
   );
 };

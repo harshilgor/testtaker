@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import ReviewMistakes from '@/components/Performance/ReviewMistakes';
-import DebugQuestionAttempts from '@/components/DebugQuestionAttempts';
+import DomainSelector from '@/components/Learn/DomainSelector';
 import { useHasSolvedQuestions } from '@/hooks/useHasSolvedQuestions';
+import { useData } from '@/contexts/DataContext';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 // import QuestsSection from '@/components/Quests/QuestsSection';
 
 interface LearnPageProps {
@@ -15,10 +17,26 @@ const LearnPage: React.FC<LearnPageProps> = ({ userName, onBack }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { hasSolvedQuestions, loading } = useHasSolvedQuestions(user);
+  const { questionAttempts, isInitialized } = useData();
+  const { trackEvent } = useQuestTracking();
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+
+  // Track learn page visit for quest completion
+  useEffect(() => {
+    if (user?.id) {
+      trackEvent('visit_learn');
+    }
+  }, [user?.id, trackEvent]);
 
   const handleTakeQuiz = () => {
     navigate('/quiz');
   };
+
+  // Calculate mistakes from question attempts
+  const mistakesData = React.useMemo(() => {
+    if (!isInitialized || !questionAttempts.length) return [];
+    return questionAttempts.filter(attempt => !attempt.is_correct);
+  }, [questionAttempts, isInitialized]);
 
   // Show loading state
   if (loading) {
@@ -39,14 +57,19 @@ const LearnPage: React.FC<LearnPageProps> = ({ userName, onBack }) => {
 
         {/* Content area - blur only this section */}
         <div className={`${!hasSolvedQuestions ? 'blur-sm pointer-events-none' : ''}`}>
-          {/* Debug Section - Temporary */}
-          <div className="mb-8">
-            <DebugQuestionAttempts />
-          </div>
-          
-          {/* Review Mistakes Section */}
-          <div className="mb-8">
-            <ReviewMistakes userName={userName} />
+          <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
+            {/* Left Column: Domain Selector */}
+            <div className="lg:sticky lg:top-20 self-start">
+              <DomainSelector 
+                selectedDomain={selectedDomain} 
+                onDomainSelect={setSelectedDomain}
+              />
+            </div>
+
+            {/* Right Column: Review Mistakes Section */}
+            <div>
+              <ReviewMistakes userName={userName} selectedDomain={selectedDomain} />
+            </div>
           </div>
 
           {/* Quests Section - Temporarily disabled due to errors */}

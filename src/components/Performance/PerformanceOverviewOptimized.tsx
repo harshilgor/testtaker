@@ -29,6 +29,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
   const performanceData = useMemo(() => {
     // Safety check to ensure data is available
     if (!questionAttempts || !Array.isArray(questionAttempts) || questionAttempts.length === 0) {
+      console.log('No question attempts data available');
       return {
         bestTopics: [],
         needsWork: [],
@@ -36,6 +37,19 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
         quickTopics: []
       };
     }
+
+    // Debug: Log sample question attempts to understand data structure
+    console.log('Sample question attempts:', questionAttempts.slice(0, 3).map(attempt => ({
+      topic: attempt.topic,
+      subject: attempt.subject,
+      skill: attempt.skill,
+      domain: attempt.domain,
+      is_correct: attempt.is_correct,
+      time_spent: attempt.time_spent,
+      // @ts-expect-error - Properties may not exist
+      test: attempt.test,
+      assessment: attempt.assessment
+    })));
 
     // Filter attempts by selected subject
     const filteredAttempts = questionAttempts.filter(attempt => {
@@ -52,9 +66,27 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       return true;
     });
 
-    // Group by topic/skill
+    // Group by topic/skill with better topic mapping
     const topicStats = filteredAttempts.reduce((acc, attempt) => {
-      const topic = attempt.topic || attempt.subject || 'General Practice';
+      // Try multiple fields to get the topic
+      let topic = attempt.topic || attempt.subject || attempt.skill || attempt.domain;
+      
+      // If topic is still undefined/null, try to extract from other fields
+      if (!topic) {
+        // Check if there's a test field that might contain topic info
+        // @ts-expect-error - Properties may not exist on QuestionAttempt type
+        const testField = attempt.test || attempt.assessment || '';
+        if (testField.toLowerCase().includes('algebra')) topic = 'Algebra';
+        else if (testField.toLowerCase().includes('geometry')) topic = 'Geometry';
+        else if (testField.toLowerCase().includes('reading')) topic = 'Reading Comprehension';
+        else if (testField.toLowerCase().includes('writing')) topic = 'Writing and Language';
+        else topic = 'General Practice';
+      }
+      
+      // Normalize topic names
+      if (topic.toLowerCase() === 'general') topic = 'General Practice';
+      if (topic.toLowerCase() === 'math') topic = 'Mathematics';
+      if (topic.toLowerCase() === 'english') topic = 'Reading and Writing';
       
       if (!acc[topic]) {
         acc[topic] = {
@@ -82,7 +114,7 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       category: 'best' as const // Will be categorized below
     }));
 
-    // Filter topics with at least 3 attempts for meaningful analysis
+    // Filter topics with at least 1 attempt for meaningful analysis
     const significantTopics = allTopics.filter(topic => topic.attempts >= 1);
     
     if (significantTopics.length === 0) {
@@ -98,28 +130,26 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
     const avgAccuracy = significantTopics.reduce((sum, topic) => sum + topic.accuracy, 0) / significantTopics.length;
     const avgTime = significantTopics.reduce((sum, topic) => sum + topic.avgTime, 0) / significantTopics.length;
 
-    // Debug logging
+    // Enhanced debug logging (avoid referencing variables before initialization)
     console.log('Performance Analysis Debug:', {
       totalTopics: allTopics.length,
-      significantTopics: significantTopics.length,
+      significantTopicsCount: significantTopics.length,
       avgAccuracy: avgAccuracy.toFixed(2),
       avgTime: avgTime.toFixed(2),
-      topics: significantTopics.map(t => ({ topic: t.topic, attempts: t.attempts, accuracy: t.accuracy.toFixed(2) }))
+      allTopics: allTopics.map(t => ({ topic: t.topic, attempts: t.attempts, accuracy: t.accuracy.toFixed(2) })),
+      topTopics: significantTopics.slice(0, 5).map(t => ({ topic: t.topic, attempts: t.attempts, accuracy: t.accuracy.toFixed(2) }))
     });
 
-    // Categorize topics - be more inclusive
+    // More flexible categorization - ensure we always show top 5 topics
     const bestTopics = significantTopics
-      .filter(topic => topic.accuracy >= avgAccuracy * 0.8) // More inclusive threshold
       .sort((a, b) => b.accuracy - a.accuracy)
       .slice(0, 5);
 
     const needsWork = significantTopics
-      .filter(topic => topic.accuracy < avgAccuracy * 1.2) // More inclusive threshold
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, 5);
 
     const timeIntensive = significantTopics
-      .filter(topic => topic.avgTime > avgTime)
       .sort((a, b) => b.avgTime - a.avgTime)
       .slice(0, 5);
 
@@ -128,12 +158,9 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
       .sort((a, b) => a.avgTime - b.avgTime)
       .slice(0, 5);
 
-    // Fallback: if categorization is too restrictive, show all topics sorted appropriately
-    const finalBestTopics = bestTopics.length > 0 ? bestTopics : 
-      significantTopics.sort((a, b) => b.accuracy - a.accuracy).slice(0, 5);
-    
-    const finalNeedsWork = needsWork.length > 0 ? needsWork : 
-      significantTopics.sort((a, b) => a.accuracy - b.accuracy).slice(0, 5);
+    // Always return the top 5 topics for each category
+    const finalBestTopics = bestTopics;
+    const finalNeedsWork = needsWork;
 
     return {
       bestTopics: finalBestTopics,
@@ -207,6 +234,17 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
     return baseMessage;
   };
 
+  // Utility: Get metric base label (no subject)
+  const getMetricBaseLabel = (metric: MetricType) => {
+    switch(metric) {
+      case 'best': return 'Best';
+      case 'needs_work': return 'Needs Work';
+      case 'time_intensive': return 'Time-Intensive';
+      case 'quick': return 'Quick';
+      default: return '';
+    }
+  };
+
   const renderTopicCard = (topic: TopicPerformance, index: number) => {
     const showTooltip = tooltipStates[topic.topic] || false;
     const setShowTooltip = (show: boolean) => {
@@ -228,27 +266,19 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
             #{index + 1}
           </span>
         </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Accuracy:</span>
-            <span className="font-medium text-gray-900">
-              {topic.accuracy.toFixed(1)}%
-            </span>
+        {/* Horizontal row for performance metrics */}
+        <div className="flex items-center gap-4 text-sm mt-2 mb-1">
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">Accuracy:</span>
+            <span className="font-medium text-gray-900">{topic.accuracy.toFixed(1)}%</span>
           </div>
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Avg Time:</span>
-            <span className="font-medium text-gray-900">
-              {topic.avgTime.toFixed(1)}s
-            </span>
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">Avg Time:</span>
+            <span className="font-medium text-gray-900">{topic.avgTime.toFixed(1)}s</span>
           </div>
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Attempts:</span>
-            <span className="font-medium text-gray-900">
-              {topic.attempts}
-            </span>
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">Attempts:</span>
+            <span className="font-medium text-gray-900">{topic.attempts}</span>
           </div>
         </div>
 
@@ -279,51 +309,38 @@ const PerformanceOverviewOptimized: React.FC<PerformanceOverviewOptimizedProps> 
             </CardTitle>
           </div>
           
-          {/* Subject Selection */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Button
-              variant={selectedSubject === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedSubject('all')}
-              className="flex items-center gap-2 text-xs"
-            >
-              <Info className="h-3 w-3" />
-              All Subjects
-            </Button>
-            <Button
-              variant={selectedSubject === 'math' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedSubject('math')}
-              className="flex items-center gap-2 text-xs"
-            >
-              <Calculator className="h-3 w-3" />
-              Math
-            </Button>
-            <Button
-              variant={selectedSubject === 'reading_and_writing' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedSubject('reading_and_writing')}
-              className="flex items-center gap-2 text-xs"
-            >
-              <BookOpen className="h-3 w-3" />
-              Reading and Writing
-            </Button>
+          {/* Subject Selection - Minimalistic */}
+          <div className="flex flex-wrap gap-1 mt-4">
+            {[['all', Info, 'All Subjects'], ['math', Calculator, 'Math'], ['reading_and_writing', BookOpen, 'Reading and Writing']].map(([val, IconComp, label]) => (
+              <Button
+                key={val}
+                variant={selectedSubject === val ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => setSelectedSubject(val as SubjectType)}
+                className={`rounded-full p-1 px-2 text-[0.88rem] h-7 w-auto min-w-0 flex items-center justify-center transition-colors ${selectedSubject === val ? 'bg-blue-100 text-blue-700 border border-blue-600' : 'text-gray-600 hover:bg-gray-100 border-0'}`}
+                title={label}
+              >
+                <IconComp className="h-4 w-4 mr-0.5" />
+                {selectedSubject === val && <span className="ml-1.5 pr-1 font-medium" style={{letterSpacing:'-0.5px'}}>{label}</span>}
+              </Button>
+            ))}
           </div>
-          
-          {/* Metric Selection */}
-          <div className="flex flex-wrap gap-2 mt-4">
+          {/* Metric Selection - Minimalistic */}
+          <div className="flex flex-wrap gap-1 mt-3">
             {metrics.map((metric) => {
               const MetricIcon = getMetricIcon(metric);
+              const label = getMetricBaseLabel(metric);
               return (
                 <Button
                   key={metric}
-                  variant={selectedMetric === metric ? 'default' : 'outline'}
-                  size="sm"
+                  variant={selectedMetric === metric ? 'default' : 'ghost'}
+                  size="icon"
                   onClick={() => setSelectedMetric(metric)}
-                  className="flex items-center gap-2 text-xs"
+                  className={`rounded-full p-1 px-2 text-[0.88rem] h-7 w-auto min-w-0 flex items-center justify-center transition-colors ${selectedMetric === metric ? 'bg-blue-100 text-blue-700 border border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                  title={label}
                 >
-                  <MetricIcon className="h-3 w-3" />
-                  {getMetricTitle(metric).replace(' Topics', '').replace('Topics ', '')}
+                  <MetricIcon className="h-4 w-4 mr-0.5" />
+                  {selectedMetric === metric && <span className="ml-1.5 pr-1 font-medium" style={{letterSpacing:'-0.5px'}}>{label}</span>}
                 </Button>
               );
             })}

@@ -14,7 +14,7 @@ interface QuestionsSolvedCardOptimizedProps {
 }
 
 const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> = ({ userName, marathonStats, isMinimized = false, onExpand }) => {
-  const { quizResults, marathonSessions, mockTests, loading: dataLoading } = useData();
+  const { questionAttempts, quizResults, marathonSessions, mockTests, loading: dataLoading } = useData();
   const [selectedPeriod, setSelectedPeriod] = useState<'7days' | '1month' | 'alltime'>('alltime');
   const [goals, setGoals] = useState({ '7days': 0, '1month': 0, 'alltime': 0 });
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
@@ -35,26 +35,37 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
 
   // Compute totals across all modes, memoized and side-effect free
   const counts = useMemo(() => {
+    const safeAttempts = questionAttempts || [];
     const safeQuizzes = quizResults || [];
     const safeMarathons = marathonSessions || [];
     const safeMocks = mockTests || [];
 
     const computeFor = (period: '7days' | '1month' | 'alltime') => {
-      const quizTotal = safeQuizzes
-        .filter(q => isInPeriod(q.created_at, period))
-        .reduce((sum, q) => sum + (q.total_questions || 0), 0);
+      // Use individual question attempts for accurate counting
+      const attemptsTotal = safeAttempts
+        .filter(attempt => isInPeriod(attempt.created_at, period))
+        .length;
 
-      const marathonTotal = safeMarathons
-        .filter(m => isInPeriod(m.created_at, period))
-        .reduce((sum, m) => sum + (m.total_questions || 0), 0);
+      // Fallback to session-based counting if no attempts data
+      if (attemptsTotal === 0) {
+        const quizTotal = safeQuizzes
+          .filter(q => isInPeriod(q.created_at, period))
+          .reduce((sum, q) => sum + (q.total_questions || 0), 0);
 
-      // Mock tests don't have total_questions; estimate per test based on SAT sections
-      const mockPerTestQuestions = 20 + 44; // Math + English
-      const mockTotal = safeMocks
-        .filter(m => isInPeriod((m.completed_at || m.created_at) as string, period))
-        .reduce((sum) => sum + mockPerTestQuestions, 0);
+        const marathonTotal = safeMarathons
+          .filter(m => isInPeriod(m.created_at, period))
+          .reduce((sum, m) => sum + (m.total_questions || 0), 0);
 
-      return quizTotal + marathonTotal + mockTotal;
+        // Mock tests don't have total_questions; estimate per test based on SAT sections
+        const mockPerTestQuestions = 20 + 44; // Math + English
+        const mockTotal = safeMocks
+          .filter(m => isInPeriod((m.completed_at || m.created_at) as string, period))
+          .reduce((sum) => sum + mockPerTestQuestions, 0);
+
+        return quizTotal + marathonTotal + mockTotal;
+      }
+
+      return attemptsTotal;
     };
 
     return {
@@ -62,7 +73,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
       oneMonth: computeFor('1month'),
       allTime: computeFor('alltime'),
     };
-  }, [quizResults, marathonSessions, mockTests, sevenDaysAgo, oneMonthAgo]);
+  }, [questionAttempts, quizResults, marathonSessions, mockTests, sevenDaysAgo, oneMonthAgo]);
 
   // Goals
   useEffect(() => {
@@ -124,12 +135,12 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
 
   return (
     <Card 
-      className="h-full cursor-pointer hover:shadow-md transition-shadow"
+      className="h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
       onClick={isMinimized ? onExpand : undefined}
     >
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-600">Questions Solved</h3>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-900">Questions Solved</h3>
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-blue-600" />
             {/* New settings icon to open goal dialog, replacing bottom button */}
@@ -139,10 +150,10 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
                   e.stopPropagation();
                   setGoalDialogOpen(true);
                 }}
-                className="p-1 rounded hover:bg-blue-50"
+                className="p-1 rounded hover:bg-blue-50 transition-colors"
                 title={currentGoal > 0 ? 'Update Goal' : 'Set Goal'}
               >
-                <Settings className="h-5 w-5 text-blue-600" />
+                <Settings className="h-5 w-5 text-gray-400" />
               </button>
             )}
           </div>
@@ -151,7 +162,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
         {!isMinimized && (
           <>
             {/* Period Selection */}
-            <div className="flex space-x-2 mb-6">
+            <div className="flex space-x-1 mb-3">
               {(['7days', '1month', 'alltime'] as const).map((period) => (
                 <button
                   key={period}
@@ -159,10 +170,10 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
                     e.stopPropagation();
                     setSelectedPeriod(period);
                   }}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  className={`px-2 py-1 text-xs rounded-lg transition-colors ${
                     selectedPeriod === period
-                      ? 'bg-blue-100 text-blue-700 font-medium'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 font-medium'
+                      : 'text-gray-600 hover:bg-gray-50 border border-transparent'
                   }`}
                 >
                   {getPeriodLabel(period)}
@@ -173,7 +184,7 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
         )}
 
         {/* Main Stats */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           {isLoading ? (
             <div className="space-y-3">
               <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
@@ -181,10 +192,10 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
             </div>
           ) : (
             <>
-          <div className="text-3xl font-bold text-gray-900 mb-2">
+          <div className="text-4xl font-bold text-gray-900 mb-1">
                 {currentCount.toLocaleString()}
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-xs text-gray-600">
             {getPeriodLabel(selectedPeriod)}
           </div>
             </>
@@ -192,17 +203,17 @@ const QuestionsSolvedCardOptimized: React.FC<QuestionsSolvedCardOptimizedProps> 
           
           {currentGoal > 0 && !isLoading && !isMinimized && (
             <div className="mt-3">
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <div className="flex justify-between text-xs font-medium text-gray-700 mb-1">
                 <span>Goal Progress</span>
                 <span>{Math.round(progress)}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-100 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-600 mt-1">
                 {currentCount} / {currentGoal} questions
               </div>
             </div>

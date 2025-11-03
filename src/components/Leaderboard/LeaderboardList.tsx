@@ -20,20 +20,20 @@ interface LeaderboardListProps {
 
 const LeaderboardList: React.FC<LeaderboardListProps> = ({ leaderboard, currentUserName }) => {
   return (
-    <Card className="border-slate-200">
-      <CardHeader className="pb-3 md:pb-4 bg-slate-50 border-b border-slate-200">
-        <CardTitle className="flex items-center space-x-2 text-lg md:text-xl text-slate-900">
-          <Trophy className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+    <Card className="rounded-2xl border border-gray-200 shadow-sm bg-white">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-blue-600" />
           <span>Top Performers</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 md:p-6">
+      <CardContent className="pt-0">
         {leaderboard.length === 0 ? (
-          <p className="text-slate-600 text-center py-8 text-sm md:text-base">
+          <p className="text-gray-600 text-center py-8 text-sm">
             No leaderboard data available yet. Complete some activities to see rankings!
           </p>
         ) : (
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-2">
             {leaderboard.map((user, index) => (
               <LeaderboardEntry
                 key={user.id}

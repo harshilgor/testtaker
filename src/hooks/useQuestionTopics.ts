@@ -39,8 +39,8 @@ export const useQuestionTopics = (subject: Subject) => {
         const skillCounts: Record<string, { domain: string; count: number }> = {};
         
         data.forEach(row => {
-          const skill = row.skill;
-          const domain = row.domain;
+          const skill = row.skill as string;
+          const domain = row.domain as string;
           
           if (!skillCounts[skill]) {
             skillCounts[skill] = { domain, count: 0 };
@@ -68,6 +68,50 @@ export const useQuestionTopics = (subject: Subject) => {
     };
 
     loadTopics();
+
+    // Realtime: increment counts when new questions are inserted
+    const testFilter = subject === 'math' ? 'Math' : 'Reading and Writing';
+    const channel = supabase
+      .channel(`question_bank_inserts_${testFilter}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'question_bank', filter: `test=eq.${testFilter}` },
+        (payload) => {
+          const newRow: any = payload.new;
+          if (!newRow || newRow.assessment !== 'SAT') return;
+          const skill = newRow.skill as string | null;
+          const domain = newRow.domain as string | null;
+          if (!skill || !domain) return;
+
+          setTopics(prev => {
+            const id = `skill-${skill.toLowerCase().replace(/\s+/g, '-')}`;
+            const existing = prev.find(t => t.id === id);
+            if (existing) {
+              return prev.map(t => t.id === id ? { ...t, question_count: t.question_count + 1, count: t.count + 1 } : t);
+            }
+            // If a brand new skill appears, append it
+            return [
+              ...prev,
+              {
+                id,
+                skill,
+                domain,
+                question_count: 1,
+                count: 1
+              }
+            ];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        // noop
+      }
+    };
   }, [subject]);
 
   return { topics, loading };

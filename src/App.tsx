@@ -9,9 +9,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { setupGlobalErrorHandling, setupActivityTracking } from "./utils/errorHandler";
+import { useQuestTracking } from "./hooks/useQuestTracking";
 // import "./utils/questionTestUtils"; // Load console test utilities
 import Index from "./pages/Index";
-import TestApp from "./TestApp";
 import QuizPage from "./pages/QuizPage";
 import MarathonPage from "./pages/MarathonPage";
 import SATMockTestPage from "./pages/SATMockTestPage";
@@ -22,6 +22,7 @@ import QuestionGenerationTest from "./pages/QuestionGenerationTest";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import QuestionTopicsPage from "./pages/QuestionTopicsPage";
 import NotFound from "./pages/NotFound";
+import MasteryPage from "./pages/MasteryPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,12 @@ const queryClient = new QueryClient({
   },
 });
 
+// Component to enable quest tracking across the app
+const QuestTracker = () => {
+  useQuestTracking(); // This hook automatically tracks navigation
+  return null;
+};
+
 const App = () => {
   return (
     <ErrorBoundary>
@@ -51,9 +58,11 @@ const App = () => {
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                <QuestTracker />
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/quiz" element={<QuizPage />} />
+                  <Route path="/mastery" element={<MasteryPage />} />
                   <Route path="/marathon" element={<MarathonPage />} />
                   <Route path="/sat-mock-test" element={<SATMockTestPage />} />
                   <Route path="/leaderboard" element={<LeaderboardPage />} />

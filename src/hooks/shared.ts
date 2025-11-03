@@ -147,9 +147,9 @@ export const useTopicPerformance = (
 /**
  * Hook to manage view mode state with persistence
  */
-export const useViewMode = (storageKey: string = 'viewMode') => {
+export const useViewMode = (storageKey: string = 'viewMode', defaultValue: ViewMode = 'accuracy') => {
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
-    getFromStorage(storageKey, 'accuracy')
+    getFromStorage(storageKey, defaultValue)
   );
 
   const updateViewMode = useCallback((mode: ViewMode) => {

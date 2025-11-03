@@ -5,8 +5,9 @@ import {
   PerformanceCard, 
   AccuracyLegend, 
   VerticalBarChart, 
-  HorizontalProgressBars, 
-  ViewModeToggle 
+  VerticalDomainBarChart,
+  HorizontalProgressBars,
+  ViewModeToggle
 } from '@/components/ui/shared';
 import { 
   DifficultyData, 
@@ -19,7 +20,7 @@ import { useData } from '@/contexts/DataContext';
 import { RealTimePerformanceService } from '@/services/realTimePerformanceService';
 
 const QuestionTopicsDifficulty: React.FC = () => {
-  const [viewMode, setViewMode] = useViewMode('questionTopicsViewMode');
+  const [viewMode, setViewMode] = useViewMode('questionTopicsViewMode', 'count'); // Default to 'count' mode
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const { questionAttempts, loading } = useData();
 
@@ -51,24 +52,16 @@ const QuestionTopicsDifficulty: React.FC = () => {
 
   const subdomainsForSelectedDomain = selectedDomain 
     ? subdomainData.filter(sub => {
-        // Map domains to their skills
-        if (selectedDomain === 'Information and Ideas') {
-          return ['Central Ideas and Details', 'Command of Evidence: Textual', 'Command of Evidence: Quantitative', 'Inferences', 'Data Interpretation and Integration'].includes(sub.subdomain);
-        } else if (selectedDomain === 'Craft and Structure') {
-          return ['Words in Context', 'Text Structure and Purpose', 'Cross-Text Connections'].includes(sub.subdomain);
-        } else if (selectedDomain === 'Expression of Ideas') {
-          return ['Rhetorical Synthesis', 'Transitions'].includes(sub.subdomain);
-        } else if (selectedDomain === 'Standard English Conventions') {
-          return ['Punctuation', 'Sentence Structure', 'Verb Tense'].includes(sub.subdomain);
-        }
-        return false;
+        // Map the subdomain (which is actually the topic/skill) to its domain
+        const mappedDomain = RealTimePerformanceService.mapTopicToDomain(sub.subdomain);
+        return mappedDomain === selectedDomain;
       })
     : [];
 
   return (
     <div className="w-full">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Reading and Writing
@@ -81,53 +74,86 @@ const QuestionTopicsDifficulty: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel - Difficulty Chart */}
-        <PerformanceCard title="Reading and Writing Difficulty" icon={TrendingUp}>
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Your R&W Accuracy Overall:</span>
-              <span className="text-sm font-semibold text-gray-900">{overallAccuracy}%</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Panel - Difficulty Chart - Smaller width */}
+        <div className="lg:col-span-3">
+          <PerformanceCard title="Difficulty" icon={TrendingUp}>
+            <div className="flex flex-col h-full">
+              <div className="mb-4 flex-shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Your R&W Accuracy Overall:</span>
+                  <span className="text-sm font-semibold text-gray-900">{overallAccuracy}%</span>
+                </div>
+              </div>
+
+              <div className="mb-6 flex-shrink-0">
+                {viewMode === 'accuracy' ? (
+                  <AccuracyLegend />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-sky-300 rounded"></div>
+                      <span className="text-gray-600">Correct</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gray-200 rounded"></div>
+                      <span className="text-gray-600">Total</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 flex items-end justify-center min-h-0">
+                <VerticalBarChart data={difficultyData} viewMode={viewMode} />
+              </div>
             </div>
-          </div>
+          </PerformanceCard>
+        </div>
 
-          <AccuracyLegend />
-
-          <VerticalBarChart data={difficultyData} viewMode={viewMode} />
-        </PerformanceCard>
-
-        {/* Middle Panel - Domains */}
-        <PerformanceCard title="Reading and Writing Domains" icon={BookOpen}>
-          <HorizontalProgressBars data={domainData} />
-        </PerformanceCard>
+        {/* Middle Panel - Domains - Bigger width */}
+        <div className="lg:col-span-5">
+          <PerformanceCard title="Domains" icon={BookOpen}>
+            <div className="flex-1 flex items-end justify-center min-h-0">
+              <VerticalDomainBarChart data={domainData} viewMode={viewMode} />
+            </div>
+          </PerformanceCard>
+        </div>
 
         {/* Right Panel - Subdomains */}
-        <PerformanceCard title="Subdomains" icon={Target}>
-          <div className="mb-4">
-            <Select value={selectedDomain || ''} onValueChange={setSelectedDomain}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a domain to view skills" />
-              </SelectTrigger>
-              <SelectContent>
-                {domainData.map((domain) => (
-                  <SelectItem key={domain.domain} value={domain.domain}>
-                    {domain.domain}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="lg:col-span-4">
+          <PerformanceCard title="Subdomains" icon={Target}>
+            <div className="flex flex-col h-full">
+              <div className="mb-4 flex-shrink-0">
+                <Select value={selectedDomain || ''} onValueChange={setSelectedDomain}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a domain to view skills" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {domainData.map((domain) => (
+                      <SelectItem key={domain.domain} value={domain.domain}>
+                        {domain.domain}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {selectedDomain && subdomainsForSelectedDomain.length > 0 ? (
-            <HorizontalProgressBars data={subdomainsForSelectedDomain} />
-          ) : (
-            <div className="text-center py-8">
-              <Brain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Domain</h3>
-              <p className="text-gray-500">Choose a domain from the dropdown to view its skills</p>
+              {selectedDomain && subdomainsForSelectedDomain.length > 0 ? (
+                <div className="flex-1 flex items-end justify-center min-h-0">
+                  <VerticalDomainBarChart data={subdomainsForSelectedDomain} viewMode={viewMode} />
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center min-h-0">
+                  <div className="text-center">
+                    <Brain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Domain</h3>
+                    <p className="text-gray-500">Choose a domain from the dropdown to view its skills</p>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </PerformanceCard>
+          </PerformanceCard>
+        </div>
       </div>
     </div>
   );

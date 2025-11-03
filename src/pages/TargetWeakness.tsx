@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,13 @@ import {
   Brain,
   Zap,
   Lightbulb,
-  Play
+  Play,
+  TrendingDown,
+  TrendingUp
 } from 'lucide-react';
 import weaknessQuizService from '@/services/weaknessQuizService';
+import { useData } from '@/contexts/DataContext';
+import { RealTimePerformanceService } from '@/services/realTimePerformanceService';
 
 interface QuizQuestion {
   id: number;
@@ -50,6 +54,7 @@ interface QuizData {
 const TargetWeakness: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { questionAttempts, isInitialized } = useData();
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -77,6 +82,98 @@ const TargetWeakness: React.FC = () => {
       return () => clearInterval(timer);
     }
   }, [isCompleted, quizData]);
+
+  // Calculate domain statistics for practice history summary
+  const domainStats = useMemo(() => {
+    if (!isInitialized || !questionAttempts.length) {
+      return {
+        readingWriting: [],
+        math: []
+      };
+    }
+
+    // Calculate Reading & Writing domain stats
+    const readingWritingDomains = [
+      'Information and Ideas',
+      'Craft and Structure',
+      'Expression of Ideas',
+      'Standard English Conventions'
+    ];
+
+    const readingWritingStats = readingWritingDomains.map(domain => {
+      const domainAttempts = questionAttempts.filter(attempt => {
+        const mappedDomain = RealTimePerformanceService.mapTopicToDomain(attempt.topic);
+        return mappedDomain === domain && attempt.subject === 'reading-writing';
+      });
+
+      const totalQuestions = domainAttempts.length;
+      const wrongQuestions = domainAttempts.filter(a => !a.is_correct).length;
+      
+      // Get difficulty breakdown
+      const easy = domainAttempts.filter(a => a.difficulty === 'Easy').length;
+      const medium = domainAttempts.filter(a => a.difficulty === 'Medium').length;
+      const hard = domainAttempts.filter(a => a.difficulty === 'Hard').length;
+
+      const easyWrong = domainAttempts.filter(a => a.difficulty === 'Easy' && !a.is_correct).length;
+      const mediumWrong = domainAttempts.filter(a => a.difficulty === 'Medium' && !a.is_correct).length;
+      const hardWrong = domainAttempts.filter(a => a.difficulty === 'Hard' && !a.is_correct).length;
+
+      return {
+        domain,
+        totalQuestions,
+        wrongQuestions,
+        easy,
+        medium,
+        hard,
+        easyWrong,
+        mediumWrong,
+        hardWrong
+      };
+    });
+
+    // Calculate Math domain stats
+    const mathDomains = [
+      'Algebra',
+      'Advanced Math',
+      'Problem-Solving and Data Analysis'
+    ];
+
+    const mathStats = mathDomains.map(domain => {
+      const domainAttempts = questionAttempts.filter(attempt => {
+        const mappedDomain = RealTimePerformanceService.mapTopicToMathDomain(attempt.topic);
+        return mappedDomain === domain && attempt.subject === 'math';
+      });
+
+      const totalQuestions = domainAttempts.length;
+      const wrongQuestions = domainAttempts.filter(a => !a.is_correct).length;
+      
+      // Get difficulty breakdown
+      const easy = domainAttempts.filter(a => a.difficulty === 'Easy').length;
+      const medium = domainAttempts.filter(a => a.difficulty === 'Medium').length;
+      const hard = domainAttempts.filter(a => a.difficulty === 'Hard').length;
+
+      const easyWrong = domainAttempts.filter(a => a.difficulty === 'Easy' && !a.is_correct).length;
+      const mediumWrong = domainAttempts.filter(a => a.difficulty === 'Medium' && !a.is_correct).length;
+      const hardWrong = domainAttempts.filter(a => a.difficulty === 'Hard' && !a.is_correct).length;
+
+      return {
+        domain,
+        totalQuestions,
+        wrongQuestions,
+        easy,
+        medium,
+        hard,
+        easyWrong,
+        mediumWrong,
+        hardWrong
+      };
+    });
+
+    return {
+      readingWriting: readingWritingStats,
+      math: mathStats
+    };
+  }, [questionAttempts, isInitialized]);
 
   // Load quiz data on component mount
   useEffect(() => {
@@ -369,90 +466,118 @@ const TargetWeakness: React.FC = () => {
                 <Target className="h-8 w-8 text-white" />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Target My Weakness Practice</h1>
-              <p className="text-gray-600">Get ready to focus on your weakest areas with higher difficulty questions</p>
+              <p className="text-gray-600">Complete analysis of your practice history across all domains</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Quiz Overview */}
-                <div className="bg-blue-50 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-blue-600" />
-                    Quiz Overview
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{quizData.totalQuestions}</div>
-                      <div className="text-sm text-gray-600">Questions</div>
+            {/* Practice History Summary */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Your Practice History</h2>
+              
+              {/* Reading and Writing Domains */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-blue-600 font-bold">RW</span>
+                  </span>
+                  Reading & Writing
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {domainStats.readingWriting.map((stat) => (
+                    <div key={stat.domain} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="font-semibold text-gray-900 mb-2">{stat.domain}</div>
+                      <div className="text-sm text-gray-600 mb-3">
+                        <span className="font-medium">{stat.totalQuestions} solved</span>
+                        {stat.wrongQuestions > 0 && (
+                          <span className="text-red-600 font-medium"> • {stat.wrongQuestions} mistakes</span>
+                        )}
+                      </div>
+                      {stat.totalQuestions > 0 && (
+                        <div className="space-y-2 text-xs text-gray-600">
+                          {stat.easy > 0 && (
+                            <div className="flex justify-between">
+                              <span>Easy:</span>
+                              <span className="font-medium">{stat.easyWrong} wrong out of {stat.easy}</span>
+                            </div>
+                          )}
+                          {stat.medium > 0 && (
+                            <div className="flex justify-between">
+                              <span>Medium:</span>
+                              <span className="font-medium">{stat.mediumWrong} wrong out of {stat.medium}</span>
+                            </div>
+                          )}
+                          {stat.hard > 0 && (
+                            <div className="flex justify-between">
+                              <span>Hard:</span>
+                              <span className="font-medium">{stat.hardWrong} wrong out of {stat.hard}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{quizData.estimatedTime}</div>
-                      <div className="text-sm text-gray-600">Estimated Time</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Skills to Practice */}
-                <div className="bg-green-50 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-green-600" />
-                    Skills You'll Practice
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {quizData.weaknessTopics.map((topic, index) => (
-                      <Badge key={index} variant="outline" className="border-green-300 text-green-700 bg-green-100">
-                        {topic}
-                      </Badge>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Difficulty Levels */}
-                <div className="bg-yellow-50 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-yellow-600" />
-                    Difficulty Levels
-                  </h2>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-red-100 text-red-800 border-red-300">Hard</Badge>
-                      <span className="text-sm text-gray-600">Challenging questions to push your limits</span>
+              {/* Math Domains */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-green-600 font-bold">M</span>
+                  </span>
+                  Math
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {domainStats.math.map((stat) => (
+                    <div key={stat.domain} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="font-semibold text-gray-900 mb-2 text-sm">{stat.domain}</div>
+                      <div className="text-xs text-gray-600 mb-3">
+                        <span className="font-medium">{stat.totalQuestions} solved</span>
+                        {stat.wrongQuestions > 0 && (
+                          <span className="text-red-600 font-medium"> • {stat.wrongQuestions} mistakes</span>
+                        )}
+                      </div>
+                      {stat.totalQuestions > 0 && (
+                        <div className="space-y-2 text-xs text-gray-600">
+                          {stat.easy > 0 && (
+                            <div className="flex justify-between">
+                              <span>Easy:</span>
+                              <span className="font-medium">{stat.easyWrong} wrong out of {stat.easy}</span>
+                            </div>
+                          )}
+                          {stat.medium > 0 && (
+                            <div className="flex justify-between">
+                              <span>Medium:</span>
+                              <span className="font-medium">{stat.mediumWrong} wrong out of {stat.medium}</span>
+                            </div>
+                          )}
+                          {stat.hard > 0 && (
+                            <div className="flex justify-between">
+                              <span>Hard:</span>
+                              <span className="font-medium">{stat.hardWrong} wrong out of {stat.hard}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Medium</Badge>
-                      <span className="text-sm text-gray-600">Moderate difficulty for skill building</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              </div>
+            </div>
 
-                {/* Instructions */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5 text-gray-600" />
-                    How It Works
-                  </h2>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">•</span>
-                      <span>Questions are selected from your weakest skills with higher difficulty</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">•</span>
-                      <span>Take your time to read each question carefully</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">•</span>
-                      <span>Review explanations after each question to learn from mistakes</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-1">•</span>
-                      <span>Track your progress and see improvement over time</span>
-                    </li>
-                  </ul>
+            {/* Quiz Overview */}
+            <div className="bg-blue-50 rounded-lg p-6 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-600" />
+                Upcoming Practice Session
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{quizData.totalQuestions}</div>
+                  <div className="text-sm text-gray-600">Questions</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{quizData.estimatedTime}</div>
+                  <div className="text-sm text-gray-600">Estimated Time</div>
                 </div>
               </div>
             </div>

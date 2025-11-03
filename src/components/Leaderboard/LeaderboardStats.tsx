@@ -11,12 +11,12 @@ interface LeaderboardStatsProps {
 const LeaderboardStats: React.FC<LeaderboardStatsProps> = ({ onBack, isLoading, error }) => {
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white py-4 md:py-8 px-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gray-50 py-6 px-4">
+        <div className="max-w-5xl mx-auto">
           <LeaderboardHeader onBack={onBack} />
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-slate-600">Loading leaderboard...</span>
+            <span className="ml-3 text-gray-600">Loading leaderboard...</span>
           </div>
         </div>
       </div>
@@ -25,10 +25,10 @@ const LeaderboardStats: React.FC<LeaderboardStatsProps> = ({ onBack, isLoading, 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white py-4 md:py-8 px-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gray-50 py-6 px-4">
+        <div className="max-w-5xl mx-auto">
           <LeaderboardHeader onBack={onBack} />
-          <Card className="border-red-200">
+          <Card className="rounded-2xl border border-red-200 shadow-sm bg-white">
             <CardContent className="p-6">
               <p className="text-red-600 text-center">Failed to load leaderboard. Please try again later.</p>
             </CardContent>

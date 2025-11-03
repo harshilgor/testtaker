@@ -75,6 +75,7 @@ interface DataContextType extends DataState {
   refreshQuizData: () => Promise<void>;
   refreshPerformanceData: () => Promise<void>;
   initializeFromCache: () => boolean;
+  invalidateCache: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -164,6 +165,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
     
     return false; // No valid cache
+  };
+
+  // Invalidate cache to force fresh data fetch
+  const invalidateCache = () => {
+    if (!user?.id) return;
+    
+    console.log('🗑️ Invalidating data cache');
+    const cacheKey = `user_data_${user.id}`;
+    localStorage.removeItem(cacheKey);
+    
+    // Clear React Query cache
+    queryClient.removeQueries({ queryKey: ['quizResults', user.id] });
+    queryClient.removeQueries({ queryKey: ['questionAttempts', user.id] });
+    queryClient.removeQueries({ queryKey: ['marathonSessions', user.id] });
+    queryClient.removeQueries({ queryKey: ['userProfile', user.id] });
+    queryClient.removeQueries({ queryKey: ['streakData', user.id] });
+    queryClient.removeQueries({ queryKey: ['mockTests', user.id] });
   };
 
   // Fetch all data for the user
@@ -432,6 +450,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     refreshQuizData,
     refreshPerformanceData,
     initializeFromCache,
+    invalidateCache,
   };
 
   return (

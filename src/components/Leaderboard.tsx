@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
 import LeaderboardHeader from './Leaderboard/LeaderboardHeader';
 import UserRankCard from './Leaderboard/UserRankCard';
 import LeaderboardList from './Leaderboard/LeaderboardList';
@@ -124,6 +123,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
 
     initializeUserStats();
   }, []);
+
+  // Optimistic leaderboard state for instant updates (0ms latency)
+  const [optimisticLeaderboard, setOptimisticLeaderboard] = useState<any[]>([]);
+  const [optimisticPoints, setOptimisticPoints] = useState<number | null>(null);
 
   // Fetch leaderboard data with support for periodic stats
   const { data: leaderboard = [], isLoading, error, refetch } = useQuery({
@@ -274,6 +277,58 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
     refetchInterval: 1000 * 30, // 30 seconds - refresh every 30 seconds
   });
 
+  // Sync optimistic state with fetched leaderboard
+  useEffect(() => {
+    if (Array.isArray(leaderboard) && leaderboard.length > 0) {
+      setOptimisticLeaderboard(leaderboard);
+      
+      // Update optimistic points for current user
+      const currentUserData = leaderboard.find(user => user.display_name === userName);
+      if (currentUserData) {
+        setOptimisticPoints(currentUserData.total_points);
+      }
+    }
+  }, [leaderboard, userName]);
+
+  // INSTANT leaderboard update when quest is completed (0ms latency)
+  useEffect(() => {
+    const handleQuestCompleted = (event: CustomEvent) => {
+      const completedQuests = event.detail?.completedQuests || [];
+      const pointsAwarded = event.detail?.pointsAwarded || 0;
+      
+      if (pointsAwarded > 0) {
+        // INSTANT UPDATE - Add points to current user immediately (0ms)
+        setOptimisticPoints(prev => (prev || 0) + pointsAwarded);
+        
+        // INSTANT UPDATE - Update leaderboard immediately
+        setOptimisticLeaderboard(prev => {
+          const updated = prev.map(user => {
+            if (user.display_name === userName) {
+              return {
+                ...user,
+                total_points: (user.total_points || 0) + pointsAwarded
+              };
+            }
+            return user;
+          });
+          
+          // Re-sort by points
+          return updated.sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+        });
+        
+        console.log('⚡ INSTANT: Updated leaderboard points by', pointsAwarded);
+      }
+      
+      // Refresh from database in background (non-blocking)
+      setTimeout(() => refetch(), 500);
+    };
+    
+    window.addEventListener('quest-completed', handleQuestCompleted as EventListener);
+    return () => {
+      window.removeEventListener('quest-completed', handleQuestCompleted as EventListener);
+    };
+  }, [userName, refetch]);
+
   // Set up real-time subscription for leaderboard updates
   useEffect(() => {
     console.log('Setting up real-time leaderboard subscription...');
@@ -357,77 +412,52 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
     };
   }, [refetch, timeFrame]);
 
-  // Find current user rank
+  // Find current user rank - use optimistic leaderboard for instant updates
   useEffect(() => {
-    if (Array.isArray(leaderboard) && leaderboard.length > 0) {
-      const rank = leaderboard.findIndex(user => user.display_name === userName) + 1;
+    const dataToUse = optimisticLeaderboard.length > 0 ? optimisticLeaderboard : leaderboard;
+    if (Array.isArray(dataToUse) && dataToUse.length > 0) {
+      const rank = dataToUse.findIndex(user => user.display_name === userName) + 1;
       setCurrentUserRank(rank > 0 ? rank : null);
       console.log('Current user rank:', rank > 0 ? rank : 'Not found', 'in', timeFrame, 'leaderboard');
     } else {
       setCurrentUserRank(null);
     }
-  }, [leaderboard, userName, timeFrame]);
+  }, [optimisticLeaderboard, leaderboard, userName, timeFrame]);
 
   // Handle loading and error states
   if (isLoading || error) {
     return <LeaderboardStats onBack={onBack} isLoading={isLoading} error={error} />;
   }
 
-  const currentUserData = Array.isArray(leaderboard) ? leaderboard.find(user => user.display_name === userName) : null;
+  // Use optimistic data for instant display (0ms latency)
+  const displayLeaderboard = optimisticLeaderboard.length > 0 ? optimisticLeaderboard : leaderboard;
+  const currentUserData = Array.isArray(displayLeaderboard) 
+    ? displayLeaderboard.find(user => user.display_name === userName) 
+    : null;
+  
+  // Use optimistic points if available
+  const displayPoints = optimisticPoints !== null && currentUserData
+    ? optimisticPoints
+    : (currentUserData?.total_points || 0);
 
   return (
-    <div className="min-h-screen bg-white py-4 md:py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <LeaderboardHeader onBack={onBack} />
-
-        {/* Time Frame Selection */}
-        <div className="mb-6">
-          <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
-            <Button
-              onClick={() => setTimeFrame('all-time')}
-              variant={timeFrame === 'all-time' ? 'default' : 'ghost'}
-              className={`flex-1 ${
-                timeFrame === 'all-time' 
-                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              All Time
-            </Button>
-            <Button
-              onClick={() => setTimeFrame('weekly')}
-              variant={timeFrame === 'weekly' ? 'default' : 'ghost'}
-              className={`flex-1 ${
-                timeFrame === 'weekly' 
-                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              This Week
-            </Button>
-            <Button
-              onClick={() => setTimeFrame('monthly')}
-              variant={timeFrame === 'monthly' ? 'default' : 'ghost'}
-              className={`flex-1 ${
-                timeFrame === 'monthly' 
-                  ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              This Month
-            </Button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-6 px-4">
+      <div className="max-w-5xl mx-auto">
+        <LeaderboardHeader 
+          onBack={onBack} 
+          timeFrame={timeFrame}
+          setTimeFrame={setTimeFrame}
+        />
 
         {currentUserRank && currentUserData && (
           <UserRankCard 
             rank={currentUserRank} 
-            points={currentUserData.total_points} 
+            points={displayPoints} 
           />
         )}
 
         <LeaderboardList 
-          leaderboard={Array.isArray(leaderboard) ? leaderboard : []} 
+          leaderboard={Array.isArray(displayLeaderboard) ? displayLeaderboard : []} 
           currentUserName={userName} 
         />
       </div>

@@ -103,33 +103,28 @@ export class RealTimePerformanceService {
       attempt.session_type?.toLowerCase().includes('writing')
     );
 
-    const domainStats = rwAttempts.reduce((acc, attempt) => {
-      // Map topics to domains
-      const domain = this.mapTopicToDomain(attempt.topic);
-      
-      if (!acc[domain]) {
-        acc[domain] = {
-          domain,
-          correct: 0,
-          total: 0,
-          accuracy: 0
-        };
-      }
-      
-      acc[domain].total++;
-      if (attempt.is_correct) {
-        acc[domain].correct++;
-      }
-      
-      return acc;
-    }, {} as Record<string, any>);
+    // Initialize all domains with 0 values
+    const allDomains = ['Information and Ideas', 'Craft and Structure', 'Expression of Ideas', 'Standard English Conventions'];
+    const domainStats: Record<string, { correct: number; total: number }> = {};
+    allDomains.forEach(domain => {
+      domainStats[domain] = { correct: 0, total: 0 };
+    });
 
-    // Calculate accuracy and format data
-    return Object.values(domainStats).map((stat: any) => ({
-      domain: stat.domain,
-      correct: stat.correct,
-      total: stat.total,
-      accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
+    // Calculate stats from attempts
+    rwAttempts.forEach(attempt => {
+      const domain = this.mapTopicToDomain(attempt.topic);
+      domainStats[domain].total++;
+      if (attempt.is_correct) {
+        domainStats[domain].correct++;
+      }
+    });
+
+    // Format data
+    return allDomains.map(domain => ({
+      domain,
+      correct: domainStats[domain].correct,
+      total: domainStats[domain].total,
+      accuracy: domainStats[domain].total > 0 ? Math.round((domainStats[domain].correct / domainStats[domain].total) * 100) : 0
     }));
   }
 
@@ -143,33 +138,28 @@ export class RealTimePerformanceService {
       attempt.session_type?.toLowerCase().includes('math')
     );
 
-    const domainStats = mathAttempts.reduce((acc, attempt) => {
-      // Map topics to math domains
-      const domain = this.mapTopicToMathDomain(attempt.topic);
-      
-      if (!acc[domain]) {
-        acc[domain] = {
-          domain,
-          correct: 0,
-          total: 0,
-          accuracy: 0
-        };
-      }
-      
-      acc[domain].total++;
-      if (attempt.is_correct) {
-        acc[domain].correct++;
-      }
-      
-      return acc;
-    }, {} as Record<string, any>);
+    // Initialize all domains with 0 values
+    const allDomains = ['Algebra', 'Advanced Math', 'Problem-Solving and Data Analysis'];
+    const domainStats: Record<string, { correct: number; total: number }> = {};
+    allDomains.forEach(domain => {
+      domainStats[domain] = { correct: 0, total: 0 };
+    });
 
-    // Calculate accuracy and format data
-    return Object.values(domainStats).map((stat: any) => ({
-      domain: stat.domain,
-      correct: stat.correct,
-      total: stat.total,
-      accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
+    // Calculate stats from attempts
+    mathAttempts.forEach(attempt => {
+      const domain = this.mapTopicToMathDomain(attempt.topic);
+      domainStats[domain].total++;
+      if (attempt.is_correct) {
+        domainStats[domain].correct++;
+      }
+    });
+
+    // Format data
+    return allDomains.map(domain => ({
+      domain,
+      correct: domainStats[domain].correct,
+      total: domainStats[domain].total,
+      accuracy: domainStats[domain].total > 0 ? Math.round((domainStats[domain].correct / domainStats[domain].total) * 100) : 0
     }));
   }
 
@@ -185,31 +175,43 @@ export class RealTimePerformanceService {
       attempt.session_type?.toLowerCase().includes('writing')
     );
 
-    const subdomainStats = rwAttempts.reduce((acc, attempt) => {
-      const subdomain = attempt.topic || 'Unknown Skill';
-      
-      if (!acc[subdomain]) {
-        acc[subdomain] = {
-          subdomain,
-          correct: 0,
-          total: 0,
-          accuracy: 0
-        };
-      }
-      
-      acc[subdomain].total++;
-      if (attempt.is_correct) {
-        acc[subdomain].correct++;
-      }
-      
-      return acc;
-    }, {} as Record<string, any>);
+    // Initialize all possible skills for Reading and Writing from question_bank
+    // This list should match what's available in the database
+    const allSkills = [
+      'Comprehension',
+      'Command of Evidence',
+      'Central Ideas and Details',
+      'Words in Context',
+      'Transitions',
+      'Rhetorical Synthesis',
+      'Form, Structure, and Sense',
+      'Boundaries'
+    ];
 
-    return Object.values(subdomainStats).map((stat: any) => ({
-      subdomain: stat.subdomain,
-      correct: stat.correct,
-      total: stat.total,
-      accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
+    // Initialize all skills with 0 values
+    const subdomainStats: Record<string, { correct: number; total: number }> = {};
+    allSkills.forEach(skill => {
+      subdomainStats[skill] = { correct: 0, total: 0 };
+    });
+
+    // Add stats from attempts (including any skills not in our predefined list)
+    rwAttempts.forEach(attempt => {
+      const subdomain = attempt.topic || 'Unknown Skill';
+      if (!subdomainStats[subdomain]) {
+        subdomainStats[subdomain] = { correct: 0, total: 0 };
+      }
+      subdomainStats[subdomain].total++;
+      if (attempt.is_correct) {
+        subdomainStats[subdomain].correct++;
+      }
+    });
+
+    // Format and return all skills
+    return allSkills.map(skill => ({
+      subdomain: skill,
+      correct: subdomainStats[skill]?.correct || 0,
+      total: subdomainStats[skill]?.total || 0,
+      accuracy: subdomainStats[skill]?.total > 0 ? Math.round((subdomainStats[skill]!.correct / subdomainStats[skill]!.total) * 100) : 0
     }));
   }
 
@@ -222,31 +224,59 @@ export class RealTimePerformanceService {
       attempt.session_type?.toLowerCase().includes('math')
     );
 
-    const subdomainStats = mathAttempts.reduce((acc, attempt) => {
-      const subdomain = attempt.topic || 'Unknown Skill';
-      
-      if (!acc[subdomain]) {
-        acc[subdomain] = {
-          subdomain,
-          correct: 0,
-          total: 0,
-          accuracy: 0
-        };
-      }
-      
-      acc[subdomain].total++;
-      if (attempt.is_correct) {
-        acc[subdomain].correct++;
-      }
-      
-      return acc;
-    }, {} as Record<string, any>);
+    // Initialize all possible skills for Math from question_bank
+    // This list should match what's available in the database
+    const allSkills = [
+      'Linear Equations',
+      'Systems of Linear Equations',
+      'Quadratic Equations',
+      'Equivalent Expressions',
+      'Nonlinear Equations in One Variable',
+      'System of Equations in Two Variables',
+      'Solving and Analyzing Radical Equations',
+      'Operations with Polynomials',
+      'Operations with Rational Expressions',
+      'Operations with Exponential Expressions',
+      'Operations with Rational and Irrational Numbers',
+      'Rates and Proportional Relationships',
+      'Ratios and Units',
+      'Percentage',
+      'Evaluate Statistical Claims',
+      'Inference and Sampling',
+      'Estimate Statistics',
+      'Statistics',
+      'Probability',
+      'Geometry and Trigonometry',
+      'Congruence, Similarity, and Angle Relationships',
+      'Right Triangles and Trigonometry',
+      'Circles',
+      'Complex Numbers'
+    ];
 
-    return Object.values(subdomainStats).map((stat: any) => ({
-      subdomain: stat.subdomain,
-      correct: stat.correct,
-      total: stat.total,
-      accuracy: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0
+    // Initialize all skills with 0 values
+    const subdomainStats: Record<string, { correct: number; total: number }> = {};
+    allSkills.forEach(skill => {
+      subdomainStats[skill] = { correct: 0, total: 0 };
+    });
+
+    // Add stats from attempts (including any skills not in our predefined list)
+    mathAttempts.forEach(attempt => {
+      const subdomain = attempt.topic || 'Unknown Skill';
+      if (!subdomainStats[subdomain]) {
+        subdomainStats[subdomain] = { correct: 0, total: 0 };
+      }
+      subdomainStats[subdomain].total++;
+      if (attempt.is_correct) {
+        subdomainStats[subdomain].correct++;
+      }
+    });
+
+    // Format and return all skills
+    return allSkills.map(skill => ({
+      subdomain: skill,
+      correct: subdomainStats[skill]?.correct || 0,
+      total: subdomainStats[skill]?.total || 0,
+      accuracy: subdomainStats[skill]?.total > 0 ? Math.round((subdomainStats[skill]!.correct / subdomainStats[skill]!.total) * 100) : 0
     }));
   }
 
@@ -288,7 +318,7 @@ export class RealTimePerformanceService {
   /**
    * Map topic to Reading and Writing domain
    */
-  private static mapTopicToDomain(topic: string): string {
+  static mapTopicToDomain(topic: string): string {
     if (!topic) return 'Unknown Domain';
     
     const topicLower = topic.toLowerCase();
@@ -322,7 +352,7 @@ export class RealTimePerformanceService {
   /**
    * Map topic to Math domain
    */
-  private static mapTopicToMathDomain(topic: string): string {
+  static mapTopicToMathDomain(topic: string): string {
     if (!topic) return 'Unknown Domain';
     
     const topicLower = topic.toLowerCase();

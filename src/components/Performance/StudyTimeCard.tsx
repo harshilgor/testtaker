@@ -217,13 +217,13 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName, isMinimized = f
 
   return (
     <Card 
-      className="bg-white cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-white border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
       onClick={isMinimized ? onExpand : undefined}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-600">Study Time</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-900">Study Time</h3>
           <div className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded-full ${getStatusColor()}`}></div>
             {!isMinimized && (
@@ -235,7 +235,7 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName, isMinimized = f
                     className="p-1"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Settings className="w-4 h-4 text-gray-500" />
+                    <Settings className="w-4 h-4 text-gray-400" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
@@ -303,7 +303,7 @@ const StudyTimeCard: React.FC<StudyTimeCardProps> = ({ userName, isMinimized = f
 
         {/* Main Metric */}
         <div className="text-4xl font-bold text-gray-900 mb-1">{todayDisplay.value}</div>
-        <div className="text-sm text-gray-500 mb-4">{todayDisplay.unit}</div>
+        <div className="text-xs text-gray-600 mb-2">{todayDisplay.unit}</div>
         
         {!isMinimized && (
           <>

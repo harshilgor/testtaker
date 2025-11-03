@@ -5,7 +5,9 @@ import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const LeaderboardRankingWidget: React.FC = () => {
+interface LeaderboardRankingWidgetProps { variant?: 'bare' | 'card' }
+
+const LeaderboardRankingWidget: React.FC<LeaderboardRankingWidgetProps> = ({ variant = 'card' }) => {
   const { questionAttempts, marathonSessions, quizResults, loading } = useData();
   const { user } = useAuth();
   const [leaderboardData, setLeaderboardData] = useState({
@@ -149,6 +151,13 @@ const LeaderboardRankingWidget: React.FC = () => {
   const RankIcon = getRankIcon(rankingData.currentRank);
 
   if (loading || leaderboardData.loading) {
+    if (variant === 'bare') {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+        </div>
+      );
+    }
     return (
       <Card className="w-full h-full bg-white border border-gray-200 shadow-sm">
         <CardContent className="flex items-center justify-center h-full">
@@ -160,26 +169,44 @@ const LeaderboardRankingWidget: React.FC = () => {
 
   // Show fallback if no data available
   if (rankingData.totalUsers === 0) {
+    const Fallback = (
+      <div className="w-full h-full flex flex-col">
+        <div className="text-center py-3">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+            <Users className="h-5 w-5 lg:h-6 lg:w-6 text-gray-500" />
+          </div>
+          <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">--</div>
+          <div className="text-xs lg:text-sm text-gray-600">Start practicing to get ranked!</div>
+        </div>
+      </div>
+    );
+    if (variant === 'bare') return Fallback;
     return (
       <Card className="w-full h-full bg-white border border-gray-200 shadow-sm">
         <CardHeader className="pb-2 px-3 pt-3">
           <CardTitle className="text-sm lg:text-base font-semibold text-gray-900">Leaderboard Rank</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 h-full flex flex-col px-3 pb-3">
-          <div className="text-center py-3">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Users className="h-5 w-5 lg:h-6 lg:w-6 text-gray-500" />
-            </div>
-            <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">
-              --
-            </div>
-            <div className="text-xs lg:text-sm text-gray-600">
-              Start practicing to get ranked!
-            </div>
-          </div>
+          {Fallback}
         </CardContent>
       </Card>
     );
+  }
+
+  const Content = (
+    <div className="w-full h-full flex flex-col">
+      <div className="text-center py-3">
+        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+          <RankIcon className={`h-5 w-5 lg:h-6 lg:w-6 ${getRankColor(rankingData.currentRank)}`} />
+        </div>
+        <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">#{rankingData.currentRank}</div>
+        <div className="text-xs lg:text-sm text-gray-600">of {rankingData.totalUsers.toLocaleString()} users</div>
+      </div>
+    </div>
+  );
+
+  if (variant === 'bare') {
+    return Content;
   }
 
   return (
@@ -188,19 +215,7 @@ const LeaderboardRankingWidget: React.FC = () => {
         <CardTitle className="text-sm lg:text-base font-semibold text-gray-900">Leaderboard Rank</CardTitle>
       </CardHeader>
       <CardContent className="pt-0 h-full flex flex-col px-3 pb-3">
-        {/* Main Rank Display */}
-        <div className="text-center py-3">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <RankIcon className={`h-5 w-5 lg:h-6 lg:w-6 ${getRankColor(rankingData.currentRank)}`} />
-          </div>
-          <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">
-            #{rankingData.currentRank}
-          </div>
-          <div className="text-xs lg:text-sm text-gray-600">
-            of {rankingData.totalUsers.toLocaleString()} users
-          </div>
-        </div>
-
+        {Content}
       </CardContent>
     </Card>
   );

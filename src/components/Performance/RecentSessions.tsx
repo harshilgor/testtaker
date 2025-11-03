@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Target, Brain, FileText } from 'lucide-react';
 import { useRecentSessions } from '@/hooks/useRecentSessions';
 import SessionSummary from './SessionSummary';
@@ -13,6 +14,7 @@ interface RecentSessionsProps {
 
 const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends }) => {
   const [selectedSession, setSelectedSession] = useState<{ id: string; type: 'marathon' | 'quiz' | 'mocktest' } | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'marathon' | 'quiz' | 'mocktest'>('all');
   
   // Use the optimized hook for instant loading with caching
   const { 
@@ -24,6 +26,22 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
     userName,
     enabled: !!userName
   });
+
+  // Filter sessions by type
+  const filteredSessions = useMemo(() => {
+    if (activeTab === 'all') return recentSessions;
+    return recentSessions.filter(session => session.type === activeTab);
+  }, [recentSessions, activeTab]);
+
+  // Count sessions by type for tab badges
+  const sessionCounts = useMemo(() => {
+    return {
+      marathon: recentSessions.filter(s => s.type === 'marathon').length,
+      quiz: recentSessions.filter(s => s.type === 'quiz').length,
+      mocktest: recentSessions.filter(s => s.type === 'mocktest').length,
+      all: recentSessions.length
+    };
+  }, [recentSessions]);
 
   // Log optimization status for debugging
   React.useEffect(() => {
@@ -82,18 +100,93 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
     setSelectedSession(null);
   };
 
+  const renderSessionList = (sessions: any[]) => {
+    if (sessions.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+          <h3 className="font-medium text-gray-900 mb-1">No Recent Sessions</h3>
+          <p className="text-sm text-gray-500">
+            Start practicing to see your recent activity here
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {/* Show subtle loading indicator only when no cached data and still loading */}
+        {isLoading && !hasCachedData && (
+          <div className="flex items-center justify-center py-2">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+              Loading recent sessions...
+            </div>
+          </div>
+        )}
+        
+        {sessions.map((session) => (
+          <div 
+            key={session.id} 
+            className="p-3 rounded-xl border transition-all hover:shadow-sm cursor-pointer border-gray-200 bg-white hover:bg-gray-50"
+            onClick={() => handleSessionClick(session.id, session.type)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                  {getSessionIcon(session.type)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {getSessionTypeLabel(session.type)}
+                    </span>
+                    {session.type === 'mocktest' && session.score && (
+                      <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-2 py-0.5">
+                        {session.score} pts
+                      </Badge>
+                    )}
+                    {session.subject && (
+                      <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                        {session.subject}
+                      </Badge>
+                    )}
+                    {session.difficulty && session.difficulty !== 'mixed' && (
+                      <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                        {session.difficulty}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {session.questions} Questions • {formatDate(session.date)}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`text-base font-semibold ${getAccuracyColor(session.accuracy)}`}>
+                  {session.accuracy}%
+                </div>
+                <div className="text-xs text-gray-600">accuracy</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <Card className="bg-white h-full">
-      <CardHeader className="pb-4">
+    <Card className="rounded-2xl border border-gray-200 shadow-sm h-full">
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-500" />
-            <CardTitle className="text-lg">Recent Sessions</CardTitle>
+            <Clock className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg font-semibold text-gray-900">Recent Sessions</CardTitle>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-gray-500 hover:text-gray-700 text-xs"
+            className="text-gray-600 hover:text-gray-900 text-xs"
             onClick={onViewTrends}
           >
             View Trends
@@ -101,72 +194,38 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ userName, onViewTrends 
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {recentSessions.length > 0 ? (
-          <div className="space-y-3">
-            {/* Show subtle loading indicator only when no cached data and still loading */}
-            {isLoading && !hasCachedData && (
-              <div className="flex items-center justify-center py-2">
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <div className="w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                  Loading recent sessions...
-                </div>
-              </div>
-            )}
-            
-            {recentSessions.map((session) => (
-              <div 
-                key={session.id} 
-                className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => handleSessionClick(session.id, session.type)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50">
-                    {getSessionIcon(session.type)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-gray-900 text-sm">
-                        {getSessionTypeLabel(session.type)}
-                      </span>
-                      {session.type === 'mocktest' && session.score && (
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                          {session.score} pts
-                        </Badge>
-                      )}
-                      {session.subject && (
-                        <Badge variant="secondary" className="text-xs">
-                          {session.subject}
-                        </Badge>
-                      )}
-                      {session.difficulty && session.difficulty !== 'mixed' && (
-                        <Badge variant="secondary" className="text-xs">
-                          {session.difficulty}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {session.questions} Questions • {formatDate(session.date)}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-lg font-bold ${getAccuracyColor(session.accuracy)}`}>
-                    {session.accuracy}%
-                  </div>
-                  <div className="text-xs text-gray-500">accuracy</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-1">No Recent Sessions</h3>
-            <p className="text-sm text-gray-500">
-              Start practicing to see your recent activity here
-            </p>
-          </div>
-        )}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-3 bg-white border border-gray-200 p-1 rounded-xl">
+            <TabsTrigger value="all" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg">
+              All {sessionCounts.all > 0 && <Badge variant="secondary" className="ml-1 text-xs bg-blue-100 text-blue-700">{sessionCounts.all}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="marathon" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg">
+              Marathon {sessionCounts.marathon > 0 && <Badge variant="secondary" className="ml-1 text-xs bg-blue-100 text-blue-700">{sessionCounts.marathon}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="quiz" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg">
+              Quiz {sessionCounts.quiz > 0 && <Badge variant="secondary" className="ml-1 text-xs bg-blue-100 text-blue-700">{sessionCounts.quiz}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="mocktest" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg">
+              Mock Test {sessionCounts.mocktest > 0 && <Badge variant="secondary" className="ml-1 text-xs bg-blue-100 text-blue-700">{sessionCounts.mocktest}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="mt-0">
+            {renderSessionList(filteredSessions)}
+          </TabsContent>
+          
+          <TabsContent value="marathon" className="mt-0">
+            {renderSessionList(filteredSessions)}
+          </TabsContent>
+          
+          <TabsContent value="quiz" className="mt-0">
+            {renderSessionList(filteredSessions)}
+          </TabsContent>
+          
+          <TabsContent value="mocktest" className="mt-0">
+            {renderSessionList(filteredSessions)}
+          </TabsContent>
+        </Tabs>
       </CardContent>
       
       {/* Session Summary Modal */}

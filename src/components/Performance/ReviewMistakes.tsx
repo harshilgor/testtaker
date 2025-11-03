@@ -12,17 +12,20 @@ import {
   Filter,
   Clock,
   Target,
-  Eye,
-  TrendingDown,
   X,
   CheckCircle,
   PlayCircle,
   Bookmark,
   BookmarkCheck,
-  BookOpen
+  BookOpen,
+  TrendingDown,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ComprehensiveWeaknessInsights from './ComprehensiveWeaknessInsights';
+import { RealTimePerformanceService } from '@/services/realTimePerformanceService';
+import { useAuth } from '@/contexts/AuthContext';
+import { infiniteQuestionService } from '@/services/infiniteQuestionService';
 
 interface QuestionBankItem {
   id: number;
@@ -66,30 +69,33 @@ interface FilterOptions {
   bookmarked: boolean;
 }
 
-interface PracticeData {
-  questions: Mistake[];
-  focusTopics: string[];
-  difficulty: 'easy' | 'medium' | 'hard';
-  estimatedDuration: number;
-  targetScore: number;
-}
-
-const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
+const ReviewMistakes: React.FC<{ userName: string; selectedDomain?: string | null }> = ({ userName, selectedDomain = null }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { questionAttempts, isInitialized } = useData();
   const [filters, setFilters] = useState<FilterOptions>({
-    dateRange: 'latest',
+    dateRange: 'all',
     skill: 'all',
     difficulty: 'all',
     subject: 'all',
     reviewStatus: 'all',
     bookmarked: false
   });
+  const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'total'>('total');
   const [selectedMistake, setSelectedMistake] = useState<Mistake | null>(null);
   const [showMistakeDialog, setShowMistakeDialog] = useState(false);
-  const [showWeaknessInsights, setShowWeaknessInsights] = useState(false);
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Set<string>>(new Set());
   const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
+  const [showTargetWeaknessDialog, setShowTargetWeaknessDialog] = useState(false);
+  const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set());
+  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
+  const [targetWeaknessQuestionCount, setTargetWeaknessQuestionCount] = useState<number>(20);
+  const [domainSkillsData, setDomainSkillsData] = useState<Record<string, { skill: string; domain: string }[]>>({});
+  const [domainAccuracy, setDomainAccuracy] = useState<Record<string, number>>({});
+  const [skillAccuracy, setSkillAccuracy] = useState<Record<string, number>>({});
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
+  const [loadingDomainData, setLoadingDomainData] = useState(false);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   // Load bookmarked questions from localStorage on component mount
   useEffect(() => {
@@ -138,20 +144,6 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 
   // Check if a question is bookmarked
   const isBookmarked = (questionId: string) => bookmarkedQuestions.has(String(questionId));
-
-  // Handle practice session start from WeaknessInsights
-  const handleStartPractice = (practiceData: PracticeData) => {
-    // Store practice data in localStorage for the quiz component to access
-    localStorage.setItem('weaknessPracticeData', JSON.stringify(practiceData));
-    
-    // Navigate to the quiz page with practice mode
-    navigate('/quiz', { 
-      state: { 
-        mode: 'weakness-practice',
-        practiceData: practiceData
-      }
-    });
-  };
 
   // Use cached data from DataContext for instant loading
   const userAttempts = useMemo(() => {
@@ -340,34 +332,72 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
       });
     }
 
-    // Filter by date range
-    if (filters.dateRange !== 'all') {
-      if (filters.dateRange === 'latest') {
-        // For "latest", we'll sort by date and take the most recent ones
-        // This will be handled after all filtering is done
-      } else {
-        const now = new Date();
-        const cutoffDate = new Date();
+    // Filter by selected domain
+    if (selectedDomain) {
+      filtered = filtered.filter(mistake => {
+        // Check if this is a Reading & Writing or Math domain
+        const readingWritingDomains = [
+          'Information and Ideas',
+          'Craft and Structure',
+          'Expression of Ideas',
+          'Standard English Conventions'
+        ];
+        const mathDomains = [
+          'Algebra',
+          'Advanced Math',
+          'Problem-Solving and Data Analysis'
+        ];
         
-        switch (filters.dateRange) {
-          case 'today':
-            cutoffDate.setHours(0, 0, 0, 0);
-            break;
-          case 'week':
-            cutoffDate.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            cutoffDate.setMonth(now.getMonth() - 1);
-            break;
-          case '3months':
-            cutoffDate.setMonth(now.getMonth() - 3);
-            break;
+        let mappedDomain = '';
+        if (readingWritingDomains.includes(selectedDomain)) {
+          mappedDomain = RealTimePerformanceService.mapTopicToDomain(mistake.topic);
+        } else if (mathDomains.includes(selectedDomain)) {
+          mappedDomain = RealTimePerformanceService.mapTopicToMathDomain(mistake.topic);
         }
         
-        filtered = filtered.filter(mistake => 
-          new Date(mistake.created_at) >= cutoffDate
-        );
+        return mappedDomain === selectedDomain;
+      });
+    }
+
+    // Filter by time period (today, week, or total)
+    if (timePeriod !== 'total') {
+      const now = new Date();
+      const cutoffDate = new Date();
+      
+      if (timePeriod === 'today') {
+        cutoffDate.setHours(0, 0, 0, 0);
+      } else if (timePeriod === 'week') {
+        cutoffDate.setDate(now.getDate() - 7);
       }
+      
+      filtered = filtered.filter(mistake => 
+        new Date(mistake.created_at) >= cutoffDate
+      );
+    }
+
+    // Filter by date range (from filters dropdown)
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      const cutoffDate = new Date();
+      
+      switch (filters.dateRange) {
+        case 'today':
+          cutoffDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          cutoffDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          cutoffDate.setMonth(now.getMonth() - 1);
+          break;
+        case '3months':
+          cutoffDate.setMonth(now.getMonth() - 3);
+          break;
+      }
+      
+      filtered = filtered.filter(mistake => 
+        new Date(mistake.created_at) >= cutoffDate
+      );
     }
 
     // Filter by skill/topic
@@ -390,15 +420,8 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
       filtered = filtered.filter(mistake => mistake.review_status === filters.reviewStatus);
     }
 
-    // Handle "latest" filter - sort by date and take the 10 most recent
-    if (filters.dateRange === 'latest') {
-      filtered = filtered
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10);
-    }
-
     return filtered;
-  }, [mistakesWithDetails, filters, bookmarkedQuestions]);
+  }, [mistakesWithDetails, filters, bookmarkedQuestions, selectedDomain, timePeriod]);
 
   // Calculate mistake statistics
   const mistakeStats = useMemo(() => {
@@ -436,9 +459,41 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 
   // Get unique values for filters
   const uniqueSkills = useMemo(() => {
-    const skills = [...new Set(mistakesWithDetails.map(a => a.topic))].filter(Boolean);
-    return skills.sort();
-  }, [mistakesWithDetails]);
+    if (!selectedDomain) {
+      // If no domain selected, return all skills
+      const skills = [...new Set(mistakesWithDetails.map(a => a.topic))].filter(Boolean);
+      return skills.sort();
+    }
+    
+    // If domain is selected, filter skills to only those in that domain
+    const readingWritingDomains = [
+      'Information and Ideas',
+      'Craft and Structure',
+      'Expression of Ideas',
+      'Standard English Conventions'
+    ];
+    const mathDomains = [
+      'Algebra',
+      'Advanced Math',
+      'Problem-Solving and Data Analysis'
+    ];
+    
+    const skills = mistakesWithDetails
+      .filter(mistake => {
+        let mappedDomain = '';
+        if (readingWritingDomains.includes(selectedDomain)) {
+          mappedDomain = RealTimePerformanceService.mapTopicToDomain(mistake.topic);
+        } else if (mathDomains.includes(selectedDomain)) {
+          mappedDomain = RealTimePerformanceService.mapTopicToMathDomain(mistake.topic);
+        }
+        return mappedDomain === selectedDomain;
+      })
+      .map(a => a.topic)
+      .filter(Boolean);
+    
+    const uniqueSkills = [...new Set(skills)];
+    return uniqueSkills.sort();
+  }, [mistakesWithDetails, selectedDomain]);
 
   const uniqueSubjects = useMemo(() => {
     const subjects = [...new Set(mistakesWithDetails.map(a => a.subject))].filter(Boolean);
@@ -455,6 +510,425 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
+    });
+  };
+
+  // Get available domains
+  const availableDomains = useMemo(() => {
+    const readingWritingDomains = [
+      'Information and Ideas',
+      'Craft and Structure',
+      'Expression of Ideas',
+      'Standard English Conventions'
+    ];
+    
+    const mathDomains = [
+      'Algebra',
+      'Advanced Math',
+      'Problem-Solving and Data Analysis'
+    ];
+    
+    return {
+      readingWriting: readingWritingDomains,
+      math: mathDomains,
+      all: [...readingWritingDomains, ...mathDomains]
+    };
+  }, []);
+
+  // Load domain and skill data when dialog opens
+  useEffect(() => {
+    if (showTargetWeaknessDialog && user) {
+      loadDomainSkillsData();
+    }
+  }, [showTargetWeaknessDialog, user]);
+
+  // Load domain and skill data from question_bank and calculate accuracy
+  const loadDomainSkillsData = async () => {
+    if (!user) return;
+    setLoadingDomainData(true);
+    
+    try {
+      // Load all skills from question_bank grouped by domain
+      const [rwData, mathData] = await Promise.all([
+        supabase
+          .from('question_bank')
+          .select('skill, domain')
+          .eq('test', 'Reading and Writing')
+          .eq('assessment', 'SAT')
+          .not('skill', 'is', null)
+          .not('domain', 'is', null),
+        supabase
+          .from('question_bank')
+          .select('skill, domain')
+          .eq('test', 'Math')
+          .eq('assessment', 'SAT')
+          .not('skill', 'is', null)
+          .not('domain', 'is', null)
+      ]);
+
+      // Group skills by domain
+      const domainSkills: Record<string, { skill: string; domain: string }[]> = {};
+      
+      [...(rwData.data || []), ...(mathData.data || [])].forEach(row => {
+        const domain = row.domain as string;
+        const skill = row.skill as string;
+        if (!domainSkills[domain]) {
+          domainSkills[domain] = [];
+        }
+        // Avoid duplicates
+        if (!domainSkills[domain].find(s => s.skill === skill)) {
+          domainSkills[domain].push({ skill, domain });
+        }
+      });
+
+      setDomainSkillsData(domainSkills);
+
+      // Load user attempts to calculate accuracy
+      const { data: attempts } = await supabase
+        .from('question_attempts_v2')
+        .select('topic, subject, is_correct')
+        .eq('user_id', user.id)
+        .limit(5000);
+
+      if (attempts && attempts.length > 0) {
+        // Calculate domain accuracy
+        const domainStats: Record<string, { correct: number; total: number }> = {};
+        const skillStats: Record<string, { correct: number; total: number }> = {};
+
+        attempts.forEach(attempt => {
+          const topic = attempt.topic || '';
+          if (!topic) return;
+
+          // Map topic to domain
+          const subjectLower = attempt.subject?.toLowerCase() || '';
+          const isMath = subjectLower.includes('math');
+          const domain = isMath
+            ? RealTimePerformanceService.mapTopicToMathDomain(topic)
+            : RealTimePerformanceService.mapTopicToDomain(topic);
+
+          // Domain stats
+          if (!domainStats[domain]) {
+            domainStats[domain] = { correct: 0, total: 0 };
+          }
+          domainStats[domain].total++;
+          if (attempt.is_correct) {
+            domainStats[domain].correct++;
+          }
+
+          // Skill stats (topic = skill)
+          if (!skillStats[topic]) {
+            skillStats[topic] = { correct: 0, total: 0 };
+          }
+          skillStats[topic].total++;
+          if (attempt.is_correct) {
+            skillStats[topic].correct++;
+          }
+        });
+
+        // Calculate accuracy percentages
+        const domainAcc: Record<string, number> = {};
+        Object.keys(domainStats).forEach(domain => {
+          const stats = domainStats[domain];
+          domainAcc[domain] = stats.total > 0 
+            ? Math.round((stats.correct / stats.total) * 100) 
+            : 0;
+        });
+
+        const skillAcc: Record<string, number> = {};
+        Object.keys(skillStats).forEach(skill => {
+          const stats = skillStats[skill];
+          skillAcc[skill] = stats.total > 0 
+            ? Math.round((stats.correct / stats.total) * 100) 
+            : 0;
+        });
+
+        setDomainAccuracy(domainAcc);
+        setSkillAccuracy(skillAcc);
+      }
+    } catch (error) {
+      console.error('Error loading domain skills data:', error);
+    } finally {
+      setLoadingDomainData(false);
+    }
+  };
+
+  // Handle "Target My Weakness" button click - opens dialog
+  const handleTargetWeakness = () => {
+    if (!user) return;
+    setShowTargetWeaknessDialog(true);
+  };
+
+  // Handle starting the quiz with selected domains/skills
+  const handleStartTargetWeaknessQuiz = async () => {
+    if (generatingQuiz) return;
+    
+    setGeneratingQuiz(true);
+    
+    try {
+      let questionsToGenerate: any[] = [];
+      
+      if (selectedDomains.size === 0 && selectedSkills.size === 0) {
+        // If nothing selected, use default behavior (weak topics)
+        const { data: attempts, error } = await supabase
+          .from('question_attempts_v2')
+          .select('topic, subject, is_correct')
+          .eq('user_id', user!.id)
+          .limit(5000);
+
+        if (!error && attempts && attempts.length > 0) {
+          const topicStats = new Map<string, { correct: number; total: number }>();
+          
+          attempts.forEach(attempt => {
+            const topic = attempt.topic || 'Unknown';
+            const current = topicStats.get(topic) || { correct: 0, total: 0 };
+            current.total++;
+            if (attempt.is_correct) {
+              current.correct++;
+            }
+            topicStats.set(topic, current);
+          });
+          
+          const weak: Array<{ topic: string; accuracy: number }> = [];
+          topicStats.forEach((stats, topic) => {
+            if (stats.total >= 3) {
+              const topicAccuracy = Math.round((stats.correct / stats.total) * 100);
+              if (topicAccuracy < 60) {
+                weak.push({ topic, accuracy: topicAccuracy });
+              }
+            }
+          });
+          
+          const weakTopics = weak.sort((a, b) => a.accuracy - b.accuracy).slice(0, 5);
+          
+          if (weakTopics.length > 0) {
+            // Generate questions for weak topics
+            const questionsPerTopic = Math.ceil(targetWeaknessQuestionCount / weakTopics.length);
+            for (const weakTopic of weakTopics) {
+              // Determine subject from topic
+              const subjectLower = weakTopic.topic.toLowerCase();
+              const isMath = subjectLower.includes('algebra') || subjectLower.includes('equation') || 
+                            subjectLower.includes('math') || subjectLower.includes('geometry');
+              const subject: 'math' | 'english' = isMath ? 'math' : 'english';
+              
+              // Find domain for this topic
+              const domain = isMath
+                ? RealTimePerformanceService.mapTopicToMathDomain(weakTopic.topic)
+                : RealTimePerformanceService.mapTopicToDomain(weakTopic.topic);
+              
+              try {
+                const response = await infiniteQuestionService.getInfiniteQuestions({
+                  subject,
+                  skill: weakTopic.topic,
+                  domain,
+                  difficulty: 'mixed',
+                  count: questionsPerTopic,
+                  useAI: true
+                });
+                questionsToGenerate.push(...response.questions);
+              } catch (error) {
+                console.error(`Error generating questions for ${weakTopic.topic}:`, error);
+              }
+            }
+          }
+        }
+      } else {
+        // Generate questions from selected domains/skills
+        const selectedDomainsArray = Array.from(selectedDomains);
+        const selectedSkillsArray = Array.from(selectedSkills);
+        
+        // Determine which domains/skills to use
+        if (selectedSkillsArray.length > 0) {
+          // If skills are selected, use those
+          const questionsPerSkill = Math.ceil(targetWeaknessQuestionCount / selectedSkillsArray.length);
+          
+          for (const skill of selectedSkillsArray) {
+            // Find which domain this skill belongs to
+            let domain = '';
+            let subject: 'math' | 'english' = 'english';
+            
+            // Check all domains to find which one contains this skill
+            for (const [dom, skills] of Object.entries(domainSkillsData)) {
+              if (skills.some(s => s.skill === skill)) {
+                domain = dom;
+                // Determine subject from domain
+                const readingWritingDomains = ['Information and Ideas', 'Craft and Structure', 'Expression of Ideas', 'Standard English Conventions'];
+                subject = readingWritingDomains.includes(dom) ? 'english' : 'math';
+                break;
+              }
+            }
+            
+            if (domain) {
+              try {
+                const response = await infiniteQuestionService.getInfiniteQuestions({
+                  subject,
+                  skill,
+                  domain,
+                  difficulty: 'mixed',
+                  count: questionsPerSkill,
+                  useAI: true
+                });
+                questionsToGenerate.push(...response.questions);
+              } catch (error) {
+                console.error(`Error generating questions for skill ${skill}:`, error);
+              }
+            }
+          }
+        } else if (selectedDomainsArray.length > 0) {
+          // If only domains are selected, generate questions for all skills in those domains
+          const questionsPerDomain = Math.ceil(targetWeaknessQuestionCount / selectedDomainsArray.length);
+          
+          for (const domain of selectedDomainsArray) {
+            const domainSkills = domainSkillsData[domain] || [];
+            if (domainSkills.length > 0) {
+              const questionsPerSkill = Math.ceil(questionsPerDomain / domainSkills.length);
+              
+              for (const { skill } of domainSkills) {
+                // Determine subject from domain
+                const readingWritingDomains = ['Information and Ideas', 'Craft and Structure', 'Expression of Ideas', 'Standard English Conventions'];
+                const subject: 'math' | 'english' = readingWritingDomains.includes(domain) ? 'english' : 'math';
+                
+                try {
+                  const response = await infiniteQuestionService.getInfiniteQuestions({
+                    subject,
+                    skill,
+                    domain,
+                    difficulty: 'mixed',
+                    count: questionsPerSkill,
+                    useAI: true
+                  });
+                  questionsToGenerate.push(...response.questions);
+                } catch (error) {
+                  console.error(`Error generating questions for ${skill} in ${domain}:`, error);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Limit to requested question count
+      const finalQuestions = questionsToGenerate.slice(0, targetWeaknessQuestionCount);
+      
+      // Convert to QuizQuestion format
+      const quizQuestions = finalQuestions.map((q, index) => {
+        // Convert correct_answer to numeric index
+        let correctAnswerIndex = 0;
+        const correctAns = String(q.correct_answer || 'A').toUpperCase();
+        if (correctAns === 'A' || correctAns === '1') correctAnswerIndex = 0;
+        else if (correctAns === 'B' || correctAns === '2') correctAnswerIndex = 1;
+        else if (correctAns === 'C' || correctAns === '3') correctAnswerIndex = 2;
+        else if (correctAns === 'D' || correctAns === '4') correctAnswerIndex = 3;
+        
+        // Convert id to number
+        let questionId: number;
+        if (typeof q.id === 'number') {
+          questionId = q.id;
+        } else if (typeof q.id === 'string' && !isNaN(parseInt(q.id))) {
+          questionId = parseInt(q.id);
+        } else {
+          questionId = index + 1;
+        }
+        
+        return {
+          id: questionId,
+          question: q.question_text || q.question || '',
+          options: [
+            q.option_a || q.options?.[0] || 'Option A',
+            q.option_b || q.options?.[1] || 'Option B',
+            q.option_c || q.options?.[2] || 'Option C',
+            q.option_d || q.options?.[3] || 'Option D'
+          ],
+          correctAnswer: correctAnswerIndex,
+          explanation: q.correct_rationale || q.explanation || '',
+          topic: q.skill || q.topic || '',
+          subject: q.test === 'Math' ? 'math' : 'english',
+          difficulty: (q.difficulty || 'medium').toLowerCase()
+        };
+      });
+      
+      if (quizQuestions.length === 0) {
+        alert('No questions could be generated. Please try selecting different domains or skills.');
+        setGeneratingQuiz(false);
+        return;
+      }
+      
+      // Navigate to quiz page with questions
+      setShowTargetWeaknessDialog(false);
+      navigate('/quiz', {
+        state: {
+          mode: 'target-weakness',
+          questions: quizQuestions,
+          questionCount: quizQuestions.length,
+          targetWeakness: {
+            domains: Array.from(selectedDomains),
+            skills: Array.from(selectedSkills)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      alert('Failed to generate quiz. Please try again.');
+      setGeneratingQuiz(false);
+    }
+  };
+
+  const toggleDomain = (domain: string) => {
+    setSelectedDomains(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(domain)) {
+        newSet.delete(domain);
+        // Also remove all skills from this domain
+        const domainSkills = domainSkillsData[domain] || [];
+        setSelectedSkills(prevSkills => {
+          const newSkillSet = new Set(prevSkills);
+          domainSkills.forEach(s => newSkillSet.delete(s.skill));
+          return newSkillSet;
+        });
+      } else {
+        newSet.add(domain);
+        // Also select all skills from this domain
+        const domainSkills = domainSkillsData[domain] || [];
+        setSelectedSkills(prevSkills => {
+          const newSkillSet = new Set(prevSkills);
+          domainSkills.forEach(s => newSkillSet.add(s.skill));
+          return newSkillSet;
+        });
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSkill = (skill: string, domain: string) => {
+    setSelectedSkills(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(skill)) {
+        newSet.delete(skill);
+        // Check if domain should be unselected (if no skills selected)
+        const domainSkills = domainSkillsData[domain] || [];
+        const hasOtherSelectedSkills = domainSkills.some(s => s.skill !== skill && newSet.has(s.skill));
+        if (!hasOtherSelectedSkills) {
+          setSelectedDomains(prevDomains => {
+            const newDomainSet = new Set(prevDomains);
+            newDomainSet.delete(domain);
+            return newDomainSet;
+          });
+        }
+      } else {
+        newSet.add(skill);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleDomainExpansion = (domain: string) => {
+    setExpandedDomains(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(domain)) {
+        newSet.delete(domain);
+      } else {
+        newSet.add(domain);
+      }
+      return newSet;
     });
   };
 
@@ -581,47 +1055,26 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
   };
 
   return (
-    <div className={`${showWeaknessInsights ? 'flex gap-6' : ''}`}>
-      {/* Weakness Insights Panel */}
-      {showWeaknessInsights && (
-        <div className="w-1/3">
-          <Card className="bg-white border border-gray-200 shadow-sm h-fit">
-            <CardContent className="p-6">
-                            <ComprehensiveWeaknessInsights
-                mistakes={mistakesWithDetails}
-                userName={userName}
-                onStartPractice={handleStartPractice}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Review Mistakes Panel */}
-      <div className={`${showWeaknessInsights ? 'w-2/3' : 'w-full'}`}>
-        <Card className="bg-white border border-gray-200 shadow-sm">
-          <CardContent className="p-6">
+    <div>
+      <Card className="rounded-2xl border border-gray-200 shadow-sm">
+        <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">Review Mistakes</h3>
-              <p className="text-sm text-gray-500">Identify patterns and improve your performance</p>
+              <h3 className="text-lg font-semibold text-gray-900">Review Mistakes</h3>
+              <p className="text-sm text-gray-600">Identify patterns and improve your performance</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">{filteredMistakes.length} mistakes</span>
             <Button
-              onClick={() => setShowWeaknessInsights(!showWeaknessInsights)}
-              variant="outline"
-              className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+              onClick={handleTargetWeakness}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
               size="sm"
             >
               <Target className="h-4 w-4" />
-              {showWeaknessInsights ? 'Hide Practice' : 'Practice'}
+              Target My Weakness
             </Button>
             <Button
               onClick={handleSolveMistakes}
@@ -635,59 +1088,66 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
           </div>
         </div>
 
-        {/* Key Insights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium text-gray-700">Total Mistakes</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{mistakeStats.totalMistakes}</div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">This Week</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{mistakeStats.recentMistakes}</div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Top Weak Area</span>
-            </div>
-            <div className="text-lg font-semibold text-gray-900">
-              {mistakeStats.topTopics[0]?.topic || 'N/A'}
-            </div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">Skills Analyzed</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{mistakeStats.topTopics.length}</div>
-          </div>
+        {/* Time Period Toggles */}
+        <div className="flex items-center gap-3 mb-8">
+          <Button
+            onClick={() => setTimePeriod('today')}
+            variant={timePeriod === 'today' ? 'default' : 'outline'}
+            className={timePeriod === 'today' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+            size="sm"
+          >
+            Today
+          </Button>
+          <Button
+            onClick={() => setTimePeriod('week')}
+            variant={timePeriod === 'week' ? 'default' : 'outline'}
+            className={timePeriod === 'week' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+            size="sm"
+          >
+            This Week
+          </Button>
+          <Button
+            onClick={() => setTimePeriod('total')}
+            variant={timePeriod === 'total' ? 'default' : 'outline'}
+            className={timePeriod === 'total' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+            size="sm"
+          >
+            Total
+          </Button>
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter by:</span>
-          </div>
-          
           <Select value={filters.dateRange} onValueChange={(value) => setFilters(prev => ({ ...prev, dateRange: value }))}>
             <SelectTrigger className="w-32 border-gray-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="latest">Latest</SelectItem>
               <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="week">This Week</SelectItem>
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
+          
+          <Button
+            onClick={() => {
+              setFilters({
+                dateRange: 'all',
+                skill: 'all',
+                difficulty: 'all',
+                subject: 'all',
+                reviewStatus: 'all',
+                bookmarked: false
+              });
+              setTimePeriod('total');
+            }}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            Show All Mistakes
+          </Button>
 
           <Select value={filters.skill} onValueChange={(value) => setFilters(prev => ({ ...prev, skill: value }))}>
             <SelectTrigger className="w-40 border-gray-300">
@@ -759,7 +1219,7 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
             filteredMistakes.map((mistake, index) => (
               <div 
                 key={mistake.id || index} 
-                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer"
+                className="border border-gray-200 rounded-2xl p-4 bg-white hover:border-gray-300 transition-colors cursor-pointer"
                 onClick={() => {
                   setSelectedMistake(mistake);
                   setShowMistakeDialog(true);
@@ -782,10 +1242,6 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
                       {mistake.question_text || 'Question text not available'}
                     </h4>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <X className="h-4 w-4 text-red-500" />
-                        <span>Incorrect</span>
-                      </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
                         <span>{formatTime(mistake.time_spent || 0)}</span>
@@ -905,9 +1361,289 @@ const ReviewMistakes: React.FC<{ userName: string }> = ({ userName }) => {
 
           </DialogContent>
         </Dialog>
-          </CardContent>
-        </Card>
-      </div>
+
+        {/* Target My Weakness Dialog */}
+        <Dialog open={showTargetWeaknessDialog} onOpenChange={setShowTargetWeaknessDialog}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-600" />
+                Target My Weakness
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 mt-4">
+              {loadingDomainData ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+              ) : (
+                <>
+                  {/* Domain and Skill Selection */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Select Domains & Skills to Practice</h3>
+                    
+                    {/* Reading & Writing Section */}
+                    <div className="mb-4">
+                      <h4 className="text-xs font-medium text-gray-700 mb-2 uppercase">Reading & Writing</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableDomains.readingWriting.map(domain => {
+                          const domainSkills = domainSkillsData[domain] || [];
+                          const isExpanded = expandedDomains.has(domain);
+                          const isDomainSelected = selectedDomains.has(domain);
+                          const domainAcc = domainAccuracy[domain] ?? null;
+                          
+                          return (
+                            <div key={domain} className="border border-gray-200 rounded-xl overflow-hidden">
+                              {/* Domain Header */}
+                              <button
+                                onClick={() => toggleDomain(domain)}
+                                className={`w-full p-3 flex items-center justify-between text-left transition-all ${
+                                  isDomainSelected
+                                    ? 'bg-purple-50 border-l-4 border-l-purple-600'
+                                    : 'bg-white hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                    isDomainSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                                  }`}>
+                                    {isDomainSelected && <CheckCircle className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900">{domain}</span>
+                                      {domainAcc !== null && (
+                                        <Badge variant="outline" className={`text-xs ${
+                                          domainAcc < 60 ? 'border-red-300 text-red-700 bg-red-50' :
+                                          domainAcc < 80 ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
+                                          'border-green-300 text-green-700 bg-green-50'
+                                        }`}>
+                                          {domainAcc}% accuracy
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {domainSkills.length > 0 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleDomainExpansion(domain);
+                                    }}
+                                    className="ml-2 p-1 hover:bg-gray-100 rounded"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                                    )}
+                                  </button>
+                                )}
+                              </button>
+
+                              {/* Skills List */}
+                              {isExpanded && domainSkills.length > 0 && (
+                                <div className="bg-gray-50 border-t border-gray-200">
+                                  {domainSkills.map(({ skill }) => {
+                                    const isSkillSelected = selectedSkills.has(skill);
+                                    const skillAcc = skillAccuracy[skill] ?? null;
+                                    
+                                    return (
+                                      <button
+                                        key={skill}
+                                        onClick={() => toggleSkill(skill, domain)}
+                                        className={`w-full p-3 pl-12 flex items-center justify-between text-left hover:bg-gray-100 transition-all border-b border-gray-200 last:border-b-0 ${
+                                          isSkillSelected ? 'bg-purple-50' : ''
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-3 flex-1">
+                                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                            isSkillSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                                          }`}>
+                                            {isSkillSelected && <CheckCircle className="h-2.5 w-2.5 text-white" />}
+                                          </div>
+                                          <span className="text-sm text-gray-700">{skill}</span>
+                                        </div>
+                                        {skillAcc !== null && (
+                                          <Badge variant="outline" className={`text-xs ml-2 ${
+                                            skillAcc < 60 ? 'border-red-300 text-red-700 bg-red-50' :
+                                            skillAcc < 80 ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
+                                            'border-green-300 text-green-700 bg-green-50'
+                                          }`}>
+                                            {skillAcc}%
+                                          </Badge>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Math Section */}
+                    <div>
+                      <h4 className="text-xs font-medium text-gray-700 mb-2 uppercase">Math</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableDomains.math.map(domain => {
+                          const domainSkills = domainSkillsData[domain] || [];
+                          const isExpanded = expandedDomains.has(domain);
+                          const isDomainSelected = selectedDomains.has(domain);
+                          const domainAcc = domainAccuracy[domain] ?? null;
+                          
+                          return (
+                            <div key={domain} className="border border-gray-200 rounded-xl overflow-hidden">
+                              {/* Domain Header */}
+                              <button
+                                onClick={() => toggleDomain(domain)}
+                                className={`w-full p-3 flex items-center justify-between text-left transition-all ${
+                                  isDomainSelected
+                                    ? 'bg-purple-50 border-l-4 border-l-purple-600'
+                                    : 'bg-white hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                    isDomainSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                                  }`}>
+                                    {isDomainSelected && <CheckCircle className="h-3 w-3 text-white" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900">{domain}</span>
+                                      {domainAcc !== null && (
+                                        <Badge variant="outline" className={`text-xs ${
+                                          domainAcc < 60 ? 'border-red-300 text-red-700 bg-red-50' :
+                                          domainAcc < 80 ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
+                                          'border-green-300 text-green-700 bg-green-50'
+                                        }`}>
+                                          {domainAcc}% accuracy
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {domainSkills.length > 0 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleDomainExpansion(domain);
+                                    }}
+                                    className="ml-2 p-1 hover:bg-gray-100 rounded"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                                    )}
+                                  </button>
+                                )}
+                              </button>
+
+                              {/* Skills List */}
+                              {isExpanded && domainSkills.length > 0 && (
+                                <div className="bg-gray-50 border-t border-gray-200">
+                                  {domainSkills.map(({ skill }) => {
+                                    const isSkillSelected = selectedSkills.has(skill);
+                                    const skillAcc = skillAccuracy[skill] ?? null;
+                                    
+                                    return (
+                                      <button
+                                        key={skill}
+                                        onClick={() => toggleSkill(skill, domain)}
+                                        className={`w-full p-3 pl-12 flex items-center justify-between text-left hover:bg-gray-100 transition-all border-b border-gray-200 last:border-b-0 ${
+                                          isSkillSelected ? 'bg-purple-50' : ''
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-3 flex-1">
+                                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                            isSkillSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                                          }`}>
+                                            {isSkillSelected && <CheckCircle className="h-2.5 w-2.5 text-white" />}
+                                          </div>
+                                          <span className="text-sm text-gray-700">{skill}</span>
+                                        </div>
+                                        {skillAcc !== null && (
+                                          <Badge variant="outline" className={`text-xs ml-2 ${
+                                            skillAcc < 60 ? 'border-red-300 text-red-700 bg-red-50' :
+                                            skillAcc < 80 ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
+                                            'border-green-300 text-green-700 bg-green-50'
+                                          }`}>
+                                            {skillAcc}%
+                                          </Badge>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-500 mt-3">
+                      {selectedDomains.size === 0 && selectedSkills.size === 0
+                        ? "Leave unselected to practice your weakest topics automatically"
+                        : `${selectedDomains.size} domain${selectedDomains.size !== 1 ? 's' : ''}, ${selectedSkills.size} skill${selectedSkills.size !== 1 ? 's' : ''} selected`
+                      }
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Question Count */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Number of Questions
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetWeaknessQuestionCount}
+                  onChange={(e) => setTargetWeaknessQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Choose between 1-100 questions</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTargetWeaknessDialog(false)}
+                  size="sm"
+                  disabled={generatingQuiz}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleStartTargetWeaknessQuiz}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  size="sm"
+                  disabled={generatingQuiz}
+                >
+                  {generatingQuiz ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    'Start Practice'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 };

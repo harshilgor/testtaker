@@ -31,7 +31,7 @@ interface Insight {
 const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
   const [activeFilter, setActiveFilter] = useState<'All' | 'Math' | 'Reading and Writing'>('All');
   const [activeView, setActiveView] = useState<'accuracy' | 'time' | 'volume'>('accuracy');
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'7d' | '14d' | '30d'>('14d');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<'7d' | '14d' | '30d'>('7d');
   const [showComparison, setShowComparison] = useState(false);
 
   // Fetch all performance data
@@ -104,6 +104,31 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     enabled: !!userName,
   });
 
+  const { data: mockTests = [] } = useQuery({
+    queryKey: ['mock-tests-trends', userName],
+    queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return [];
+
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('mock_test_results')
+        .select('completed_at, detailed_results')
+        .eq('user_id', user.user.id)
+        .gte('completed_at', since.toISOString());
+
+      if (error) {
+        console.error('Error fetching mock tests:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!userName,
+  });
+
   // Calculate trend data
   const trendData = useMemo(() => {
     const days = selectedTimeRange === '7d' ? 7 : selectedTimeRange === '14d' ? 14 : 30;
@@ -127,10 +152,24 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
         new Date(m.created_at).toISOString().slice(0, 10) === dateStr
       );
 
+      const dayMockTests = mockTests.filter((m: any) => 
+        new Date(m.completed_at).toISOString().slice(0, 10) === dateStr
+      );
+
+      // Calculate total questions from mock tests
+      const mockTestQuestions = dayMockTests.reduce((sum: number, test: any) => {
+        if (test.detailed_results && test.detailed_results.questions) {
+          return sum + (Array.isArray(test.detailed_results.questions) ? test.detailed_results.questions.length : 0);
+        }
+        // If no detailed_results, estimate from typical SAT length (154 questions)
+        return sum + 154;
+      }, 0);
+
       // Calculate metrics
       const totalQuestions = dayAttempts.length + 
         dayQuizzes.reduce((sum: number, q: any) => sum + (q.total_questions || 0), 0) +
-        dayMarathons.reduce((sum: number, m: any) => sum + (m.total_questions || 0), 0);
+        dayMarathons.reduce((sum: number, m: any) => sum + (m.total_questions || 0), 0) +
+        mockTestQuestions;
       
       const correctAnswers = dayAttempts.filter((a: any) => a.is_correct).length +
         dayQuizzes.reduce((sum: number, q: any) => sum + (q.correct_answers || 0), 0) +
@@ -153,7 +192,7 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ userName }) => {
     }
     
     return data;
-  }, [attempts, dbQuizResults, marathonSessions, selectedTimeRange]);
+  }, [attempts, dbQuizResults, marathonSessions, mockTests, selectedTimeRange]);
 
   // Get chart configuration
   const getChartConfig = () => {

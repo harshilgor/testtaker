@@ -203,7 +203,7 @@ const PerformanceSummary: React.FC<PerformanceSummaryProps> = ({ userName }) => 
   }, [recentAttempts, recentQuizzes, recentMarathons, recentMocks]);
 
   return (
-    <Card className="bg-white border-0 shadow-sm h-full">
+    <Card className="rounded-2xl border border-gray-200 shadow-sm h-full">
       <CardContent className="p-6">
         {/* Header */}
         <div className="mb-6">

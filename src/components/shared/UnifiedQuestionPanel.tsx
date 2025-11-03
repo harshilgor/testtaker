@@ -41,21 +41,12 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
       <div className="max-w-full mx-auto h-full flex flex-col">
         {/* Rounded Container with Curved Edges */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden h-full flex flex-col">
-          {/* Question Header */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex justify-between items-center">
-              <h2 className={`${headerSizeClass} font-semibold text-gray-900`}>Question</h2>
-              
-              {/* Flag button */}
-              {onToggleFlag && (
-                <button
-                  onClick={onToggleFlag}
-                  className={`text-lg ${isFlagged ? 'opacity-100' : 'opacity-50'} hover:opacity-100 transition-opacity`}
-                  aria-label={isFlagged ? 'Remove flag' : 'Flag question'}
-                >
-                  🚩
-                </button>
-              )}
+          {/* Question Header - Compact top bar showing skill/topic only */}
+          <div className="px-6 py-3 border-b border-gray-100 bg-white">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">
+                {(question as any).skill || (question as any).topic || 'Question'}
+              </span>
             </div>
           </div>
           
