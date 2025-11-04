@@ -202,11 +202,20 @@ const QuizView: React.FC<QuizViewProps> = ({
           window.dispatchEvent(new CustomEvent('quiz-completed'));
           
           // Track quiz completion for quest completion (non-blocking)
+          // Include topics/skills for skill-based quest matching
           try {
+            const topics = [...new Set(questions.map(q => (q as any).skill || q.topic).filter(Boolean))];
+            const correctTopics = [...new Set(questions
+              .filter((q, idx) => answers[idx] === q.correctAnswer)
+              .map(q => (q as any).skill || q.topic)
+              .filter(Boolean))];
+            
             await trackEvent('complete_quiz', {
               totalQuestions: questions.length,
               correctAnswers: correctAnswers,
-              scorePercentage: scorePercentage
+              scorePercentage: scorePercentage,
+              topics: topics, // All topics in the quiz
+              correctTopics: correctTopics // Topics where user got correct answers
             });
           } catch (error) {
             console.error('Error tracking quiz completion for quests:', error);

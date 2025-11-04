@@ -276,6 +276,8 @@ export const useQuests = ({ userId, enabled = true }: UseQuestsOptions) => {
       }));
 
       // Combine all quests (founder + database) and filter to only active (non-completed, non-expired)
+      // Limit to MAX 15 total active quests
+      const MAX_TOTAL_QUESTS = 15;
       const allQuests = [...founderQuestsWithCompletion, ...databaseQuests];
       const activeQuests = allQuests.filter(q => {
         // Only include non-completed quests
@@ -283,7 +285,7 @@ export const useQuests = ({ userId, enabled = true }: UseQuestsOptions) => {
         // Also filter out expired quests
         if (q.expiresAt && new Date(q.expiresAt) < new Date()) return false;
         return true;
-      });
+      }).slice(0, MAX_TOTAL_QUESTS); // Limit to 15 quests max
 
       // Calculate stats
       const completedCount = allQuests.filter(q => q.completed).length;

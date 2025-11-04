@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { preloadDomainMappings } from '@/services/masteryCacheService';
 
 // Define data types
 interface QuizResult {
@@ -372,6 +373,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       console.error('Failed to refresh performance data:', error);
     }
   };
+
+  // Preload domain mappings on app start (non-blocking, for Mastery component)
+  useEffect(() => {
+    // Preload domain mappings in background (cached for 24 hours)
+    preloadDomainMappings().catch(err => {
+      console.warn('Failed to preload domain mappings:', err);
+    });
+  }, []);
 
   // Load data when user logs in
   useEffect(() => {

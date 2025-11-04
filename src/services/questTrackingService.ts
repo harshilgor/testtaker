@@ -340,9 +340,11 @@ class QuestTrackingService {
 
   /**
    * Check if an event matches a quest's requirements
+   * Enhanced to handle skill-based quests by matching target_topic with event metadata
    */
   private matchesQuest(quest: Quest | any, event: QuestEvent): boolean {
     const questTopic = quest.topic?.toLowerCase() || '';
+    const questTargetTopic = quest.target_topic?.toLowerCase() || '';
     const questFeature = quest.feature?.toLowerCase() || '';
     const questTitle = quest.title?.toLowerCase() || quest.quest_title?.toLowerCase() || '';
     
@@ -369,6 +371,26 @@ class QuestTrackingService {
                questTitle.includes('mastery');
       
       case 'complete_quiz':
+        // Check for skill-based quests (matching target_topic with answered topics)
+        if (questTargetTopic && event.metadata?.topics) {
+          const eventTopics = (event.metadata.topics as string[]).map(t => t.toLowerCase());
+          const questTargetLower = questTargetTopic.toLowerCase();
+          
+          // Match if the quest's target topic matches any of the completed topics
+          if (eventTopics.some(topic => topic.includes(questTargetLower) || questTargetLower.includes(topic))) {
+            // Check if quest progress would be completed
+            const correctCount = event.metadata?.correctTopics 
+              ? (event.metadata.correctTopics as string[]).filter(t => 
+                  t.toLowerCase().includes(questTargetLower) || questTargetLower.includes(t.toLowerCase())
+                ).length
+              : 0;
+            
+            // Check if quest target is reached (this will be checked by progress tracking)
+            return true; // Let progress tracking handle completion
+          }
+        }
+        
+        // Generic quiz quest matching
         return questTopic.includes('quiz') || 
                questFeature === 'quiz' ||
                questTitle.includes('quiz');

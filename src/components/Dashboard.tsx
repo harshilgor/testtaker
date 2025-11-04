@@ -485,6 +485,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           {/* Show only first 3 active quests that fit in the container */}
                           {/* Use optimistic state for instant updates (0ms latency) */}
                           {(() => {
+                            // Use the same filtering logic as QuestsModal to ensure accuracy
                             const activeQuests = (optimisticQuests.length > 0 ? optimisticQuests : cachedQuests)
                               .filter(quest => {
                                 // Only show active (non-completed) quests
@@ -499,7 +500,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 if (a.progress === 0 && b.progress > 0) return 1;
                                 return 0;
                               })
-                              .slice(0, 3); // Limit to 3 quests max to ensure button is visible
+                              .slice(0, 3); // Limit to 3 quests for display, but ensure we have the same pool as QuestsModal
 
                             if (activeQuests.length === 0) {
                               return (

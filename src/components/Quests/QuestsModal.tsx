@@ -351,24 +351,24 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         const databaseQuests: Quest[] = (dbQuests || [])
           .filter(dbQuest => !dbQuest.completed) // Filter out completed database quests
           .map(dbQuest => ({
-            id: dbQuest.id.toString(),
-            title: dbQuest.quest_title || 'Untitled Quest',
-            description: dbQuest.quest_description || 'No description available',
-            topic: dbQuest.target_topic || 'general',
-            difficulty: (dbQuest.difficulty === 'Easy' || dbQuest.difficulty === 'Medium' || dbQuest.difficulty === 'Hard') 
-              ? dbQuest.difficulty as 'Easy' | 'Medium' | 'Hard'
-              : 'Medium',
-            type: (dbQuest.quest_type === 'daily' || dbQuest.quest_type === 'weekly') 
-              ? dbQuest.quest_type as 'daily' | 'weekly'
-              : 'daily' as 'daily' | 'weekly',
-            target: dbQuest.target_count || 1,
-            progress: dbQuest.current_progress || 0,
-            points: dbQuest.points_reward || 10,
+          id: dbQuest.id.toString(),
+          title: dbQuest.quest_title || 'Untitled Quest',
+          description: dbQuest.quest_description || 'No description available',
+          topic: dbQuest.target_topic || 'general',
+          difficulty: (dbQuest.difficulty === 'Easy' || dbQuest.difficulty === 'Medium' || dbQuest.difficulty === 'Hard') 
+            ? dbQuest.difficulty as 'Easy' | 'Medium' | 'Hard'
+            : 'Medium',
+          type: (dbQuest.quest_type === 'daily' || dbQuest.quest_type === 'weekly') 
+            ? dbQuest.quest_type as 'daily' | 'weekly'
+            : 'daily' as 'daily' | 'weekly',
+          target: dbQuest.target_count || 1,
+          progress: dbQuest.current_progress || 0,
+          points: dbQuest.points_reward || 10,
             completed: false, // Already filtered above
-            expiresAt: new Date(dbQuest.expires_at),
-            subject: 'general', // Default subject since it's not in the database schema
-            accuracy: 0
-          }));
+          expiresAt: new Date(dbQuest.expires_at),
+          subject: 'general', // Default subject since it's not in the database schema
+          accuracy: 0
+        }));
 
         // Update founder quest completion status - check BOTH quest_completions and user_quests
         const founderQuestsWithCompletion = founderQuests.map(quest => {
@@ -378,7 +378,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             console.log(`✅ Quest ${quest.id} (${quest.title}) is already completed`);
           }
           return {
-            ...quest,
+          ...quest,
             completed: isCompleted,
             progress: isCompleted ? quest.target : 0,
             completedAt: completionData?.completedAt ? new Date(completionData.completedAt) : undefined,
@@ -387,6 +387,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         });
 
         // Separate active and completed quests
+        // Limit to MAX 15 total active quests (founder + database combined)
+        const MAX_TOTAL_QUESTS = 15;
         const activeQuests = [...founderQuestsWithCompletion, ...databaseQuests]
           .filter(q => {
             // Only include non-completed quests
@@ -400,7 +402,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
               return false;
             }
             return true;
-          });
+          })
+          .slice(0, MAX_TOTAL_QUESTS); // Limit to 15 quests max
 
         // Separate completed quests for the Completed tab
         const completedQuests = [...founderQuestsWithCompletion, ...databaseQuests]
@@ -481,27 +484,36 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
               // Check if quest is about solving questions (count-based quests)
               const questTitleLower = q.title?.toLowerCase() || '';
               const questTopicLower = q.topic?.toLowerCase() || '';
+              const questTargetTopic = (q as any).target_topic?.toLowerCase() || '';
               
               // Match quests that are about:
               // 1. Solving questions (any number)
               // 2. Quiz-related quests (count questions)
               // 3. General practice (count questions)
-              // 4. Exact topic match
+              // 4. Exact topic match (topic or target_topic)
               const isQuestionCountQuest = questTitleLower.includes('question') || 
                                           questTitleLower.includes('solve') ||
                                           questTitleLower.includes('complete') ||
+                                          questTitleLower.includes('practice') ||
                                           questTopicLower.includes('quiz') ||
                                           questTopicLower === 'general practice' ||
                                           questTopicLower === 'practice';
               
-              return isQuestionCountQuest || questTopicLower === attemptTopic.toLowerCase();
+              // Match by topic (skill-based quests)
+              const attemptTopicLower = attemptTopic.toLowerCase();
+              const topicMatch = questTopicLower === attemptTopicLower || 
+                               questTargetTopic === attemptTopicLower ||
+                               attemptTopicLower.includes(questTargetTopic) ||
+                               questTargetTopic.includes(attemptTopicLower);
+              
+              return isQuestionCountQuest || topicMatch;
             });
             
             if (matching.length === 0) return;
 
             // Track which quests were completed
             const completedQuestsList: Quest[] = [];
-            
+
             // Increment each matching quest by 1 (cap at target)
             for (const q of matching) {
               const wasIncomplete = q.progress < q.target;
@@ -608,7 +620,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
               }
             } else {
               // Just update progress for non-completed quests
-              setUserQuests(prev => prev.map(q => {
+            setUserQuests(prev => prev.map(q => {
                 const matchingQuest = matching.find(m => m.id === q.id);
                 if (!matchingQuest) return q;
                 const newProgress = Math.min(matchingQuest.target, matchingQuest.progress + 1);
@@ -819,6 +831,10 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       const dailyQuests = allQuests.filter(q => q.quest_type === 'daily');
       const monthlyQuests = allQuests.filter(q => q.quest_type === 'weekly');
 
+      // Count founder quests (they're always available, max ~9)
+      // We want total active quests to be max 15, so database quests should be limited accordingly
+      const MAX_TOTAL_QUESTS = 15;
+
       // Remove expired daily quests (they should expire at end of day)
       const expiredDailyQuests = dailyQuests.filter(q => new Date(q.expires_at) <= now);
       if (expiredDailyQuests.length > 0) {
@@ -832,15 +848,23 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       // Count remaining monthly quests (these carry forward)
       const remainingMonthlyQuests = monthlyQuests.filter(q => new Date(q.expires_at) > now);
       
-      // Ensure user always has 15 total quests (5 daily + 10 weekly)
-      const totalActiveQuests = dailyQuests.length + remainingMonthlyQuests.length;
-      const questsNeeded = Math.max(0, 15 - totalActiveQuests);
+      // Account for founder quests (~9 quests that are always available)
+      // Total active quests = founder quests + database quests
+      // We want MAX 15 total, so database quests should be limited to 15 - founder quests
+      const ESTIMATED_FOUNDER_QUESTS = 9;
+      const MAX_DATABASE_QUESTS = MAX_TOTAL_QUESTS - ESTIMATED_FOUNDER_QUESTS;
       
-      // Generate new daily quests (always 5 per day, but only if we have less than 5)
-      const dailyQuestsToCreate = Math.max(0, 5 - dailyQuests.length);
+      // Current database quests count
+      const currentDatabaseQuests = dailyQuests.length + remainingMonthlyQuests.length;
+      
+      // Calculate how many database quests we need (max 15 total - founder quests)
+      const databaseQuestsNeeded = Math.max(0, MAX_DATABASE_QUESTS - currentDatabaseQuests);
+      
+      // Generate new daily quests (limit to ensure total stays at 15)
+      const dailyQuestsToCreate = Math.max(0, Math.min(5 - dailyQuests.length, databaseQuestsNeeded));
       
       // Generate new monthly quests to fill remaining slots
-      const monthlyQuestsToCreate = Math.max(0, questsNeeded - dailyQuestsToCreate);
+      const monthlyQuestsToCreate = Math.max(0, databaseQuestsNeeded - dailyQuestsToCreate);
       const newDailyQuests = dailyQuestsToCreate > 0 ? 
         await generateDailyQuests(userId, dailyQuestsToCreate) : [];
       
@@ -867,9 +891,78 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
     }
   };
 
+  // Get all available skills from question_bank
+  const getAllAvailableSkills = async (): Promise<Set<string>> => {
+    try {
+      const { data: skills } = await supabase
+        .from('question_bank')
+        .select('skill')
+        .eq('assessment', 'SAT')
+        .not('skill', 'is', null);
+      
+      return new Set(skills?.map(s => s.skill).filter(Boolean) || []);
+    } catch (error) {
+      console.error('Error fetching available skills:', error);
+      return new Set();
+    }
+  };
+
+  // Calculate skill accuracy for all attempted skills
+  const calculateSkillAccuracy = (attempts: any[]): Map<string, number> => {
+    const skillStats = new Map<string, { correct: number; total: number }>();
+    
+    attempts.forEach(attempt => {
+      const skill = attempt.topic || '';
+      if (!skill) return;
+      
+      const current = skillStats.get(skill) || { correct: 0, total: 0 };
+      current.total++;
+      if (attempt.is_correct) {
+        current.correct++;
+      }
+      skillStats.set(skill, current);
+    });
+    
+    const accuracyMap = new Map<string, number>();
+    skillStats.forEach((stats, skill) => {
+      const accuracy = stats.total > 0 
+        ? Math.round((stats.correct / stats.total) * 100) 
+        : 0;
+      accuracyMap.set(skill, accuracy);
+    });
+    
+    return accuracyMap;
+  };
+
+  // Get prioritized skills for quest generation
+  // Priority: 1) Unused skills, 2) Lowest accuracy skills
+  const getPrioritizedSkills = async (attempts: any[], count: number): Promise<string[]> => {
+    const allSkills = await getAllAvailableSkills();
+    const attemptedTopics = getAttemptedTopics(attempts);
+    const skillAccuracy = calculateSkillAccuracy(attempts);
+    
+    // Get unused skills (skills user hasn't attempted)
+    const unusedSkills = Array.from(allSkills).filter(skill => !attemptedTopics.has(skill));
+    
+    // Get attempted skills sorted by accuracy (lowest first)
+    const attemptedSkills = Array.from(attemptedTopics)
+      .map(skill => ({
+        skill,
+        accuracy: skillAccuracy.get(skill) || 0
+      }))
+      .sort((a, b) => a.accuracy - b.accuracy)
+      .map(item => item.skill);
+    
+    // Prioritize: unused skills first, then lowest accuracy
+    const prioritized = [...unusedSkills, ...attemptedSkills].slice(0, count);
+    
+    console.log(`📊 Prioritized ${prioritized.length} skills: ${prioritized.slice(0, 5).join(', ')}...`);
+    return prioritized;
+  };
+
   // Generate daily quests
   const generateDailyQuests = async (userId: string, count: number) => {
-    // Ensure we never create more than 5 daily quests
+    // Ensure we never create more than needed (limit ensures total quests <= 15)
     const maxCount = Math.min(count, 5);
     const attemptedTopics = getAttemptedTopics(questionAttempts || []);
     const hasAnyActivity = attemptedTopics.size > 0;
@@ -943,23 +1036,35 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         });
       }
     } else {
-      // Personalized daily quests for returning users
-      const topWeakTopics = weakTopicsAnalysis.slice(0, count);
+      // Get prioritized skills (unused first, then lowest accuracy)
+      const prioritizedSkills = await getPrioritizedSkills(questionAttempts || [], maxCount);
+      const skillAccuracy = calculateSkillAccuracy(questionAttempts || []);
       
-      for (let i = 0; i < Math.min(maxCount, topWeakTopics.length); i++) {
-        const weakArea = topWeakTopics[i];
-        const isUrgent = weakArea.accuracy < 50;
-        const target = isUrgent ? 5 : 3;
-        const difficulty = isUrgent ? 'Hard' : 'Medium';
-        const points = isUrgent ? 25 : 15;
+      for (let i = 0; i < Math.min(maxCount, prioritizedSkills.length); i++) {
+        const skill = prioritizedSkills[i];
+        const isUnused = !attemptedTopics.has(skill);
+        const accuracy = skillAccuracy.get(skill) || 0;
+        
+        // Determine quest parameters based on skill status
+        const isUrgent = isUnused ? false : accuracy < 50; // Unused skills are not urgent
+        const target = isUnused ? 3 : (isUrgent ? 5 : 3);
+        const difficulty = isUnused ? 'Easy' : (isUrgent ? 'Hard' : 'Medium');
+        const points = isUnused ? 20 : (isUrgent ? 25 : 15);
+        
+        const questTitle = isUnused 
+          ? `Start practicing ${skill}`
+          : `Improve ${skill} skills`;
+        const questDescription = isUnused
+          ? `Begin your journey with ${skill} by answering ${target} questions correctly`
+          : `Boost your ${skill} performance (currently ${accuracy}% accuracy) by answering ${target} questions correctly`;
         
         const questId = crypto.randomUUID();
         quests.push({
           user_id: userId,
           quest_id: questId,
-          quest_title: `Solve ${target} ${weakArea.topic} questions`,
-          quest_description: `Improve your ${weakArea.topic} skills by answering ${target} questions correctly`,
-          target_topic: weakArea.topic,
+          quest_title: questTitle,
+          quest_description: questDescription,
+          target_topic: skill,
           target_count: target,
           difficulty: difficulty,
           quest_type: 'daily',
@@ -976,7 +1081,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
 
   // Generate monthly quests
   const generateMonthlyQuests = async (userId: string, count: number) => {
-    // Ensure we never create more than 10 monthly quests
+    // Ensure we never create more than needed (limit ensures total quests <= 15)
     const maxCount = Math.min(count, 10);
     const attemptedTopics = getAttemptedTopics(questionAttempts || []);
     const hasAnyActivity = attemptedTopics.size > 0;
@@ -1051,23 +1156,35 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
         });
       }
     } else {
-      // Personalized monthly quests for returning users
-      const topWeakTopics = weakTopicsAnalysis.slice(0, count);
+      // Get prioritized skills (unused first, then lowest accuracy)
+      const prioritizedSkills = await getPrioritizedSkills(questionAttempts || [], maxCount);
+      const skillAccuracy = calculateSkillAccuracy(questionAttempts || []);
       
-      for (let i = 0; i < Math.min(maxCount, topWeakTopics.length); i++) {
-        const weakArea = topWeakTopics[i];
-        const isUrgent = weakArea.accuracy < 50;
-        const target = isUrgent ? 25 : 20;
+      for (let i = 0; i < Math.min(maxCount, prioritizedSkills.length); i++) {
+        const skill = prioritizedSkills[i];
+        const isUnused = !attemptedTopics.has(skill);
+        const accuracy = skillAccuracy.get(skill) || 0;
+        
+        // Determine quest parameters for monthly quests (larger targets)
+        const isUrgent = isUnused ? false : accuracy < 50;
+        const target = isUnused ? 15 : (isUrgent ? 25 : 20);
         const difficulty = 'Hard';
-        const points = isUrgent ? 60 : 45;
+        const points = isUnused ? 50 : (isUrgent ? 60 : 45);
+        
+        const questTitle = isUnused 
+          ? `Master ${skill}`
+          : `Excel in ${skill}`;
+        const questDescription = isUnused
+          ? `Build strong foundations in ${skill} by answering ${target} questions correctly`
+          : `Achieve mastery in ${skill} (currently ${accuracy}% accuracy) by answering ${target} questions correctly`;
         
         const questId = crypto.randomUUID();
         quests.push({
           user_id: userId,
           quest_id: questId,
-          quest_title: `Master ${weakArea.topic}`,
-          quest_description: `Improve your ${weakArea.topic} skills by answering ${target} questions correctly`,
-          target_topic: weakArea.topic,
+          quest_title: questTitle,
+          quest_description: questDescription,
+          target_topic: skill,
           target_count: target,
           difficulty: difficulty,
           quest_type: 'weekly',
@@ -1345,14 +1462,14 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       <AnimatePresence>
         {open && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 z-40"
-              onClick={onClose}
-            />
-            <motion.div
+            onClick={onClose}
+          />
+        <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1361,18 +1478,18 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
             >
               <Card className="w-full max-w-4xl rounded-2xl border border-gray-200 shadow-sm p-8">
                 <div className="flex flex-col items-center justify-center">
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     className="rounded-full h-12 w-12 border-b-2 border-blue-600"
                   />
                   <p className="mt-4 text-gray-600 text-sm">
-                    Loading your quests...
+              Loading your quests...
                   </p>
-                </div>
+          </div>
               </Card>
-            </motion.div>
-          </>
+        </motion.div>
+      </>
         )}
       </AnimatePresence>
     );
@@ -1383,14 +1500,14 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
       <AnimatePresence>
         {open && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 z-40"
-              onClick={onClose}
-            />
-            <motion.div
+            onClick={onClose}
+          />
+      <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1405,48 +1522,48 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                       <Trophy className="h-5 w-5 text-blue-600" />
                       Your Quests
                     </CardTitle>
-                    <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
                       <Badge variant="outline" className="text-sm border-gray-300 font-medium">
-                        {activeQuests.length} active
-                      </Badge>
+                {activeQuests.length} active
+              </Badge>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={onClose}
+                onClick={onClose}
                         className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
-                      >
-                        <X className="h-4 w-4" />
+              >
+                <X className="h-4 w-4" />
                       </Button>
-                    </div>
+            </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="pt-4 flex-1 overflow-y-auto">
-                  {/* Tab Navigation */}
+          {/* Tab Navigation */}
                   <div className="mb-6">
-                    <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
-                      <button
-                        onClick={() => setActiveTab('active')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                          activeTab === 'active'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Active ({activeQuests.length})
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('completed')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                          activeTab === 'completed'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        Completed ({completedQuests.length})
-                      </button>
-                    </div>
-                  </div>
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'active'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Active ({activeQuests.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'completed'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Completed ({completedQuests.length})
+              </button>
+            </div>
+          </div>
 
                   {/* Quest Content */}
                   {activeTab === 'active' && activeQuests.length === 0 && (
@@ -1466,34 +1583,34 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                   {((activeTab === 'active' && activeQuests.length > 0) || (activeTab === 'completed' && completedQuests.length > 0)) && (
                     <div className="space-y-3">
                       {/* Active Quests */}
-                      {activeTab === 'active' && activeQuests.length > 0 && (
+                {activeTab === 'active' && activeQuests.length > 0 && (
                         activeQuests.map((quest, index) => {
-                          const hasStarted = quest.progress > 0;
+                        const hasStarted = quest.progress > 0;
                           const progressPercent = getProgressPercentage(quest.progress, quest.target);
-                          
-                          return (
+                        
+                        return (
                             <Card 
-                              key={quest.id}
+                            key={quest.id}
                               className="rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all"
                             >
                               <CardContent className="pt-4">
                                 <div className="flex items-start justify-between mb-3">
-                                  <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0">
                                     <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2">
-                                      {quest.title}
-                                    </h3>
+                                        {quest.title}
+                                      </h3>
                                     <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                                      {quest.description}
-                                    </p>
-                                  </div>
-                                  {quest.progress >= quest.target && !quest.completed && (
+                                        {quest.description}
+                                      </p>
+                                    </div>
+                                    {quest.progress >= quest.target && !quest.completed && (
                                     <Button
-                                      onClick={() => handleCompleteQuest(quest.id)}
-                                      disabled={claimingQuest === quest.id}
+                                            onClick={() => handleCompleteQuest(quest.id)}
+                                            disabled={claimingQuest === quest.id}
                                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm ml-3 flex-shrink-0"
                                       size="sm"
-                                    >
-                                      {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
+                                          >
+                                            {claimingQuest === quest.id ? 'Claiming...' : 'Claim'}
                                     </Button>
                                   )}
                                   {!hasStarted && (
@@ -1519,14 +1636,14 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                                       )}
                                     </Button>
                                   )}
-                                </div>
+                                  </div>
                                 
                                 {hasStarted && (
                                   <>
                                     <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                                       <span>Progress: {quest.progress}/{quest.target}</span>
                                       <span>{Math.round(progressPercent)}%</span>
-                                    </div>
+                                </div>
                                     <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
                                       <div 
                                         className="h-2 bg-blue-600 rounded-full transition-all duration-500"
@@ -1545,118 +1662,118 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ open, onClose, userName, onQu
                                   <Badge variant="outline" className="text-xs">
                                     {quest.type === 'daily' ? 'Daily' : 'Weekly'}
                                   </Badge>
-                                </div>
+                            </div>
                               </CardContent>
                             </Card>
-                          );
+                        );
                         })
-                      )}
+                )}
 
-                      {/* Completed Quests */}
-                      {activeTab === 'completed' && completedQuests.length > 0 && (
+                {/* Completed Quests */}
+                {activeTab === 'completed' && completedQuests.length > 0 && (
                         completedQuests.map((quest) => (
                           <Card 
-                            key={quest.id}
+                          key={quest.id}
                             className="rounded-2xl border border-gray-200 shadow-sm bg-gray-50"
                           >
                             <CardContent className="pt-4">
                               <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
                                   <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2">
-                                    {quest.title}
-                                  </h3>
+                                  {quest.title}
+                                </h3>
                                   <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                                    {quest.description}
-                                  </p>
-                                </div>
-                                <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-300 flex-shrink-0 ml-3">
-                                  Completed
-                                </Badge>
+                                  {quest.description}
+                                </p>
                               </div>
-                              
+                                <Badge variant="outline" className="text-xs bg-green-50 text-green-600 border-green-300 flex-shrink-0 ml-3">
+                                Completed
+                              </Badge>
+                            </div>
+                            
                               <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
                                 <div className="h-2 bg-green-600 rounded-full w-full" />
-                              </div>
-                              
+                            </div>
+                            
                               <div className="flex items-center gap-3 text-xs text-gray-600">
-                                <span className="font-medium text-green-600">+{quest.points} points earned</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {quest.type === 'daily' ? 'Daily' : 'Weekly'}
-                                </Badge>
-                              </div>
+                              <span className="font-medium text-green-600">+{quest.points} points earned</span>
+                              <Badge variant="outline" className="text-xs">
+                                {quest.type === 'daily' ? 'Daily' : 'Weekly'}
+                              </Badge>
+                            </div>
                             </CardContent>
                           </Card>
                         ))
                       )}
 
-                    </div>
-                  )}
+              </div>
+            )}
 
-                  {/* Performance Summary */}
+            {/* Performance Summary */}
                   {weakTopicsAnalysis.length > 0 && activeTab === 'active' && (
                     <Card className="mt-6 rounded-2xl border border-blue-200 bg-blue-50">
                       <CardContent className="pt-4">
                         <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                           <TrendingUp className="h-4 w-4 text-blue-600" />
-                          Your Focus Areas
-                        </h3>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
+                  Your Focus Areas
+                </h3>
+                <div className="grid grid-cols-2 gap-2 mb-3">
                           {weakTopicsAnalysis.slice(0, 6).map((area) => (
                             <div 
-                              key={area.topic}
+                      key={area.topic}
                               className="text-xs bg-white rounded-lg p-2 border border-gray-200"
-                            >
+                    >
                               <div className="font-medium text-gray-900">{area.topic}</div>
-                              <div className="text-gray-600">{area.accuracy}% accuracy</div>
+                      <div className="text-gray-600">{area.accuracy}% accuracy</div>
                             </div>
-                          ))}
-                        </div>
+                  ))}
+                </div>
                         <p className="text-xs text-gray-600">
-                          💡 Quests are automatically generated based on these areas where you need the most improvement.
-                        </p>
+                  💡 Quests are automatically generated based on these areas where you need the most improvement.
+                </p>
                       </CardContent>
                     </Card>
                   )}
                 </CardContent>
               </Card>
-            </motion.div>
+              </motion.div>
           </>
-        )}
+            )}
       </AnimatePresence>
 
-      {/* Confetti Animation */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50">
-          {[...Array(50)].map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ 
-                x: Math.random() * window.innerWidth,
-                y: -10,
-                opacity: 1,
-                scale: 0
-              }}
-              animate={{ 
-                y: window.innerHeight + 10,
-                opacity: 0,
-                scale: 1,
-                rotate: Math.random() * 360
-              }}
-              transition={{ 
-                duration: 3,
-                ease: "easeOut"
-              }}
-              className="absolute text-2xl"
-              style={{
-                left: Math.random() * window.innerWidth,
-                color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'][Math.floor(Math.random() * 5)]
-              }}
-            >
-              {['🎉', '⭐', '🎊', '🏆', '💎'][Math.floor(Math.random() * 5)]}
-            </motion.div>
-          ))}
-        </div>
-      )}
+        {/* Confetti Animation */}
+        {showConfetti && (
+          <div className="fixed inset-0 pointer-events-none z-50">
+            {[...Array(50)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ 
+                  x: Math.random() * window.innerWidth,
+                  y: -10,
+                  opacity: 1,
+                  scale: 0
+                }}
+                animate={{ 
+                  y: window.innerHeight + 10,
+                  opacity: 0,
+                  scale: 1,
+                  rotate: Math.random() * 360
+                }}
+                transition={{ 
+                  duration: 3,
+                  ease: "easeOut"
+                }}
+                className="absolute text-2xl"
+                style={{
+                  left: Math.random() * window.innerWidth,
+                  color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'][Math.floor(Math.random() * 5)]
+                }}
+              >
+                {['🎉', '⭐', '🎊', '🏆', '💎'][Math.floor(Math.random() * 5)]}
+              </motion.div>
+            ))}
+          </div>
+        )}
     </TooltipProvider>
   );
 };

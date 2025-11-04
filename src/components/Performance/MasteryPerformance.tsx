@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
+import { preloadDomainMappings, getCachedDomainMappings } from '@/services/masteryCacheService';
 
 interface AttemptRow {
   topic?: string | null;
@@ -66,72 +67,45 @@ function applyDecay(xp: number, last: Date | null): number {
 const MasteryPerformance: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [attempts, setAttempts] = useState<AttemptRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { questionAttempts, isInitialized } = useData();
   const [selectedSubject, setSelectedSubject] = useState<'english' | 'math'>('english');
   const [domainSkillMap, setDomainSkillMap] = useState<Map<string, { domain: string; subject: 'math' | 'english' }>>(new Map());
 
-  // Load domain-skill mappings from question_bank
+  // Load domain-skill mappings from cache first (instant), then preload if needed
   useEffect(() => {
     const loadDomainMappings = async () => {
-      const map = new Map<string, { domain: string; subject: 'math' | 'english' }>();
-      
-      // Load Math domains
-      const { data: mathData } = await supabase
-        .from('question_bank')
-        .select('skill, domain')
-        .eq('assessment', 'SAT')
-        .eq('test', 'Math')
-        .not('skill', 'is', null)
-        .not('domain', 'is', null);
-      
-      if (mathData) {
-        mathData.forEach(row => {
-          if (row.skill && row.domain) {
-            map.set(row.skill, { domain: row.domain, subject: 'math' });
-          }
-        });
+      // Try cache first for instant loading
+      const cached = getCachedDomainMappings();
+      if (cached && cached.size > 0) {
+        console.log('🚀 Using cached domain mappings (instant)');
+        setDomainSkillMap(cached);
+      } else {
+        // Preload if not in cache
+        const map = await preloadDomainMappings();
+        setDomainSkillMap(map);
       }
-      
-      // Load Reading and Writing domains
-      const { data: rwData } = await supabase
-        .from('question_bank')
-        .select('skill, domain')
-        .eq('assessment', 'SAT')
-        .eq('test', 'Reading and Writing')
-        .not('skill', 'is', null)
-        .not('domain', 'is', null);
-      
-      if (rwData) {
-        rwData.forEach(row => {
-          if (row.skill && row.domain) {
-            map.set(row.skill, { domain: row.domain, subject: 'english' });
-          }
-        });
-      }
-      
-      console.log('📊 Domain-Skill mappings loaded:', map.size, 'entries');
-      setDomainSkillMap(map);
     };
     
     loadDomainMappings();
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('question_attempts_v2')
-        .select('topic, subject, difficulty, is_correct, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5000);
-      if (!error && data) setAttempts(data as AttemptRow[]);
-      setLoading(false);
-    };
-    load();
-  }, [user]);
+  // Convert questionAttempts from DataContext to AttemptRow format (instant, no loading)
+  const attempts: AttemptRow[] = useMemo(() => {
+    if (!isInitialized || !questionAttempts.length) {
+      return [];
+    }
+    
+    // Convert to AttemptRow format - limit to 5000 most recent
+    return questionAttempts
+      .slice(0, 5000)
+      .map(attempt => ({
+        topic: attempt.topic || null,
+        subject: attempt.subject || null,
+        difficulty: attempt.difficulty || null,
+        is_correct: attempt.is_correct,
+        created_at: attempt.created_at
+      }));
+  }, [questionAttempts, isInitialized]);
 
   const mastery: SkillMastery[] = useMemo(() => {
     const map = calcBaseXP(attempts);
@@ -232,7 +206,7 @@ const MasteryPerformance: React.FC = () => {
       </CardHeader>
 
       <CardContent>
-        {loading ? (
+        {!isInitialized ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
