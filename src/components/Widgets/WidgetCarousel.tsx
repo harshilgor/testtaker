@@ -6,6 +6,7 @@ import SimpleStatsWidget from './SimpleStatsWidget';
 import LeaderboardRankingWidget from './LeaderboardRankingWidget';
 import SimpleStreakWidget from './SimpleStreakWidget';
 import TotalXPWidget from './TotalXPWidget';
+import StudyTimeWidget from './StudyTimeWidget';
 import WidgetErrorBoundary from './WidgetErrorBoundary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // import SimpleRecentActivityWidget from './SimpleRecentActivityWidget';
@@ -16,6 +17,7 @@ const WidgetCarousel: React.FC = () => {
   const widgets = [
     { component: SimpleStatsWidget, title: 'Questions Solved' },
     { component: SimpleStreakWidget, title: 'Study Streak' },
+    { component: StudyTimeWidget, title: 'Study Time' },
     { component: LeaderboardRankingWidget, title: 'Leaderboard Rank' },
     { component: TotalXPWidget, title: 'Total XP' }
   ];

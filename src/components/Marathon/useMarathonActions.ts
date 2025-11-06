@@ -29,6 +29,17 @@ interface UseMarathonActionsProps {
   getAdaptiveQuestions?: (questions: any[], sessionProgress: any, count: number, subject?: 'math' | 'english') => Promise<any[]>;
   sessionHistory?: string[];
   recordAnswer?: (questionId: string, isCorrect: boolean, timeSpent: number, difficulty: 'easy' | 'medium' | 'hard', targetSkill?: string) => Promise<void>;
+  irtMarathon?: {
+    selectNextQuestion: (questions: any[]) => Promise<any>;
+    proficiency: any;
+    phase: string;
+    loading: boolean;
+  } | null;
+  irtMarathonForAnswer?: {
+    recordAnswer: (isCorrect: boolean, itemParams: { a: number; b: number }) => Promise<any>;
+    shouldStop: () => { stop: boolean; reason?: string };
+    masteryAchieved: boolean;
+  } | null;
 }
 
 export const useMarathonActions = (props: UseMarathonActionsProps) => {
@@ -52,7 +63,9 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     settings,
     getAdaptiveQuestions,
     sessionHistory,
-    recordAnswer
+    recordAnswer,
+    irtMarathon,
+    irtMarathonForAnswer
   } = props;
 
   // Use the smaller, focused hooks
@@ -64,7 +77,8 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     startTimer,
     settings,
     getAdaptiveQuestions,
-    sessionHistory
+    sessionHistory,
+    irtMarathon
   });
 
   const { handleAnswer } = useAnswerHandler({
@@ -77,7 +91,8 @@ export const useMarathonActions = (props: UseMarathonActionsProps) => {
     loadUserPoints,
     stopTimer,
     incrementQuestionsAttempted,
-    recordAnswer
+    recordAnswer,
+    irtMarathon: irtMarathonForAnswer
   });
 
   const { handleEndMarathon, confirmEndMarathon } = useMarathonNavigation({

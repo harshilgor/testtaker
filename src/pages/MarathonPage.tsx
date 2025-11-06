@@ -13,7 +13,8 @@ const MarathonPage: React.FC = () => {
   const [marathonSettings, setMarathonSettings] = useState<MarathonSettingsType | null>(
     location.state?.marathonSettings || null
   );
-  const [showSettings, setShowSettings] = useState(!marathonSettings);
+  // Skip settings if skill is provided (direct skill-based marathon)
+  const [showSettings, setShowSettings] = useState(!marathonSettings || !marathonSettings.skill);
 
   useEffect(() => {
     if (!loading && (!user || !session)) {

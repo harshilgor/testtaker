@@ -150,6 +150,24 @@ const MasteryCard: React.FC = () => {
     navigate('/mastery');
   };
 
+  const handleSkillClick = (skill: string, subject: 'math' | 'english') => {
+    // Navigate to marathon with skill-specific settings
+    navigate('/marathon', {
+      state: {
+        marathonSettings: {
+          subjects: [subject],
+          difficulty: 'mixed',
+          timedMode: false,
+          calculatorEnabled: true,
+          darkMode: false,
+          fontSize: 'medium' as const,
+          adaptiveLearning: true,
+          skill: skill, // Skill-specific marathon
+        }
+      }
+    });
+  };
+
   if (loading) {
     return (
       <Card className="rounded-2xl border border-gray-200 shadow-sm">
@@ -200,7 +218,11 @@ const MasteryCard: React.FC = () => {
         {stats.topSkills.length > 0 && (
           <div className="space-y-2 mb-4">
             {stats.topSkills.map((skill, index) => (
-              <div key={skill.skill} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
+              <div 
+                key={skill.skill} 
+                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                onClick={() => handleSkillClick(skill.skill, skill.subject)}
+              >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {skill.status !== 'NOVICE' && (
                     <div className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${

@@ -4,14 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Users, Target, Award, BarChart3, BookOpen } from 'lucide-react';
 import LiveActivityPopups from './LiveActivityPopups';
-import LearningPlanCard from '@/components/LearningPlanCard';
 import UserReviews from './UserReviews';
 
 // Import assets
 import performanceVideo from '/library/performance.mp4';
-import learnVideo from '/library/learn.mp4';
-import homepageImage from '/library/homepage.png';
-import leaderboardImage from '/library/leaderboard.png';
+import learnVideo from '/library/Learnpage.mp4';
+import homepageVideo from '/library/Homepage.mp4';
+import leaderboardVideo from '/library/Leaderboard.mp4';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
@@ -53,13 +52,13 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Hide AI badge on mobile, show on desktop */}
               <span className="hidden sm:inline-flex text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-medium">
-                🧠 Powered by Advanced AI
+                🚀 Its FREE! , run by students
               </span>
               <Button 
                 onClick={handleGetStarted} 
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-6 sm:py-2 rounded-lg font-medium text-sm sm:text-base whitespace-nowrap cursor-pointer"
               >
-                Login / Sign Up
+                Get Started!
               </Button>
             </div>
           </div>
@@ -96,16 +95,6 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-orange-500 rounded-full"></div>
             </div>
             <span className="font-medium text-sm sm:text-base text-center">Trusted by 10,000+ students worldwide</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Learning Plan Section */}
-      <section className="py-8 sm:py-12 bg-white px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2"></div>
-          <div>
-            <LearningPlanCard />
           </div>
         </div>
       </section>
@@ -225,22 +214,26 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <CardContent className="p-0">
                 <div className="flex flex-col">
                   <div className="relative h-64 sm:h-72">
-                    <img 
-                      src={homepageImage}
-                      alt="Practice modes interface"
+                    <video 
                       className="w-full h-full object-cover bg-slate-50"
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                      preload="metadata"
                       onError={(e) => {
-                        console.error('Image failed to load:', e);
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                        console.error('Video failed to load:', e);
+                        e.currentTarget.style.display = 'none';
                       }}
-                    />
-                    <div className="w-full h-full hidden items-center justify-center bg-slate-100 text-slate-600">
-                      <div className="text-center">
-                        <Target className="h-16 w-16 mx-auto mb-2" />
-                        <p>Practice Modes Demo</p>
+                    >
+                      <source src={homepageVideo} type="video/mp4" />
+                      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-600">
+                        <div className="text-center">
+                          <Target className="h-16 w-16 mx-auto mb-2" />
+                          <p>Practice Modes Demo</p>
+                        </div>
                       </div>
-                    </div>
+                    </video>
                   </div>
                   <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
@@ -262,22 +255,26 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
               <CardContent className="p-0">
                 <div className="flex flex-col">
                   <div className="relative h-64 sm:h-72">
-                    <img 
-                      src={leaderboardImage} 
-                      alt="Leaderboard interface"
+                    <video 
                       className="w-full h-full object-cover bg-slate-50"
+                      autoPlay 
+                      muted 
+                      loop
+                      playsInline
+                      preload="metadata"
                       onError={(e) => {
-                        console.error('Image failed to load:', e);
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                        console.error('Video failed to load:', e);
+                        e.currentTarget.style.display = 'none';
                       }}
-                    />
-                    <div className="w-full h-full hidden items-center justify-center bg-teal-100 text-teal-600">
-                      <div className="text-center">
-                        <Award className="h-16 w-16 mx-auto mb-2" />
-                        <p>Leaderboard Demo</p>
+                    >
+                      <source src={leaderboardVideo} type="video/mp4" />
+                      <div className="w-full h-full flex items-center justify-center bg-teal-100 text-teal-600">
+                        <div className="text-center">
+                          <Award className="h-16 w-16 mx-auto mb-2" />
+                          <p>Leaderboard Demo</p>
+                        </div>
                       </div>
-                    </div>
+                    </video>
                   </div>
                   <div className="p-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">

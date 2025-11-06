@@ -223,6 +223,9 @@ const QuizView: React.FC<QuizViewProps> = ({
           }
         }
 
+        // Calculate total points earned for this quiz
+        let totalPointsEarned = 0;
+        
         // Record individual question attempts for performance tracking
         const questionAttempts = questions.map((question, index) => {
           const timeSpent = Math.max(1, Math.floor((Date.now() - questionStartTimes[index]) / 1000));
@@ -231,6 +234,26 @@ const QuizView: React.FC<QuizViewProps> = ({
           
           // Better topic assignment with fallbacks - ALWAYS prefer skill
           let topic = (question as any).skill || question.topic || (question as any).domain;
+          
+          // Calculate points using new system: Easy=5, Medium=10, Hard=20 (correct only)
+          const difficulty = (question.difficulty || 'medium').toLowerCase();
+          let points = 0;
+          if (isCorrect) {
+            switch (difficulty) {
+              case 'easy':
+                points = 5;
+                break;
+              case 'medium':
+                points = 10;
+                break;
+              case 'hard':
+                points = 20;
+                break;
+              default:
+                points = 10;
+            }
+            totalPointsEarned += points;
+          }
           
           return {
             user_id: user.id,
@@ -242,11 +265,27 @@ const QuizView: React.FC<QuizViewProps> = ({
             difficulty: question.difficulty || 'medium', // Ensure difficulty is never null/undefined
             is_correct: isCorrect,
             time_spent: timeSpent,
-            points_earned: isCorrect
-              ? ((question.difficulty || 'medium') === 'hard' ? 50 : (question.difficulty || 'medium') === 'medium' ? 25 : 10)
-              : -15
+            points_earned: points // Points only for correct answers, 0 for wrong
           };
         });
+
+        // Award total points to user account
+        if (totalPointsEarned > 0) {
+          try {
+            const { error: pointsError } = await supabase.rpc('increment_user_points', {
+              p_points: totalPointsEarned,
+              p_user_id: user.id
+            });
+            
+            if (pointsError) {
+              console.error('Error awarding points:', pointsError);
+            } else {
+              console.log(`✅ Awarded ${totalPointsEarned} points to user`);
+            }
+          } catch (error) {
+            console.error('Error awarding points:', error);
+          }
+        }
 
         console.log('Saving question attempts...', questionAttempts);
         console.log('Question attempts details:', {

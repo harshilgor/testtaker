@@ -41,7 +41,7 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
     const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
     const timeSpent = 0; // This would come from actual timing data
 
-    // Calculate points earned based on difficulty
+    // Calculate points earned based on difficulty: Easy=5, Medium=10, Hard=20 (correct only)
     const pointsEarned = questions.reduce((total, question, index) => {
       const userAnswer = answers[index];
       const isCorrect = userAnswer !== null && question.correct_answer === userAnswer;
@@ -50,13 +50,13 @@ const QuizSummary: React.FC<QuizSummaryProps> = ({
         const difficulty = question.difficulty?.toLowerCase() || 'medium';
         switch (difficulty) {
           case 'easy':
-            return total + 3;
+            return total + 5;
           case 'medium':
-            return total + 6;
+            return total + 10;
           case 'hard':
-            return total + 9;
+            return total + 20;
           default:
-            return total + 6; // Default to medium
+            return total + 10; // Default to medium
         }
       }
       return total;

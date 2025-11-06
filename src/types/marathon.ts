@@ -44,4 +44,5 @@ export interface MarathonSettings {
   darkMode: boolean;
   fontSize: 'small' | 'medium' | 'large';
   adaptiveLearning?: boolean;
+  skill?: string; // Optional: specific skill for IRT-based marathon
 }

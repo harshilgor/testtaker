@@ -1,10 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { MarathonSettings, QuestionAttempt } from '@/types/marathon';
 import { useMarathonSession } from '@/hooks/useMarathonSession';
 import { useMarathonState } from './Marathon/useMarathonState';
 import { useMarathonActions } from './Marathon/useMarathonActions';
 import { useAdaptiveLearning } from '@/hooks/useAdaptiveLearning';
+import { useIRTMarathon } from '@/hooks/useIRTMarathon';
 import MarathonInterface from './Marathon/MarathonInterface';
 import MarathonLoadingState from './Marathon/MarathonLoadingState';
 import MarathonNoSettingsState from './Marathon/MarathonNoSettingsState';
@@ -54,7 +55,15 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     incrementQuestionsAttempted
   } = useMarathonState(session);
 
-  // Initialize adaptive learning
+  // Initialize IRT marathon if skill is specified (always call hook, but may not use it)
+  const irtMarathonEnabled = settings?.skill && settings.subjects && settings.subjects.length > 0 && settings.subjects[0] !== 'both';
+  const irtMarathonHook = useIRTMarathon({
+    skill: irtMarathonEnabled ? settings!.skill! : '',
+    subject: irtMarathonEnabled ? (settings!.subjects[0] as 'math' | 'english') : 'math',
+  });
+  const irtMarathon = irtMarathonEnabled ? irtMarathonHook : null;
+
+  // Initialize adaptive learning (only if not using IRT)
   const {
     getAdaptiveQuestions,
     recordAnswer,
@@ -91,14 +100,57 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     startTimer,
     incrementQuestionsAttempted,
     settings,
-    getAdaptiveQuestions: settings?.adaptiveLearning ? getAdaptiveQuestions : undefined,
+    getAdaptiveQuestions: settings?.adaptiveLearning && !irtMarathon ? getAdaptiveQuestions : undefined,
     sessionHistory,
-    recordAnswer: settings?.adaptiveLearning ? recordAnswer : undefined
+    recordAnswer: settings?.adaptiveLearning && !irtMarathon ? recordAnswer : undefined,
+    irtMarathon: irtMarathon ? {
+      selectNextQuestion: irtMarathon.selectNextQuestion,
+      proficiency: irtMarathon.proficiency,
+      phase: irtMarathon.phase,
+      loading: irtMarathon.loading,
+    } : null,
+    irtMarathonForAnswer: irtMarathon ? {
+      recordAnswer: irtMarathon.recordAnswer,
+      shouldStop: irtMarathon.shouldStop,
+      masteryAchieved: irtMarathon.masteryAchieved,
+    } : null,
   });
+
+  // Optimized end marathon handler that shows summary immediately
+  const handleEndMarathonOptimized = useCallback(() => {
+    console.log('Marathon: End marathon clicked - showing summary immediately');
+    stopTimer();
+    setShowSummary(true);
+    setTimeout(() => {
+      if (session) {
+        endSession();
+      }
+    }, 100);
+  }, [stopTimer, setShowSummary, session, endSession]);
+
+  // Check for mastery achievement in IRT marathon
+  useEffect(() => {
+    if (irtMarathon && irtMarathon.masteryAchieved && !showSummary) {
+      console.log('🏆 Mastery achieved! Ending marathon...');
+      // Show summary after a brief delay to allow user to see the achievement
+      setTimeout(() => {
+        handleEndMarathonOptimized();
+      }, 2000);
+    }
+  }, [irtMarathon?.masteryAchieved, showSummary, handleEndMarathonOptimized]);
 
   // Log adaptive learning status
   useEffect(() => {
-    if (settings?.adaptiveLearning && isInitialized) {
+    if (irtMarathon) {
+      console.log('🎯 IRT Marathon ENABLED for skill:', settings?.skill);
+      console.log('📊 Current proficiency:', {
+        theta: irtMarathon.proficiency?.theta,
+        sigma: irtMarathon.proficiency?.sigma,
+        phase: irtMarathon.phase,
+        questionCount: irtMarathon.questionCount,
+        masteryAchieved: irtMarathon.masteryAchieved,
+      });
+    } else if (settings?.adaptiveLearning && isInitialized) {
       console.log('🧠 Adaptive Learning ENABLED for marathon session');
       const progress = getProgressSummary();
       const nextSkill = getNextSkillToFocus();
@@ -112,7 +164,7 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     } else {
       console.log('🎲 Using traditional random question selection');
     }
-  }, [settings?.adaptiveLearning, isInitialized, sessionHistory.length]);
+  }, [irtMarathon, settings?.adaptiveLearning, settings?.skill, isInitialized, sessionHistory.length]);
 
   // Initialize session when ready
   useEffect(() => {
@@ -180,17 +232,6 @@ const Marathon: React.FC<MarathonProps> = ({ settings, onBack, onEndMarathon }) 
     loadNextQuestion();
   };
 
-  // Optimized end marathon handler that shows summary immediately
-  const handleEndMarathonOptimized = () => {
-    console.log('Marathon: End marathon clicked - showing summary immediately');
-    stopTimer();
-    setShowSummary(true);
-    setTimeout(() => {
-      if (session) {
-        endSession();
-      }
-    }, 100);
-  };
 
   console.log('Marathon: Rendering state', {
     hasSettings: !!settings,

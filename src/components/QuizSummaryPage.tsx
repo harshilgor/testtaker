@@ -63,6 +63,7 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
   };
 
   const pointsEarned = calculatePointsFromQuestions(questions, answers);
+  const xpEarned = calculateXPFromQuestions(questions, answers);
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -150,13 +151,19 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
                   <span>{correctAnswers}/{questions.length} Correct</span>
                 </div>
                 <div className="flex items-center">
-                  <Award className="h-5 w-5 mr-2" />
-                  <span>{pointsEarned} Points</span>
+                  <Award className="h-5 w-5 mr-2 text-yellow-500" />
+                  <span className="font-semibold">{pointsEarned} Points</span>
+                </div>
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
+                  <span className={`font-semibold ${xpEarned >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {xpEarned >= 0 ? '+' : ''}{xpEarned} XP
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-5 gap-6">
               <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-green-600 mb-2">{correctAnswers}</div>
@@ -182,6 +189,15 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-purple-600 mb-2">{pointsEarned}</div>
                   <div className="text-purple-700 font-medium">Points Earned</div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-6 text-center">
+                  <div className={`text-3xl font-bold mb-2 ${xpEarned >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {xpEarned >= 0 ? '+' : ''}{xpEarned}
+                  </div>
+                  <div className={`font-medium ${xpEarned >= 0 ? 'text-blue-700' : 'text-red-700'}`}>XP Earned</div>
                 </CardContent>
               </Card>
             </div>

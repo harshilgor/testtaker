@@ -13,6 +13,12 @@ interface UseQuestionLoaderProps {
   settings?: MarathonSettings;
   getAdaptiveQuestions?: (questions: any[], sessionProgress: any, count: number, subject?: 'math' | 'english') => Promise<any[]>;
   sessionHistory?: string[];
+  irtMarathon?: {
+    selectNextQuestion: (questions: DatabaseQuestion[]) => Promise<DatabaseQuestion | null>;
+    proficiency: any;
+    phase: string;
+    loading: boolean;
+  } | null;
 }
 
 export const useQuestionLoader = ({
@@ -23,7 +29,8 @@ export const useQuestionLoader = ({
   startTimer,
   settings,
   getAdaptiveQuestions,
-  sessionHistory = []
+  sessionHistory = [],
+  irtMarathon
 }: UseQuestionLoaderProps) => {
 
   const loadNextQuestion = useCallback(async () => {
@@ -91,9 +98,14 @@ export const useQuestionLoader = ({
         }
       }
       
-      // Apply difficulty filter
-      if (session.difficulty && session.difficulty !== 'mixed') {
+      // Apply difficulty filter (skip for IRT mode as it selects adaptively)
+      if (session.difficulty && session.difficulty !== 'mixed' && !settings?.skill) {
         query = query.eq('difficulty', session.difficulty);
+      }
+
+      // Apply skill filter if IRT marathon is active
+      if (settings?.skill) {
+        query = query.eq('skill', settings.skill);
       }
 
       const { data: questions, error } = await query.order('id');
@@ -106,8 +118,34 @@ export const useQuestionLoader = ({
       if (questions && questions.length > 0) {
         let selectedQuestion: any;
 
-        // Use adaptive learning if enabled and available
-        if (settings?.adaptiveLearning && getAdaptiveQuestions) {
+        // Use IRT-based selection if skill is specified
+        if (irtMarathon && !irtMarathon.loading) {
+          console.log('🎯 Using IRT-based question selection for skill:', settings?.skill);
+          try {
+            const irtSelected = await irtMarathon.selectNextQuestion(questions);
+            if (irtSelected) {
+              selectedQuestion = irtSelected;
+              console.log('✅ IRT selected question:', {
+                id: irtSelected.id,
+                difficulty: irtSelected.difficulty,
+                proficiency: irtMarathon.proficiency?.theta,
+                phase: irtMarathon.phase,
+              });
+            } else {
+              // Fallback to random if IRT selection fails
+              const randomIndex = Math.floor(Math.random() * questions.length);
+              selectedQuestion = questions[randomIndex];
+              console.log('🔄 IRT selection returned null, using random fallback');
+            }
+          } catch (error) {
+            console.error('❌ Error in IRT question selection:', error);
+            // Fallback to random selection
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            selectedQuestion = questions[randomIndex];
+          }
+        }
+        // Use adaptive learning if enabled and available (and not IRT mode)
+        else if (settings?.adaptiveLearning && getAdaptiveQuestions && !settings?.skill) {
           console.log('🧠 Using adaptive learning for question selection');
           
           try {

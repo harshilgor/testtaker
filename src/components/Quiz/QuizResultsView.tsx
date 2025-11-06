@@ -40,7 +40,7 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
   }, 0);
 
   const accuracy = Math.round((correctAnswers / questions.length) * 100);
-  // Calculate points based on difficulty (3/6/9 points per correct answer)
+  // Calculate points based on difficulty: Easy=5, Medium=10, Hard=20 (correct only)
   const calculatePointsFromQuestions = (questions: any[], answers: any[]) => {
     let totalPoints = 0;
     questions.forEach((question, index) => {
@@ -48,19 +48,19 @@ const QuizResultsView: React.FC<QuizResultsViewProps> = ({
       const isCorrect = userAnswer === question.correctAnswer;
       
       if (isCorrect) {
-        const difficulty = question.difficulty || 'medium';
-        switch (difficulty.toLowerCase()) {
+        const difficulty = (question.difficulty || 'medium').toLowerCase();
+        switch (difficulty) {
           case 'easy':
-            totalPoints += 3;
+            totalPoints += 5;
             break;
           case 'medium':
-            totalPoints += 6;
+            totalPoints += 10;
             break;
           case 'hard':
-            totalPoints += 9;
+            totalPoints += 20;
             break;
           default:
-            totalPoints += 6; // Default to medium
+            totalPoints += 10; // Default to medium
         }
       }
     });

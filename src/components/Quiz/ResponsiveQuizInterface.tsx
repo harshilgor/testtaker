@@ -104,11 +104,10 @@ const ResponsiveQuizInterface: React.FC<ResponsiveQuizInterfaceProps> = ({
   };
 
   const calculatePoints = () => {
-    // Calculate points based on difficulty (3/6/9 points per correct answer)
-    let totalPoints = 0;
+    // Calculate points based on difficulty: Easy=5, Medium=10, Hard=20 (correct only)
     // This is a simplified calculation since we don't have access to individual question difficulties here
     // In a real implementation, you'd need to pass the questions array to this function
-    return correctAnswers * 6; // Default to medium difficulty (6 points per correct answer)
+    return correctAnswers * 10; // Default to medium difficulty (10 points per correct answer)
   };
 
   if (quizCompleted) {

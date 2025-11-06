@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { recordQuestionAttempt, calculatePoints } from '@/services/pointsService';
 import { DatabaseQuestion } from '@/services/questionService';
+import { irtService } from '@/services/irtService';
 
 interface UseAnswerHandlerProps {
   currentQuestion: DatabaseQuestion | null;
@@ -14,6 +15,11 @@ interface UseAnswerHandlerProps {
   stopTimer: () => void;
   incrementQuestionsAttempted: () => void;
   recordAnswer?: (questionId: string, isCorrect: boolean, timeSpent: number, difficulty: 'easy' | 'medium' | 'hard', targetSkill?: string) => Promise<void>;
+  irtMarathon?: {
+    recordAnswer: (isCorrect: boolean, itemParams: { a: number; b: number }) => Promise<any>;
+    shouldStop: () => { stop: boolean; reason?: string };
+    masteryAchieved: boolean;
+  } | null;
 }
 
 export const useAnswerHandler = ({
@@ -26,7 +32,8 @@ export const useAnswerHandler = ({
   loadUserPoints,
   stopTimer,
   incrementQuestionsAttempted,
-  recordAnswer
+  recordAnswer,
+  irtMarathon
 }: UseAnswerHandlerProps) => {
 
   const handleAnswer = useCallback(async (selectedAnswer: string, showAnswerUsed: boolean = false) => {
@@ -84,8 +91,31 @@ export const useAnswerHandler = ({
         loadUserPoints()
       ]);
 
-      // Record adaptive learning progress if enabled
-      if (recordAnswer && currentQuestion.metadata?.targetSkill) {
+      // Record IRT proficiency update if IRT marathon is active
+      if (irtMarathon && currentQuestion.skill) {
+        try {
+          const itemParams = irtService.getItemParameters(currentQuestion.difficulty);
+          const irtResult = await irtMarathon.recordAnswer(isCorrect, itemParams);
+          console.log('🎯 IRT proficiency updated:', {
+            theta: irtResult.newTheta,
+            sigma: irtResult.newSigma,
+            predictedProbability: irtResult.predictedProbability,
+            informationGain: irtResult.informationGain,
+          });
+
+          // Check if mastery achieved or should stop
+          const stopCheck = irtMarathon.shouldStop();
+          if (stopCheck.stop) {
+            console.log('🏆 Marathon stopping condition:', stopCheck.reason);
+            // Note: This will be handled by the parent component
+          }
+        } catch (error) {
+          console.error('❌ Error recording IRT answer:', error);
+        }
+      }
+
+      // Record adaptive learning progress if enabled (non-IRT mode)
+      if (recordAnswer && currentQuestion.metadata?.targetSkill && !irtMarathon) {
         await recordAnswer(
           currentQuestion.id,
           isCorrect,
@@ -98,7 +128,7 @@ export const useAnswerHandler = ({
     } catch (error) {
       console.error('useAnswerHandler: Error recording question attempt:', error);
     }
-  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer, incrementQuestionsAttempted]);
+  }, [currentQuestion, timeSpent, recordAttempt, setSessionPoints, sessionPoints, session, loadUserPoints, stopTimer, incrementQuestionsAttempted, recordAnswer, irtMarathon]);
 
   return { handleAnswer };
 };

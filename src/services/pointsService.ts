@@ -12,18 +12,41 @@ export interface QuestionAttempt {
   time_spent?: number;
 }
 
+// Calculate points for correct answers only
+// Points: Easy = 5, Medium = 10, Hard = 20
+// Points DO NOT go down for wrong answers
 export const calculatePoints = (difficulty: string, isCorrect: boolean): number => {
-  if (!isCorrect) return 0;
+  if (!isCorrect) return 0; // No points for wrong answers
   
-  switch (difficulty) {
+  switch (difficulty.toLowerCase()) {
     case 'easy':
-      return 3;
+      return 5;
     case 'medium':
-      return 6;
+      return 10;
     case 'hard':
-      return 9;
+      return 20;
     default:
-      return 6; // Default to medium
+      return 10; // Default to medium
+  }
+};
+
+// Calculate XP (separate from points)
+// XP: Easy = 5, Medium = 10, Hard = 20 (correct)
+// XP: -5 for wrong answers
+export const calculateXP = (difficulty: string, isCorrect: boolean): number => {
+  if (isCorrect) {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return 5;
+      case 'medium':
+        return 10;
+      case 'hard':
+        return 20;
+      default:
+        return 10; // Default to medium
+    }
+  } else {
+    return -5; // XP penalty for wrong answers
   }
 };
 
