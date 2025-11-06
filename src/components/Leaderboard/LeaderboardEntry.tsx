@@ -4,7 +4,6 @@ import PointChangeIndicator from '../PointChangeIndicator';
 
 interface UserScore {
   id: string;
-  user_id: string;
   display_name: string;
   total_points: number;
   mock_test_count: number;

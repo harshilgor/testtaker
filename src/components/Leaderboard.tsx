@@ -15,7 +15,6 @@ interface LeaderboardProps {
 
 interface UserScore {
   id: string;
-  user_id: string;
   display_name: string;
   total_points: number;
   mock_test_count: number;
@@ -138,7 +137,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
         if (timeFrame === 'all-time') {
           const { data, error } = await supabase
             .from('leaderboard_stats')
-            .select('*')
+            .select('id, display_name, total_points, mock_test_count, quiz_count, marathon_questions_count')
             .eq('visibility', 'public')
             .order('total_points', { ascending: false })
             .limit(50);
@@ -163,7 +162,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           // Primary: precomputed table if available
           const { data: weeklyRows, error: weeklyErr } = await supabase
             .from('weekly_leaderboard_stats')
-            .select('*')
+            .select('id, display_name, total_points, mock_test_count, quiz_count, marathon_questions_count')
             .eq('visibility', 'public')
             .eq('week_start_date', weekStartStr)
             .order('total_points', { ascending: false })
@@ -181,7 +180,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           console.log('Weekly table empty — using fallback aggregation from attempts');
           const { data: profiles } = await supabase
             .from('leaderboard_stats')
-            .select('user_id, display_name')
+            .select('id, display_name')
             .eq('visibility', 'public')
             .limit(1000);
           
@@ -191,16 +190,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
             .gte('created_at', weekStart.toISOString())
             .lt('created_at', weekEnd.toISOString());
           
-          const userIdToPoints: Record<string, number> = {};
+          const displayNameToPoints: Record<string, number> = {};
+          const profileMap: Record<string, string> = {};
+          (profiles || []).forEach(p => {
+            profileMap[(p as any).id] = (p as any).display_name || 'User';
+          });
           (attempts || []).forEach(a => {
             const uid = (a as any).user_id as string;
+            const name = profileMap[uid] || 'User';
             const pts = Number((a as any).points_earned) || 0;
-            userIdToPoints[uid] = (userIdToPoints[uid] || 0) + pts;
+            displayNameToPoints[name] = (displayNameToPoints[name] || 0) + pts;
           });
-          const results: any[] = (profiles || []).map(p => ({
-            user_id: (p as any).user_id,
-            display_name: (p as any).display_name || 'User',
-            total_points: userIdToPoints[(p as any).user_id] || 0,
+          const results: any[] = Object.entries(displayNameToPoints).map(([name, points]) => ({
+            id: name,
+            display_name: name,
+            total_points: points,
             mock_test_count: 0,
             quiz_count: 0,
             marathon_questions_count: 0,
@@ -221,7 +225,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           // Primary: precomputed monthly table
           const { data: monthlyRows, error: monthlyErr } = await supabase
             .from('monthly_leaderboard_stats')
-            .select('*')
+            .select('id, display_name, total_points, mock_test_count, quiz_count, marathon_questions_count')
             .eq('visibility', 'public')
             .eq('month_start_date', monthStartStr)
             .order('total_points', { ascending: false })
@@ -238,7 +242,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
           console.log('Monthly table empty — using fallback aggregation from attempts');
           const { data: profiles } = await supabase
             .from('leaderboard_stats')
-            .select('user_id, display_name')
+            .select('id, display_name')
             .eq('visibility', 'public')
             .limit(1000);
           
@@ -248,16 +252,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ userName, onBack }) => {
             .gte('created_at', monthStart.toISOString())
             .lt('created_at', nextMonthStart.toISOString());
           
-          const userIdToPoints: Record<string, number> = {};
+          const displayNameToPoints: Record<string, number> = {};
+          const profileMap: Record<string, string> = {};
+          (profiles || []).forEach(p => {
+            profileMap[(p as any).id] = (p as any).display_name || 'User';
+          });
           (attempts || []).forEach(a => {
             const uid = (a as any).user_id as string;
+            const name = profileMap[uid] || 'User';
             const pts = Number((a as any).points_earned) || 0;
-            userIdToPoints[uid] = (userIdToPoints[uid] || 0) + pts;
+            displayNameToPoints[name] = (displayNameToPoints[name] || 0) + pts;
           });
-          const results: any[] = (profiles || []).map(p => ({
-            user_id: (p as any).user_id,
-            display_name: (p as any).display_name || 'User',
-            total_points: userIdToPoints[(p as any).user_id] || 0,
+          const results: any[] = Object.entries(displayNameToPoints).map(([name, points]) => ({
+            id: name,
+            display_name: name,
+            total_points: points,
             mock_test_count: 0,
             quiz_count: 0,
             marathon_questions_count: 0,
