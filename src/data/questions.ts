@@ -10,6 +10,11 @@ export interface Question {
   subject: 'math' | 'english';
   topic: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  question_prompt?: string;
+  imageUrl?: string;
+  hasImage?: boolean;
+  imageAltText?: string;
+  chartData?: any;
   rationales?: {
     correct: string;
     incorrect: {

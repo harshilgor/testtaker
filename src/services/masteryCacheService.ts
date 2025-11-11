@@ -77,41 +77,98 @@ export const preloadDomainMappings = async (): Promise<Map<string, DomainSkillMa
   const map = new Map<string, DomainSkillMapping>();
   
   try {
-    // Load Math domains
-    const { data: mathData } = await supabase
-      .from('question_bank')
-      .select('skill, domain')
-      .eq('assessment', 'SAT')
-      .eq('test', 'Math')
-      .not('skill', 'is', null)
-      .not('domain', 'is', null);
+    // Load Math domains - fetch all rows without limit
+    let mathData: any[] = [];
+    let mathOffset = 0;
+    const mathPageSize = 1000;
+    let hasMoreMath = true;
     
-    if (mathData) {
-      mathData.forEach(row => {
-        if (row.skill && row.domain) {
-          map.set(row.skill, { domain: row.domain, subject: 'math' });
-        }
-      });
+    while (hasMoreMath) {
+      const { data, error } = await supabase
+        .from('question_bank')
+        .select('skill, domain')
+        .eq('assessment', 'SAT')
+        .eq('test', 'Math')
+        .not('skill', 'is', null)
+        .not('domain', 'is', null)
+        .range(mathOffset, mathOffset + mathPageSize - 1);
+      
+      if (error) {
+        console.error('Error loading Math skills:', error);
+        break;
+      }
+      
+      if (data && data.length > 0) {
+        mathData = [...mathData, ...data];
+        mathOffset += mathPageSize;
+        hasMoreMath = data.length === mathPageSize;
+      } else {
+        hasMoreMath = false;
+      }
     }
     
-    // Load Reading and Writing domains
-    const { data: rwData } = await supabase
-      .from('question_bank')
-      .select('skill, domain')
-      .eq('assessment', 'SAT')
-      .eq('test', 'Reading and Writing')
-      .not('skill', 'is', null)
-      .not('domain', 'is', null);
-    
-    if (rwData) {
-      rwData.forEach(row => {
-        if (row.skill && row.domain) {
-          map.set(row.skill, { domain: row.domain, subject: 'english' });
+    // Process Math skills - group by skill to get unique skills with their domains
+    const mathSkillMap = new Map<string, string>();
+    mathData.forEach(row => {
+      if (row.skill && row.domain) {
+        // Keep the first domain encountered for each skill (or you could track all domains)
+        if (!mathSkillMap.has(row.skill)) {
+          mathSkillMap.set(row.skill, row.domain);
         }
-      });
+      }
+    });
+    
+    mathSkillMap.forEach((domain, skill) => {
+      map.set(skill, { domain, subject: 'math' });
+    });
+    
+    // Load Reading and Writing domains - fetch all rows without limit
+    let rwData: any[] = [];
+    let rwOffset = 0;
+    const rwPageSize = 1000;
+    let hasMoreRW = true;
+    
+    while (hasMoreRW) {
+      const { data, error } = await supabase
+        .from('question_bank')
+        .select('skill, domain')
+        .eq('assessment', 'SAT')
+        .eq('test', 'Reading and Writing')
+        .not('skill', 'is', null)
+        .not('domain', 'is', null)
+        .range(rwOffset, rwOffset + rwPageSize - 1);
+      
+      if (error) {
+        console.error('Error loading Reading and Writing skills:', error);
+        break;
+      }
+      
+      if (data && data.length > 0) {
+        rwData = [...rwData, ...data];
+        rwOffset += rwPageSize;
+        hasMoreRW = data.length === rwPageSize;
+      } else {
+        hasMoreRW = false;
+      }
     }
     
-    console.log('✅ Domain mappings preloaded:', map.size, 'entries');
+    // Process Reading and Writing skills - group by skill to get unique skills with their domains
+    const rwSkillMap = new Map<string, string>();
+    rwData.forEach(row => {
+      if (row.skill && row.domain) {
+        // Keep the first domain encountered for each skill
+        if (!rwSkillMap.has(row.skill)) {
+          rwSkillMap.set(row.skill, row.domain);
+        }
+      }
+    });
+    
+    rwSkillMap.forEach((domain, skill) => {
+      map.set(skill, { domain, subject: 'english' });
+    });
+    
+    console.log('✅ Domain mappings preloaded:', map.size, 'unique skills');
+    console.log('📊 Math skills:', mathSkillMap.size, 'Reading/Writing skills:', rwSkillMap.size);
     
     // Cache for future use
     cacheDomainMappings(map);

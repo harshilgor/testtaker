@@ -1,61 +1,65 @@
 
 import React, { useState } from 'react';
-import SATMockTestInterface from './SATMockTestInterface';
-import SATTestIntroduction from './SATTestIntroduction';
 import MockTestSelection from './MockTestSelection';
+import SATTestIntroduction from './SATTestIntroduction';
+import SATMockTestInterface from './SATMockTestInterface';
+import { MOCK_TEST_CONFIGS, MockTestConfig, MockTestType } from './SAT/mockTestConfig';
 
 interface SATMockTestProps {
   userName: string;
   onBack: () => void;
 }
 
+type ViewState = 'selection' | 'introduction' | 'in-progress';
+
 const SATMockTest: React.FC<SATMockTestProps> = ({ userName, onBack }) => {
-  const [selectedTest, setSelectedTest] = useState<string | null>(null);
-  const [testStarted, setTestStarted] = useState(false);
+  const [view, setView] = useState<ViewState>('selection');
+  const [activeConfig, setActiveConfig] = useState<MockTestConfig | null>(null);
 
   const handleSelectTest = (testType: string) => {
-    setSelectedTest(testType);
+    const config = MOCK_TEST_CONFIGS[testType as MockTestType];
+    if (!config) {
+      return;
+    }
+    setActiveConfig(config);
+    setView('introduction');
   };
 
-  const handleStartTest = () => {
-    setTestStarted(true);
+  const handleStart = () => {
+    setView('in-progress');
   };
 
-  const handleBackToSelection = () => {
-    setSelectedTest(null);
-    setTestStarted(false);
+  const handleExitToSelection = () => {
+    setView('selection');
+    setActiveConfig(null);
   };
 
-  const handleQuitTest = () => {
-    setTestStarted(false);
-    setSelectedTest(null);
-    onBack();
-  };
-
-  if (!selectedTest) {
+  if (view === 'introduction' && activeConfig) {
     return (
-      <MockTestSelection
-        userName={userName}
-        onBack={onBack}
-        onSelectTest={handleSelectTest}
+      <SATTestIntroduction
+        config={activeConfig}
+        onStartTest={handleStart}
+        onBack={() => setView('selection')}
       />
     );
   }
 
-  if (!testStarted) {
+  if (view === 'in-progress' && activeConfig) {
     return (
-      <SATTestIntroduction 
-        onStartTest={handleStartTest}
-        onBack={handleBackToSelection}
+      <SATMockTestInterface
+        userName={userName}
+        config={activeConfig}
+        onExit={handleExitToSelection}
+        onCancel={() => setView('selection')}
       />
     );
   }
 
   return (
-    <SATMockTestInterface 
-      onBack={handleBackToSelection}
-      onPauseTest={handleBackToSelection}
-      onQuitTest={handleQuitTest}
+    <MockTestSelection
+      userName={userName}
+      onBack={onBack}
+      onSelectTest={handleSelectTest}
     />
   );
 };

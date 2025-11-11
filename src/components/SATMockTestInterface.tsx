@@ -1,7 +1,17 @@
-import React, { useEffect } from 'react';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle
+} from '@/components/ui/resizable';
 import SATMockTestResults from './SATMockTestResults';
-import { questionService } from '@/services/questionService';
+import { questionService, DatabaseQuestion } from '@/services/questionService';
 import { useSATTestState } from '@/hooks/useSATTestState';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import SATTestHeader from './SAT/SATTestHeader';
@@ -10,16 +20,36 @@ import SATAnswerPanel from './SAT/SATAnswerPanel';
 import SATBottomNavigation from './SAT/SATBottomNavigation';
 import SATQuestionNavigatorModal from './SAT/SATQuestionNavigatorModal';
 import SATTransitionScreen from './SAT/SATTransitionScreen';
+import {
+  MockTestConfig,
+  SectionConfig,
+  SatSectionId,
+  DifficultyDistribution
+} from './SAT/mockTestConfig';
+import {
+  generateMathQuestion,
+  GeneratedMathQuestion
+} from '@/services/mathQuestionGenerator';
+import { SATQuestion as SATQuestionType } from '@/types/question';
 
-interface Question {
-  id: string;
-  content: string;
-  passage?: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-  section: 'reading-writing' | 'math';
-  topic: string;
+type ModuleDifficultyPath = 'baseline' | 'easy' | 'hard';
+
+interface Question extends SATQuestionType {
+  originalId: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  module: number;
+  question_prompt?: string;
+}
+
+interface ModuleHistory {
+  sectionId: SatSectionId;
+  module: number;
+  questionIds: string[];
+  difficultyPath: ModuleDifficultyPath;
+  correctCount: number;
+  totalQuestions: number;
+  accuracy: number;
+  timeSpentSeconds: number;
 }
 
 interface TestAnswer {
@@ -31,16 +61,307 @@ interface TestAnswer {
 }
 
 interface SATMockTestInterfaceProps {
-  onBack: () => void;
-  onPauseTest?: () => void;
-  onQuitTest?: () => void;
+  userName: string;
+  config: MockTestConfig;
+  onExit: () => void;
+  onCancel: () => void;
 }
 
-type TestSection = 'reading-writing' | 'math';
-type TestModule = 1 | 2;
+const SECTION_DB_MAPPING: Record<SatSectionId, string> = {
+  'reading-writing': 'Reading and Writing',
+  math: 'Math'
+};
 
-const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onPauseTest, onQuitTest }) => {
+const difficultyOrder: Array<keyof DifficultyDistribution> = [
+  'easy',
+  'medium',
+  'hard'
+];
+
+const normalizeDifficulty = (
+  value?: string
+): 'easy' | 'medium' | 'hard' => {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized.startsWith('e')) return 'easy';
+  if (normalized.startsWith('h')) return 'hard';
+  if (normalized.startsWith('m')) return 'medium';
+  return 'medium';
+};
+
+const computeCounts = (
+  distribution: DifficultyDistribution,
+  total: number
+): Record<'easy' | 'medium' | 'hard', number> => {
+  const raw = difficultyOrder.map((key) => ({
+    key,
+    value: (distribution[key] || 0) * total
+  }));
+
+  const counts: Record<'easy' | 'medium' | 'hard', number> = {
+    easy: 0,
+    medium: 0,
+    hard: 0
+  };
+
+  let assigned = 0;
+  raw.forEach(({ key, value }) => {
+    const floor = Math.max(0, Math.floor(value));
+    counts[key] = floor;
+    assigned += floor;
+  });
+
+  let remaining = total - assigned;
+  const fractions = raw
+    .map(({ key, value }) => ({
+      key,
+      fraction: value - Math.floor(value)
+    }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  let index = 0;
+  while (remaining > 0 && fractions.length > 0) {
+    const target = fractions[index % fractions.length];
+    counts[target.key] += 1;
+    remaining -= 1;
+    index += 1;
+  }
+
+  // Ensure no over-allocation
+  const sum = counts.easy + counts.medium + counts.hard;
+  if (sum > total) {
+    let overflow = sum - total;
+    for (const key of ['hard', 'medium', 'easy'] as const) {
+      if (counts[key] >= overflow) {
+        counts[key] -= overflow;
+        break;
+      } else {
+        const reduction = counts[key];
+        counts[key] = 0;
+        overflow -= reduction;
+      }
+    }
+  }
+
+  return counts;
+};
+
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const copy = [...array];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
+const createFallbackQuestions = (
+  sectionConfig: SectionConfig,
+  moduleNumber: number,
+  count: number,
+  startIndex = 0
+): Question[] => {
+  const isReading = sectionConfig.id === 'reading-writing';
+  return Array.from({ length: count }, (_, offset) => {
+    const index = startIndex + offset + 1;
+    const options = isReading
+      ? ['NO CHANGE', 'Option B', 'Option C', 'Option D']
+      : ['1', '2', '3', '4'];
+
+    return {
+      id: `${sectionConfig.id}-m${moduleNumber}-fallback-${index}`,
+      originalId: `fallback-${sectionConfig.id}-${moduleNumber}-${index}`,
+      content: `Sample ${sectionConfig.title} question ${index}. Use the process of elimination to find the best answer.`,
+      options,
+      correctAnswer: 0,
+      explanation:
+        'This is a placeholder question. Review official SAT practice materials for authentic questions.',
+      section: sectionConfig.id,
+      topic: sectionConfig.topics[0] || 'General',
+      difficulty: 'medium',
+      module: moduleNumber
+    };
+  });
+};
+
+const createQuestionFromGeneratedMath = (
+  moduleNumber: number,
+  difficulty: 'easy' | 'medium' | 'hard'
+): Question => {
+  const generated: GeneratedMathQuestion = generateMathQuestion(
+    undefined,
+    difficulty
+  );
+
+  return {
+    id: generated.id,
+    originalId: generated.id,
+    content: generated.question,
+    options: generated.options ?? [],
+    correctAnswer:
+      typeof generated.correctAnswer === 'number'
+        ? generated.correctAnswer
+        : 0,
+    explanation: generated.explanation,
+    section: 'math',
+    topic: generated.metadata.skill || generated.topic || 'Algebra',
+    difficulty: generated.difficulty || 'easy',
+    module: moduleNumber
+  };
+};
+
+const formatQuestion = (
+  question: DatabaseQuestion,
+  sectionConfig: SectionConfig,
+  moduleNumber: number,
+  fallbackDifficulty: 'easy' | 'medium' | 'hard'
+): Question => {
+  const options = [
+    question.option_a,
+    question.option_b,
+    question.option_c,
+    question.option_d
+  ].filter((option): option is string => Boolean(option && option.trim()));
+
+  while (options.length < 4) {
+    options.push(`Option ${options.length + 1}`);
+  }
+
+  const correctIndex = (() => {
+    const letter = (question.correct_answer || '').toUpperCase();
+    const map = ['A', 'B', 'C', 'D'];
+    const idx = map.indexOf(letter);
+    return idx >= 0 ? idx : 0;
+  })();
+
+  const difficulty = normalizeDifficulty(question.difficulty) || fallbackDifficulty;
+  const content = question.question_text || `SAT ${sectionConfig.title} question`;
+
+  return {
+    id: `${sectionConfig.id}-m${moduleNumber}-${question.id}`,
+    originalId: question.id?.toString() || `${sectionConfig.id}-${moduleNumber}-${Date.now()}`,
+    content,
+    passage:
+      sectionConfig.id === 'reading-writing' && content.length > 240
+        ? content
+        : undefined,
+    options,
+    correctAnswer: correctIndex,
+    explanation:
+      question.correct_rationale ||
+      'Review the concept behind this question to understand the correct answer.',
+    section: sectionConfig.id,
+    topic: question.skill || sectionConfig.topics[0] || 'General',
+    difficulty,
+    module: moduleNumber,
+    question_prompt: question.question_prompt || undefined
+  };
+};
+
+const fetchQuestionsForModule = async (
+  sectionConfig: SectionConfig,
+  moduleNumber: number,
+  distribution: DifficultyDistribution,
+  excludeIds: Set<string>
+): Promise<Question[]> => {
+  const counts = computeCounts(distribution, sectionConfig.questionCountPerModule);
+  const perDifficultyCount: Record<'easy' | 'medium' | 'hard', number> = {
+    easy: 0,
+    medium: 0,
+    hard: 0
+  };
+  const collected: Question[] = [];
+  const exclude = new Set(excludeIds);
+  const sectionFilter = SECTION_DB_MAPPING[sectionConfig.id];
+
+  for (const diff of difficultyOrder) {
+    const needed = counts[diff];
+    if (needed <= 0) continue;
+
+    const pool = await questionService.getRandomQuestions({
+      section: sectionFilter,
+      difficulty: diff,
+      limit: Math.max(needed * 4, needed + 8),
+      excludeIds: Array.from(exclude)
+    });
+
+    for (const item of pool) {
+      if (perDifficultyCount[diff] >= needed) break;
+      const originalId = item.id?.toString() || '';
+      if (!originalId || exclude.has(originalId)) continue;
+
+      const formatted = formatQuestion(item, sectionConfig, moduleNumber, diff);
+      collected.push(formatted);
+      perDifficultyCount[diff] += 1;
+      exclude.add(originalId);
+    }
+  }
+
+  while (collected.length < sectionConfig.questionCountPerModule) {
+    const remaining = sectionConfig.questionCountPerModule - collected.length;
+    const additional = await questionService.getRandomQuestions({
+      section: sectionFilter,
+      limit: Math.max(remaining * 3, remaining + 6),
+      excludeIds: Array.from(exclude)
+    });
+
+    if (!additional.length) {
+      break;
+    }
+
+    for (const item of additional) {
+      if (collected.length >= sectionConfig.questionCountPerModule) break;
+      const originalId = item.id?.toString() || '';
+      if (!originalId || exclude.has(originalId)) continue;
+
+      const formatted = formatQuestion(
+        item,
+        sectionConfig,
+        moduleNumber,
+        normalizeDifficulty(item.difficulty)
+      );
+      collected.push(formatted);
+      exclude.add(originalId);
+    }
+  }
+
+  collected.forEach((question) => excludeIds.add(question.originalId));
+
+  if (collected.length < sectionConfig.questionCountPerModule) {
+    if (sectionConfig.id === 'math') {
+      const toGenerate = sectionConfig.questionCountPerModule - collected.length;
+      for (let i = 0; i < toGenerate; i++) {
+        const generatedQuestion = createQuestionFromGeneratedMath(
+          moduleNumber,
+          moduleNumber === 1 ? 'easy' : 'medium'
+        );
+        collected.push(generatedQuestion);
+        excludeIds.add(generatedQuestion.originalId);
+      }
+    }
+  }
+
+  if (collected.length < sectionConfig.questionCountPerModule) {
+    const fallback = createFallbackQuestions(
+      sectionConfig,
+      moduleNumber,
+      sectionConfig.questionCountPerModule - collected.length,
+      collected.length
+    );
+    collected.push(...fallback);
+  }
+
+  return shuffleArray(collected).slice(0, sectionConfig.questionCountPerModule);
+};
+
+const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({
+  userName,
+  config,
+  onExit,
+  onCancel
+}) => {
   const { isMobile } = useResponsiveLayout();
+  const initialSection = config.sections[0];
+
   const {
     currentProgress,
     setCurrentProgress,
@@ -66,358 +387,401 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
     setLoading,
     userDisplayName,
     startTime
-  } = useSATTestState();
+  } = useSATTestState(
+    initialSection?.id ?? 'reading-writing',
+    initialSection?.moduleTimeSeconds ?? 32 * 60
+  );
 
-  const [showFeedback, setShowFeedback] = React.useState<Record<string, boolean>>({});
+  const [showFeedback, setShowFeedback] = useState<Record<string, boolean>>({});
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [currentModulePath, setCurrentModulePath] =
+    useState<ModuleDifficultyPath>('baseline');
+  const [questionsById, setQuestionsById] = useState<Record<string, Question>>({});
+  const [moduleHistory, setModuleHistory] = useState<ModuleHistory[]>([]);
 
-  const loadQuestionsForModule = async (section: TestSection, module: TestModule) => {
-    setLoading(true);
-    try {
-      console.log(`Loading questions for ${section} module ${module}`);
-      
-      const questionCount = section === 'reading-writing' ? 27 : 22;
-      
-      // Map section names to match database values
-      const sectionMapping = {
-        'reading-writing': 'Reading and Writing',
-        'math': 'Math'
-      };
-      
-      const sectionFilter = sectionMapping[section];
-      console.log(`Querying for section: ${sectionFilter}, count: ${questionCount}`);
-      
-      const dbQuestions = await questionService.getRandomQuestions({
-        section: sectionFilter,
-        limit: questionCount,
-        difficulty: 'mixed'
-      });
+  const usedQuestionIdsRef = useRef<Set<string>>(new Set());
+  const moduleStartTimestampRef = useRef<number>(Date.now());
+  const moduleCompletionInFlightRef = useRef(false);
 
-      console.log(`Retrieved ${dbQuestions.length} questions from database`);
+  const currentSectionConfig =
+    config.sections[currentSectionIndex] ?? config.sections[0];
 
-      if (dbQuestions.length === 0) {
-        console.warn('No questions found in database, using fallback');
-        // Create fallback questions
-        const fallbackQuestions = Array.from({ length: questionCount }, (_, index) => ({
-          id: `${section}-m${module}-q${index + 1}-fallback`,
-          content: `Sample ${section} question ${index + 1} for Module ${module}. Which of the following best completes the sentence?`,
-          passage: section === 'reading-writing' ? "This is a sample passage that provides context for the question. Students need to read carefully and choose the best answer based on the content provided." : undefined,
-          options: section === 'reading-writing' 
-            ? ["NO CHANGE", "enhanced", "expanded", "diversified"]
-            : ["2", "4", "8", "13"],
-          correctAnswer: 0,
-          explanation: `This is the explanation for ${section} Module ${module} question ${index + 1}.`,
-          section,
-          topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
-        }));
-        setCurrentQuestions(fallbackQuestions);
-        setLoading(false);
-        return;
-      }
+  const initializeModule = useCallback(
+    async (sectionIndex: number, moduleNumber: 1 | 2, path: ModuleDifficultyPath) => {
+      const sectionConfig = config.sections[sectionIndex];
+      if (!sectionConfig) return;
 
-      const formattedQuestions: Question[] = dbQuestions.map((q, index) => {
-        // Ensure we have valid options
-        const options = [q.option_a, q.option_b, q.option_c, q.option_d].filter(opt => opt && opt.trim());
-        
-        // If less than 4 options, add defaults
-        while (options.length < 4) {
-          options.push(`Option ${options.length + 1}`);
-        }
+      setLoading(true);
+      setShowNavigator(false);
+      setCurrentSectionIndex(sectionIndex);
+      setCurrentModulePath(path);
+      setCurrentQuestions([]);
+      setShowFeedback({});
+      moduleCompletionInFlightRef.current = false;
 
-        return {
-          id: `${section}-m${module}-q${index + 1}-${q.id}`,
-          content: q.question_text || `Question ${index + 1}`,
-          passage: q.question_text && q.question_text.length > 200 ? q.question_text : undefined,
-          options,
-          correctAnswer: q.correct_answer === 'A' ? 0 : 
-                       q.correct_answer === 'B' ? 1 :
-                       q.correct_answer === 'C' ? 2 : 3,
-          explanation: q.correct_rationale || 'No explanation available.',
-          section,
-          topic: q.skill || 'General'
-        };
-      });
+      try {
+        const distribution =
+          moduleNumber === 1
+            ? sectionConfig.module1Distribution
+            : path === 'hard'
+            ? sectionConfig.adaptivePaths.hard.distribution
+            : sectionConfig.adaptivePaths.easy.distribution;
 
-      console.log(`Formatted ${formattedQuestions.length} questions`);
-      setCurrentQuestions(formattedQuestions);
-    } catch (error) {
-      console.error('Error loading questions:', error);
-      // Create fallback questions on error
-      const questionCount = section === 'reading-writing' ? 27 : 22;
-      const fallbackQuestions = Array.from({ length: questionCount }, (_, i) => ({
-        id: `${section}-m${module}-q${i + 1}-fallback`,
-        content: `Sample ${section} question ${i + 1} for Module ${module}. Which of the following best completes the sentence?`,
-        passage: section === 'reading-writing' ? "This is a sample passage that provides context for the question. Students need to read carefully and choose the best answer based on the content provided." : undefined,
-        options: section === 'reading-writing' 
-          ? ["NO CHANGE", "enhanced", "expanded", "diversified"]
-          : ["2", "4", "8", "13"],
-        correctAnswer: 0,
-        explanation: `This is the explanation for ${section} Module ${module} question ${i + 1}.`,
-        section,
-        topic: section === 'reading-writing' ? 'Writing and Language' : 'Algebra'
-      }));
-      setCurrentQuestions(fallbackQuestions);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const questions = await fetchQuestionsForModule(
+          sectionConfig,
+          moduleNumber,
+          distribution,
+          usedQuestionIdsRef.current
+        );
 
-  useEffect(() => {
-    console.log('Loading initial questions for:', currentProgress.section, currentProgress.module);
-    loadQuestionsForModule(currentProgress.section, currentProgress.module);
-  }, [currentProgress.section, currentProgress.module]);
-
-  const currentQuestion = currentQuestions[currentProgress.questionIndex];
-  const currentQuestionId = currentQuestion?.id || '';
-
-  console.log('Current question:', currentQuestion);
-  console.log('Current questions array length:', currentQuestions.length);
-  console.log('Current question index:', currentProgress.questionIndex);
-
-  useEffect(() => {
-    if (!testCompleted && !showTransition) {
-      const timer = setInterval(() => {
-        setCurrentProgress(prev => {
-          if (prev.timeRemaining <= 1) {
-            handleModuleComplete();
-            return prev;
-          }
-          return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+        setCurrentQuestions(questions);
+        setQuestionsById((prev) => {
+          const next = { ...prev };
+          questions.forEach((question) => {
+            next[question.id] = question;
+          });
+          return next;
         });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [testCompleted, showTransition]);
 
-  const handleAnswerSelect = (questionId: string, answerIndex: number) => {
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [questionId]: answerIndex
-    }));
-  };
+        setCurrentProgress({
+          section: sectionConfig.id,
+          module: moduleNumber,
+          questionIndex: 0,
+          timeRemaining: sectionConfig.moduleTimeSeconds
+        });
 
-  const handleSubmitAnswer = (questionId: string) => {
-    // For SAT Practice Test, just record the answer and move to next question
-    // No immediate feedback shown
-    handleNextQuestion();
-  };
-
-  const handleEliminateAnswer = (questionId: string, answerIndex: number) => {
-    if (eliminateMode) {
-      setEliminatedAnswers(prev => {
-        const questionEliminated = prev[questionId] || new Set();
-        const newEliminated = new Set(questionEliminated);
-        
-        if (newEliminated.has(answerIndex)) {
-          newEliminated.delete(answerIndex);
-        } else {
-          newEliminated.add(answerIndex);
-        }
-        
-        return {
-          ...prev,
-          [questionId]: newEliminated
-        };
-      });
-    }
-  };
-
-  const toggleMarkForReview = (questionId: string) => {
-    setMarkedForReview(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
-      } else {
-        newSet.add(questionId);
+        moduleStartTimestampRef.current = Date.now();
+      } catch (error) {
+        console.error('Error loading questions for module:', error);
+        const fallback = createFallbackQuestions(
+          sectionConfig,
+          moduleNumber,
+          sectionConfig.questionCountPerModule
+        );
+        setCurrentQuestions(fallback);
+        setQuestionsById((prev) => {
+          const next = { ...prev };
+          fallback.forEach((question) => {
+            next[question.id] = question;
+          });
+          return next;
+        });
+        setCurrentProgress({
+          section: sectionConfig.id,
+          module: moduleNumber,
+          questionIndex: 0,
+          timeRemaining: sectionConfig.moduleTimeSeconds
+        });
+        moduleStartTimestampRef.current = Date.now();
+      } finally {
+        setLoading(false);
       }
-      return newSet;
-    });
-  };
+    },
+    [config.sections, setCurrentProgress, setCurrentQuestions, setLoading]
+  );
 
-  const navigateToQuestion = (index: number) => {
-    setCurrentProgress(prev => ({ ...prev, questionIndex: index }));
-    setShowNavigator(false);
-  };
+  useEffect(() => {
+    usedQuestionIdsRef.current = new Set();
+    setSelectedAnswers({});
+    setMarkedForReview(new Set());
+    setEliminatedAnswers({});
+    setModuleResults([]);
+    setModuleHistory([]);
+    setTestCompleted(false);
+    setShowTransition(false);
+    initializeModule(0, 1, 'baseline');
+  }, [
+    config.id,
+    initializeModule,
+    setEliminatedAnswers,
+    setMarkedForReview,
+    setModuleResults,
+    setSelectedAnswers,
+    setShowTransition,
+    setTestCompleted
+  ]);
 
-  const calculateModulePerformance = () => {
-    let correctCount = 0;
-    currentQuestions.forEach(question => {
-      const userAnswer = selectedAnswers[question.id];
-      if (userAnswer === question.correctAnswer) {
-        correctCount++;
-      }
-    });
-    
-    const totalQuestions = currentQuestions.length;
-    const performance = correctCount / totalQuestions;
-    
-    const threshold = currentProgress.section === 'reading-writing' ? 0.7 : 0.75;
-    
-    return {
-      performance,
-      goToHardModule: performance >= threshold,
-      correctCount,
-      totalQuestions
-    };
-  };
+  const handleModuleComplete = useCallback(() => {
+    if (moduleCompletionInFlightRef.current) {
+      return;
+    }
 
-  const handleModuleComplete = async () => {
-    const modulePerformance = calculateModulePerformance();
-    
-    const moduleResult = {
-      section: currentProgress.section,
+    const sectionConfig = config.sections[currentSectionIndex];
+    if (!sectionConfig || currentQuestions.length === 0) {
+      moduleCompletionInFlightRef.current = false;
+      return;
+    }
+
+    moduleCompletionInFlightRef.current = true;
+
+    const questionsSnapshot = [...currentQuestions];
+    const correctCount = questionsSnapshot.reduce((acc, question) => {
+      const answer = selectedAnswers[question.id];
+      return acc + (answer === question.correctAnswer ? 1 : 0);
+    }, 0);
+
+    const totalQuestions = questionsSnapshot.length;
+    const accuracy = totalQuestions > 0 ? correctCount / totalQuestions : 0;
+    const timeSpentSeconds = Math.max(
+      0,
+      sectionConfig.moduleTimeSeconds - currentProgress.timeRemaining
+    );
+
+    const historyEntry: ModuleHistory = {
+      sectionId: sectionConfig.id,
       module: currentProgress.module,
-      correctCount: modulePerformance.correctCount,
-      totalQuestions: modulePerformance.totalQuestions,
-      performance: modulePerformance.performance
+      questionIds: questionsSnapshot.map((q) => q.id),
+      difficultyPath: currentModulePath,
+      correctCount,
+      totalQuestions,
+      accuracy,
+      timeSpentSeconds
     };
-    
-    setModuleResults(prev => [...prev, moduleResult]);
+
+    setModuleHistory((prev) => [...prev, historyEntry]);
+    setModuleResults((prev) => [
+      ...prev,
+      {
+        section: sectionConfig.id,
+        module: currentProgress.module,
+        correctCount,
+        totalQuestions,
+        performance: accuracy
+      }
+    ]);
+
+    const proceed = () => {
+      moduleCompletionInFlightRef.current = false;
+    };
 
     if (currentProgress.module === 1) {
+      const nextPath: ModuleDifficultyPath = accuracy >= 0.7 ? 'hard' : 'easy';
       setShowTransition(true);
-      
-      setTimeout(async () => {
+      setTimeout(() => {
         setShowTransition(false);
-        
-        setCurrentProgress(prev => ({
-          ...prev,
-          module: 2,
-          questionIndex: 0,
-          timeRemaining: prev.section === 'reading-writing' ? 32 * 60 : 35 * 60
-        }));
-      }, 3000);
-    } else if (currentProgress.section === 'reading-writing' && currentProgress.module === 2) {
-      setCurrentProgress({
-        section: 'math',
-        module: 1,
-        questionIndex: 0,
-        timeRemaining: 35 * 60
-      });
+        initializeModule(currentSectionIndex, 2, nextPath);
+        proceed();
+      }, 2000);
     } else {
-      setTestCompleted(true);
+      const nextSectionIndex = currentSectionIndex + 1;
+      if (nextSectionIndex < config.sections.length) {
+        setShowTransition(true);
+        setTimeout(() => {
+          setShowTransition(false);
+          initializeModule(nextSectionIndex, 1, 'baseline');
+          proceed();
+        }, 2000);
+      } else {
+        setTestCompleted(true);
+        setShowTransition(false);
+        setLoading(false);
+        proceed();
+      }
     }
-  };
+  }, [
+    config.sections,
+    currentModulePath,
+    currentProgress.module,
+    currentProgress.timeRemaining,
+    currentQuestions,
+    currentSectionIndex,
+    initializeModule,
+    selectedAnswers,
+    setLoading,
+    setModuleResults,
+    setShowTransition,
+    setTestCompleted
+  ]);
 
-  const handleNextQuestion = () => {
-    // Reset feedback for the current question when moving to next
-    if (currentQuestionId) {
-      setShowFeedback(prev => ({
+  useEffect(() => {
+    if (testCompleted || showTransition) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setCurrentProgress((prev) => {
+        if (prev.timeRemaining <= 1) {
+          if (!moduleCompletionInFlightRef.current) {
+            handleModuleComplete();
+          }
+          return { ...prev, timeRemaining: 0 };
+        }
+        return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [handleModuleComplete, setCurrentProgress, showTransition, testCompleted]);
+
+  const handleAnswerSelect = useCallback(
+    (questionId: string, answerIndex: number) => {
+      setSelectedAnswers((prev) => ({
         ...prev,
-        [currentQuestionId]: false
+        [questionId]: answerIndex
+      }));
+    },
+    [setSelectedAnswers]
+  );
+
+  const handleEliminateAnswer = useCallback(
+    (questionId: string, answerIndex: number) => {
+      if (!eliminateMode) return;
+      setEliminatedAnswers((prev) => {
+        const existing = prev[questionId] || new Set<number>();
+        const nextSet = new Set(existing);
+        if (nextSet.has(answerIndex)) {
+          nextSet.delete(answerIndex);
+        } else {
+          nextSet.add(answerIndex);
+        }
+        return {
+          ...prev,
+          [questionId]: nextSet
+        };
+      });
+    },
+    [eliminateMode, setEliminatedAnswers]
+  );
+
+  const toggleMarkForReview = useCallback(
+    (questionId: string) => {
+      setMarkedForReview((prev) => {
+        const next = new Set(prev);
+        if (next.has(questionId)) {
+          next.delete(questionId);
+        } else {
+          next.add(questionId);
+        }
+        return next;
+      });
+    },
+    [setMarkedForReview]
+  );
+
+  const navigateToQuestion = useCallback(
+    (index: number) => {
+      setCurrentProgress((prev) => ({ ...prev, questionIndex: index }));
+      setShowNavigator(false);
+    },
+    [setCurrentProgress, setShowNavigator]
+  );
+
+  const handleNextQuestion = useCallback(() => {
+    const currentQuestion = currentQuestions[currentProgress.questionIndex];
+    if (currentQuestion) {
+      setShowFeedback((prev) => ({
+        ...prev,
+        [currentQuestion.id]: false
       }));
     }
 
     if (currentProgress.questionIndex < currentQuestions.length - 1) {
-      setCurrentProgress(prev => ({ ...prev, questionIndex: prev.questionIndex + 1 }));
+      setCurrentProgress((prev) => ({
+        ...prev,
+        questionIndex: prev.questionIndex + 1
+      }));
     } else {
       handleModuleComplete();
     }
-  };
+  }, [currentProgress.questionIndex, currentQuestions, handleModuleComplete, setCurrentProgress]);
 
-  const generateTestAnswers = (): Map<string, TestAnswer> => {
-    const answers = new Map();
-    const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
-    
-    const allQuestions: Question[] = [];
-    
-    moduleResults.forEach(result => {
-      const moduleQuestions = Array.from({ length: result.totalQuestions }, (_, i) => ({
-        id: `${result.section}-m${result.module}-q${i + 1}`,
-        content: `Question ${i + 1}`,
-        options: ["A", "B", "C", "D"],
-        correctAnswer: 0,
-        explanation: "Explanation",
-        section: result.section,
-        topic: "Topic"
-      }));
-      allQuestions.push(...moduleQuestions);
-    });
-    
-    allQuestions.push(...currentQuestions);
-    
-    allQuestions.forEach((question) => {
-      const selectedAnswer = selectedAnswers[question.id];
-      const isCorrect = selectedAnswer === question.correctAnswer;
-      
-      answers.set(question.id, {
-        questionId: question.id,
-        selectedAnswer: selectedAnswer !== undefined ? selectedAnswer : null,
-        isCorrect,
-        timeSpent: Math.floor(totalTimeSpent / allQuestions.length),
-        flagged: markedForReview.has(question.id)
-      });
-    });
-    
-    return answers;
-  };
+  const handleSubmitAnswer = useCallback(() => {
+    handleNextQuestion();
+  }, [handleNextQuestion]);
 
-  const handleRetakeTest = () => {
-    setCurrentProgress({
-      section: 'reading-writing',
-      module: 1,
-      questionIndex: 0,
-      timeRemaining: 32 * 60
-    });
+  const handleRetakeTest = useCallback(() => {
+    usedQuestionIdsRef.current = new Set();
     setSelectedAnswers({});
     setMarkedForReview(new Set());
     setEliminatedAnswers({});
-    setEliminateMode(false);
-    setTestCompleted(false);
     setModuleResults([]);
-  };
+    setModuleHistory([]);
+    setTestCompleted(false);
+    setShowTransition(false);
+    setShowNavigator(false);
+    setEliminateMode(false);
+    setQuestionsById({});
+    initializeModule(0, 1, 'baseline');
+  }, [
+    initializeModule,
+    setEliminatedAnswers,
+    setEliminateMode,
+    setMarkedForReview,
+    setModuleResults,
+    setSelectedAnswers,
+    setShowNavigator,
+    setShowTransition,
+    setTestCompleted
+  ]);
 
-  const handlePauseTest = () => {
-    if (onPauseTest) {
-      onPauseTest();
-    } else {
-      onBack();
-    }
-  };
+  const handlePauseTest = useCallback(() => {
+    onCancel();
+  }, [onCancel]);
 
-  const handleQuitTest = () => {
-    if (onQuitTest) {
-      onQuitTest();
-    } else {
-      handleRetakeTest();
-      onBack();
-    }
-  };
+  const handleQuitTest = useCallback(() => {
+    onExit();
+  }, [onExit]);
+
+  const currentQuestion = currentQuestions[currentProgress.questionIndex] ?? null;
+  const currentQuestionId = currentQuestion?.id ?? '';
+  const currentEliminated =
+    currentQuestionId && eliminatedAnswers[currentQuestionId]
+      ? eliminatedAnswers[currentQuestionId]
+      : new Set<number>();
+  const currentAnswer =
+    currentQuestionId !== '' ? selectedAnswers[currentQuestionId] : undefined;
+  const currentShowFeedback = currentQuestionId
+    ? showFeedback[currentQuestionId] ?? false
+    : false;
+
+  const buildAnswerMap = useCallback((): Map<string, TestAnswer> => {
+    const answers = new Map<string, TestAnswer>();
+    const totalElapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const questionValues = Object.values(questionsById);
+    const divisor = Math.max(1, questionValues.length);
+
+    questionValues.forEach((question) => {
+      const selected = selectedAnswers[question.id];
+      answers.set(question.id, {
+        questionId: question.id,
+        selectedAnswer: selected !== undefined ? selected : null,
+        isCorrect: selected === question.correctAnswer,
+        timeSpent: Math.floor(totalElapsedSeconds / divisor),
+        flagged: markedForReview.has(question.id)
+      });
+    });
+
+    return answers;
+  }, [markedForReview, questionsById, selectedAnswers, startTime]);
+
+  const totalTimeSpent = useMemo(
+    () =>
+      moduleHistory.reduce((acc, module) => acc + module.timeSpentSeconds, 0),
+    [moduleHistory]
+  );
 
   if (showTransition) {
     return <SATTransitionScreen />;
   }
 
   if (testCompleted) {
-    const testAnswers = generateTestAnswers();
-    const totalTimeSpent = Math.floor((Date.now() - startTime) / 1000);
-    
-    const allQuestions: Question[] = [];
-    moduleResults.forEach(result => {
-      const moduleQuestions = Array.from({ length: result.totalQuestions }, (_, i) => ({
-        id: `${result.section}-m${result.module}-q${i + 1}`,
-        content: `Question ${i + 1}`,
-        options: ["A", "B", "C", "D"],
-        correctAnswer: 0,
-        explanation: "Explanation",
-        section: result.section,
-        topic: "Topic"
-      }));
-      allQuestions.push(...moduleQuestions);
-    });
-    allQuestions.push(...currentQuestions);
-    
+    const answers = buildAnswerMap();
+    const allQuestions = Object.values(questionsById);
+
     return (
       <SATMockTestResults
-        answers={testAnswers}
+        config={config}
+        answers={answers}
         questions={allQuestions}
+        moduleHistory={moduleHistory}
         totalTimeSpent={totalTimeSpent}
         onRetakeTest={handleRetakeTest}
-        onBackToHome={onBack}
+        onBackToHome={onExit}
       />
     );
   }
 
-  if (loading) {
+  if (loading || !currentQuestion) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -427,10 +791,6 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
       </div>
     );
   }
-
-  const currentEliminated = eliminatedAnswers[currentQuestionId] || new Set();
-  const currentAnswer = selectedAnswers[currentQuestionId];
-  const currentShowFeedback = showFeedback[currentQuestionId] || false;
 
   if (isMobile) {
     return (
@@ -442,8 +802,8 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
             timeRemaining={currentProgress.timeRemaining}
             eliminateMode={eliminateMode}
             onEliminateModeChange={setEliminateMode}
-            onBack={onBack}
-            isMobile={true}
+            onBack={handleQuitTest}
+            isMobile
           />
         </div>
 
@@ -451,7 +811,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
           <ResizablePanelGroup direction="vertical" className="h-full">
             <ResizablePanel defaultSize={50} minSize={20} maxSize={80}>
               <div className="h-full bg-white border-b border-gray-200 overflow-hidden">
-                <SATQuestionPanel question={currentQuestion} isMobile={true} />
+                <SATQuestionPanel question={currentQuestion} isMobile />
               </div>
             </ResizablePanel>
 
@@ -464,13 +824,17 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
                   currentAnswer={currentAnswer}
                   markedForReview={markedForReview.has(currentQuestionId)}
                   showFeedback={currentShowFeedback}
-                  onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
+                  onAnswerSelect={(answerIndex) =>
+                    handleAnswerSelect(currentQuestionId, answerIndex)
+                  }
                   onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
-                  onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
-                  isMobile={true}
+                  onSubmitAnswer={handleSubmitAnswer}
+                  isMobile
                   eliminateMode={eliminateMode}
                   eliminatedAnswers={currentEliminated}
-                  onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+                  onEliminateAnswer={(answerIndex) =>
+                    handleEliminateAnswer(currentQuestionId, answerIndex)
+                  }
                 />
               </div>
             </ResizablePanel>
@@ -489,7 +853,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
             onModuleComplete={handleModuleComplete}
             onPauseTest={handlePauseTest}
             onQuitTest={handleQuitTest}
-            isMobile={true}
+            isMobile
           />
         </div>
 
@@ -518,7 +882,7 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
         timeRemaining={currentProgress.timeRemaining}
         eliminateMode={eliminateMode}
         onEliminateModeChange={setEliminateMode}
-        onBack={onBack}
+        onBack={handleQuitTest}
         isMobile={false}
       />
 
@@ -536,13 +900,17 @@ const SATMockTestInterface: React.FC<SATMockTestInterfaceProps> = ({ onBack, onP
               currentAnswer={currentAnswer}
               markedForReview={markedForReview.has(currentQuestionId)}
               showFeedback={currentShowFeedback}
-              onAnswerSelect={(answerIndex) => handleAnswerSelect(currentQuestionId, answerIndex)}
+              onAnswerSelect={(answerIndex) =>
+                handleAnswerSelect(currentQuestionId, answerIndex)
+              }
               onToggleMarkForReview={() => toggleMarkForReview(currentQuestionId)}
-              onSubmitAnswer={() => handleSubmitAnswer(currentQuestionId)}
+              onSubmitAnswer={handleSubmitAnswer}
               isMobile={false}
               eliminateMode={eliminateMode}
               eliminatedAnswers={currentEliminated}
-              onEliminateAnswer={(answerIndex) => handleEliminateAnswer(currentQuestionId, answerIndex)}
+              onEliminateAnswer={(answerIndex) =>
+                handleEliminateAnswer(currentQuestionId, answerIndex)
+              }
             />
           </ResizablePanel>
         </ResizablePanelGroup>

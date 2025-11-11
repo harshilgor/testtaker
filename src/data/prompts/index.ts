@@ -12,10 +12,8 @@ export interface QuestionPrompt {
 }
 
 // Efficient lookup using Map for O(1) access
-const PROMPT_MAP = new Map<string, QuestionPrompt>();
-
-// Cache for frequently accessed prompts
-const PROMPT_CACHE = new Map<string, string>();
+const PROMPT_MAP = new Map<string, QuestionPrompt[]>();
+const PROMPT_ROTATION_INDEX = new Map<string, number>();
 
 // Registry of all available prompts (lazy loaded)
 const PROMPT_REGISTRY: Record<string, () => Promise<QuestionPrompt[]>> = {
@@ -23,6 +21,8 @@ const PROMPT_REGISTRY: Record<string, () => Promise<QuestionPrompt[]>> = {
   'craft-and-structure': () => import('./domains/craftAndStructure').then(m => m.prompts),
   'expression-of-ideas': () => import('./domains/expressionOfIdeas').then(m => m.prompts),
   'standard-english-conventions': () => import('./domains/standardEnglishConventions').then(m => m.prompts),
+  algebra: () => import('./domains/algebra').then(m => m.prompts),
+  'advanced-math': () => import('./domains/advancedMath').then(m => m.prompts),
 };
 
 // Initialize the system
@@ -39,7 +39,13 @@ async function initializePrompts(): Promise<void> {
       const prompts = await loader();
       prompts.forEach(prompt => {
         const key = generateKey(prompt.skill, prompt.domain, prompt.difficulty);
-        PROMPT_MAP.set(key, prompt);
+        console.log('🧾 Registering prompt:', { key, skill: prompt.skill, domain: prompt.domain, difficulty: prompt.difficulty });
+        const existing = PROMPT_MAP.get(key) || [];
+        existing.push(prompt);
+        PROMPT_MAP.set(key, existing);
+        if (!PROMPT_ROTATION_INDEX.has(key)) {
+          PROMPT_ROTATION_INDEX.set(key, 0);
+        }
       });
     } catch (error) {
       console.error(`Failed to load prompts for domain: ${domain}`, error);
@@ -64,21 +70,16 @@ export async function getPrompt(
   await initializePrompts();
   
   const key = generateKey(skill, domain, difficulty);
-  
-  // Check cache first
-  if (PROMPT_CACHE.has(key)) {
-    return PROMPT_CACHE.get(key)!;
-  }
-  
-  // Get from map
-  const prompt = PROMPT_MAP.get(key);
-  if (!prompt) {
+  const promptList = PROMPT_MAP.get(key);
+
+  if (!promptList || promptList.length === 0) {
     return null;
   }
-  
-  // Cache the result
-  PROMPT_CACHE.set(key, prompt.prompt);
-  
+
+  const nextIndex = PROMPT_ROTATION_INDEX.get(key) ?? 0;
+  const prompt = promptList[nextIndex % promptList.length];
+  PROMPT_ROTATION_INDEX.set(key, (nextIndex + 1) % promptList.length);
+
   return prompt.prompt;
 }
 
@@ -93,13 +94,22 @@ export async function hasPrompt(
   return PROMPT_MAP.has(key);
 }
 
+function getAllPrompts(): QuestionPrompt[] {
+  const results: QuestionPrompt[] = [];
+  for (const list of PROMPT_MAP.values()) {
+    results.push(...list);
+  }
+  return results;
+}
+
 // Get all available skills (cached)
 let skillsCache: string[] | null = null;
 export async function getAvailableSkills(): Promise<string[]> {
   if (skillsCache) return skillsCache;
   
   await initializePrompts();
-  skillsCache = [...new Set(Array.from(PROMPT_MAP.values()).map(p => p.skill))];
+  const prompts = getAllPrompts();
+  skillsCache = [...new Set(prompts.map(p => p.skill))];
   return skillsCache;
 }
 
@@ -109,7 +119,8 @@ export async function getAvailableDomains(): Promise<string[]> {
   if (domainsCache) return domainsCache;
   
   await initializePrompts();
-  domainsCache = [...new Set(Array.from(PROMPT_MAP.values()).map(p => p.domain))];
+  const prompts = getAllPrompts();
+  domainsCache = [...new Set(prompts.map(p => p.domain))];
   return domainsCache;
 }
 
@@ -120,7 +131,7 @@ export async function getAvailableDifficulties(
 ): Promise<('easy' | 'medium' | 'hard')[]> {
   await initializePrompts();
   
-  const difficulties = Array.from(PROMPT_MAP.values())
+  const difficulties = getAllPrompts()
     .filter(p => p.skill === skill && p.domain === domain)
     .map(p => p.difficulty)
     .sort((a, b) => {
@@ -149,7 +160,7 @@ export async function getPromptStats(): Promise<{
 }> {
   await initializePrompts();
   
-  const prompts = Array.from(PROMPT_MAP.values());
+  const prompts = getAllPrompts();
   const domains = [...new Set(prompts.map(p => p.domain))];
   
   const promptsByDomain = domains.reduce((acc, domain) => {
@@ -167,7 +178,8 @@ export async function getPromptStats(): Promise<{
 
 // Clear cache (useful for development)
 export function clearCache(): void {
-  PROMPT_CACHE.clear();
+  PROMPT_MAP.clear();
+  PROMPT_ROTATION_INDEX.clear();
   skillsCache = null;
   domainsCache = null;
   isInitialized = false;

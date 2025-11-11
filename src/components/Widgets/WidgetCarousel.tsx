@@ -33,8 +33,8 @@ const WidgetCarousel: React.FC = () => {
   const CurrentWidget = widgets[currentIndex].component;
 
   return (
-    <Card className="rounded-2xl border border-gray-200 shadow-sm w-full h-full">
-      <CardHeader className="pb-2">
+    <Card className="rounded-2xl border border-gray-200 shadow-sm w-full">
+      <CardHeader className="pb-1 px-4 pt-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-gray-900 truncate">
             {widgets[currentIndex].title}
@@ -59,10 +59,10 @@ const WidgetCarousel: React.FC = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="w-full min-h-[200px] relative">
+      <CardContent className="pt-0 pb-2 px-4">
+        <div className="w-full">
           {/* Widget Content */}
-          <div className="w-full h-full overflow-visible">
+          <div className="w-full">
             <WidgetErrorBoundary>
               {/* Render widgets in 'bare' variant to avoid nested cards and overlap */}
               { /* @ts-expect-error - pass variant prop optionally */ }
@@ -70,7 +70,7 @@ const WidgetCarousel: React.FC = () => {
             </WidgetErrorBoundary>
           </div>
           {/* Dots Indicator */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+          <div className="flex justify-center gap-1 mt-1.5">
             {widgets.map((_, index) => (
               <button
                 key={index}

@@ -262,6 +262,146 @@ Return the response in this exact JSON format:
   }
 }`
   }
+  ,
+  {
+    skill: 'Systems of two linear equations in two variables',
+    domain: 'Algebra',
+    difficulty: 'easy',
+    prompt: `You are an SAT Math Content Specialist. Your sole purpose is to generate high-quality, realistic SAT math questions in a structured JSON format.
+
+Adhere to SAT Style: Questions must mirror the precise wording, tone, and logical structure of official SAT questions. They must be clear, concise, and unambiguous.
+Ensure Mathematical Accuracy: All values, calculations, and logic must be flawless. For "Easy" and "Medium" questions, ensure all calculations result in clean integers or simple fractions.
+Create Plausible Distractors: For multiple-choice questions, the incorrect options (distractors) must be plausible. They should be based on common student errors, such as:
+• Mixing up variables (e.g., x and y).
+• Calculation errors (e.g., sign errors, adding instead of subtracting).
+• Solving for the wrong variable (e.g., solving for x but the question asks for $2x + 1$).
+• Swapping coefficients or totals.
+Provide a Step-by-Step Rationale: The solution must not just state the answer. It must provide a clear, step-by-step explanation of how to arrive at the correct answer.
+Explain Distractors: You must also include a brief rationale for each incorrect distractor, explaining the common error that leads to that choice.
+Strict JSON Output: You must format your entire output as a single JSON object. Do not include any introductory text, explanations, or conversational language outside of the JSON structure.
+
+Required JSON Format:
+{
+  "questionId": "UNIQUE_ID_HERE",
+  "metadata": {
+    "assessment": "SAT",
+    "section": "Math",
+    "domain": "Algebra",
+    "skill": "Systems of two linear equations in two variables",
+    "difficulty": "Easy"
+  },
+  "question": {
+    "type": "Multiple-Choice",
+    "stem": "The full text of the question. Use LaTeX for math, e.g., $f(x) = 2x + 1$.",
+    "options": [
+      { "key": "A", "text": "Option A text or equation" },
+      { "key": "B", "text": "Option B text or equation" },
+      { "key": "C", "text": "Option C text or equation" },
+      { "key": "D", "text": "Option D text or equation" }
+    ]
+  },
+  "solution": {
+    "correctAnswerKey": "KEY_OF_CORRECT_ANSWER",
+    "steps": [
+      { "step": 1, "explanation": "First step of the solution." },
+      { "step": 2, "explanation": "Second step of the solution, showing calculations." },
+      { "step": 3, "explanation": "Final step concluding with the answer." }
+    ],
+    "rationale": {
+      "correct": "This is the correct answer. [Briefly summarize why]",
+      "A": "This is incorrect. This value is found by [common error].",
+      "B": "This is incorrect. This is the result of [common error].",
+      "C": "This is incorrect. This is the result of [common error].",
+      "D": "This is incorrect. This is the result of [common error]."
+    }
+  }
+}`
+  }
+  ,
+  {
+    skill: 'Linear equations in two variables',
+    domain: 'Algebra',
+    difficulty: 'medium',
+    prompt: [
+      'You are a precision SAT Math Content Generator. Your sole function is to generate a "Medium" difficulty question for the "Algebra" domain and the "Linear equations in two variables" skill.',
+      '',
+      'You must generate a question that precisely follows this archetype:',
+      '- Archetype: Given the equation of a line k in slope-intercept form ($y = mx + b$), the student must find the slope of a second line j that is parallel to line k.',
+      '- Task: The student must (1) correctly identify the slope (m) of line k from its equation and (2) know that parallel lines have equal slopes.',
+      '- Difficulty: Medium. Use a non-integer fractional slope for line k to add moderate complexity.',
+      '- Question Type: The question must be "Multiple-Choice".',
+      '',
+      'Generation Algorithm:',
+      '1. Generate two co-prime integers a and b, each between 2 and 15 (inclusive) with a \\ne b.',
+      '2. Set the slope of line k to $m_k = a/b$.',
+      '3. Generate an integer $b_k$ between -10 and 10 (inclusive) for the y-intercept.',
+      '4. Construct the equation $y = \\frac{a}{b}x + b_k$ for line k.',
+      '5. The question stem must read exactly: "Line k is defined by $y = \\frac{[a]}{[b]}x + [b_k]$. Line j is parallel to line k in the $xy$-plane. What is the slope of line j?" where [a], [b], and [b_k] are replaced with the generated values.',
+      '6. Create four answer options using these exact values (place them in random order):',
+      '   - Correct Answer: $\\frac{a}{b}$ (slope of any line parallel to k).',
+      '   - Distractor 1: $-\\frac{b}{a}$ (negative reciprocal, slope of a perpendicular line).',
+      '   - Distractor 2: $b_k$ (the y-intercept).',
+      '   - Distractor 3: a (the numerator of the slope).',
+      '7. Set the correctAnswerKey to match the option that contains $\\frac{a}{b}$.',
+      '8. When completing the output template, replace [option_A], [option_B], [option_C], [option_D], and [correct_option_key] with the actual values and option letter assignments you choose.',
+      '',
+      'Solution Requirements:',
+      '- Provide clear, step-by-step reasoning: identify the slope of line k, state that parallel lines have equal slopes, conclude that $m_j = m_k = \\frac{a}{b}$.',
+      '- In the rationale, explain why each distractor is incorrect (perpendicular slope, y-intercept, numerator only).',
+      '',
+      'Output Format:',
+      'Respond with a single raw JSON object matching exactly the structure below—no additional commentary.',
+      '',
+      '{',
+      '  "questionId": "GENERATED_UNIQUE_ID",',
+      '  "metadata": {',
+      '    "assessment": "SAT",',
+      '    "section": "Math",',
+      '    "domain": "Algebra",',
+      '    "skill": "Linear equations in two variables",',
+      '    "difficulty": "Medium"',
+      '  },',
+      '  "question": {',
+      '    "type": "Multiple-Choice",',
+      '    "stem": "Line k is defined by $y = \\\\frac{[a]}{[b]}x + [b_k]$. Line j is parallel to line k in the $xy$-plane. What is the slope of line j?",',
+      '    "options": [',
+      '      { "key": "A", "text": "$[option_A]$" },',
+      '      { "key": "B", "text": "$[option_B]$" },',
+      '      { "key": "C", "text": "$[option_C]$" },',
+      '      { "key": "D", "text": "$[option_D]$" }',
+      '    ]',
+      '  },',
+      '  "solution": {',
+      '    "correctAnswerKey": "[correct_option_key]",',
+      '    "steps": [',
+      '      {',
+      '        "step": 1,',
+      '        "explanation": "The equation for line k, $y = \\\\frac{[a]}{[b]}x + [b_k]$, is in slope-intercept form $y = mx + b$, where m is the slope."',
+      '      },',
+      '      {',
+      '        "step": 2,',
+      '        "explanation": "The slope of line k is therefore $\\\\frac{[a]}{[b]}$."',
+      '      },',
+      '      {',
+      '        "step": 3,',
+      '        "explanation": "Parallel lines have equal slopes, so line j must have the same slope as line k."',
+      '      },',
+      '      {',
+      '        "step": 4,',
+      '        "explanation": "Therefore, the slope of line j is $\\\\frac{[a]}{[b]}$."',
+      '      }',
+      '    ],',
+      '    "rationale": {',
+      '      "correct": "This option gives $\\\\frac{[a]}{[b]}$, the slope shared by all lines parallel to line k.",',
+      '      "A": "Explain whether this option represents the correct slope or not based on the value placed at choice A.",',
+      '      "B": "Explain whether this option represents the correct slope or not based on the value placed at choice B.",',
+      '      "C": "Explain whether this option represents the correct slope or not based on the value placed at choice C.",',
+      '      "D": "Explain whether this option represents the correct slope or not based on the value placed at choice D."',
+      '    }',
+      '  }',
+      '}'
+    ].join('\n')
+  }
 ];
 
 // Helper function to get prompt by skill, domain, and difficulty

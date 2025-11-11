@@ -23,7 +23,10 @@ export interface DatabaseQuestion {
   created_at: string;
   updated_at: string;
   metadata?: any;
-  image?: boolean;
+  image?: string | null;
+  has_image?: boolean;
+  image_alt_text?: string | null;
+  chart_data?: any;
   question_prompt?: string;
 }
 
@@ -87,7 +90,10 @@ class QuestionService {
           domain,
           test,
           question_prompt,
-          image
+          image,
+          has_image,
+          image_alt_text,
+          chart_data
         `)
         .not('question_text', 'is', null)
         .not('option_a', 'is', null)
@@ -131,8 +137,14 @@ class QuestionService {
         return [];
       }
 
+      let filteredData = data;
+      if (filters.excludeIds && filters.excludeIds.length > 0) {
+        const excludeSet = new Set(filters.excludeIds.map(id => id.toString()));
+        filteredData = data.filter(q => !excludeSet.has((q.id ?? '').toString()));
+      }
+
       // Format and shuffle the data
-      const questions = data.map(q => ({
+      const questions = filteredData.map(q => ({
         id: q.id?.toString() || '',
         question_text: q.question_text || '',
         option_a: q.option_a || '',
@@ -205,7 +217,10 @@ class QuestionService {
         domain,
         test,
         question_prompt,
-        image
+        image,
+        has_image,
+        image_alt_text,
+        chart_data
       `)
       .eq('id', numericId)
       .not('question_text', 'is', null)
@@ -285,6 +300,8 @@ class QuestionService {
       return 'english';
     };
 
+    const chartData = parseChartData(dbQuestion.chart_data);
+
     return {
       id: dbQuestion.id,
       question: dbQuestion.question_text,
@@ -294,9 +311,14 @@ class QuestionService {
         dbQuestion.option_c,
         dbQuestion.option_d
       ],
-      correctAnswer: dbQuestion.correct_answer === 'A' ? 0 : 
-                    dbQuestion.correct_answer === 'B' ? 1 :
-                    dbQuestion.correct_answer === 'C' ? 2 : 3,
+      correctAnswer:
+        dbQuestion.correct_answer === 'A'
+          ? 0
+          : dbQuestion.correct_answer === 'B'
+          ? 1
+          : dbQuestion.correct_answer === 'C'
+          ? 2
+          : 3,
       explanation: dbQuestion.correct_rationale,
       subject: getSubject(dbQuestion.section),
       topic: dbQuestion.skill,
@@ -304,6 +326,7 @@ class QuestionService {
       section: dbQuestion.section,
       type: dbQuestion.question_type,
       question_prompt: dbQuestion.question_prompt || '',
+      chartData,
       rationales: {
         correct: dbQuestion.correct_rationale,
         incorrect: {
@@ -313,31 +336,43 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      imageUrl: dbQuestion.image ? `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
-      hasImage: dbQuestion.image || false
+      imageUrl: buildImageUrl(dbQuestion),
+      hasImage: determineHasImage(dbQuestion, chartData),
+      imageAltText: dbQuestion.image_alt_text || undefined
     };
   }
 
   convertToSATFormat(dbQuestion: DatabaseQuestion) {
+    const chartData = parseChartData(dbQuestion.chart_data);
+
     return {
       id: dbQuestion.id,
       question: dbQuestion.question_text,
-      options: dbQuestion.question_type === 'multiple-choice' ? [
-        dbQuestion.option_a,
-        dbQuestion.option_b,
-        dbQuestion.option_c,
-        dbQuestion.option_d
-      ] : undefined,
-      correctAnswer: dbQuestion.question_type === 'multiple-choice' ? 
-        (dbQuestion.correct_answer === 'A' ? 0 : 
-         dbQuestion.correct_answer === 'B' ? 1 :
-         dbQuestion.correct_answer === 'C' ? 2 : 3) : 
-        dbQuestion.correct_answer,
+      options:
+        dbQuestion.question_type === 'multiple-choice'
+          ? [
+              dbQuestion.option_a,
+              dbQuestion.option_b,
+              dbQuestion.option_c,
+              dbQuestion.option_d
+            ]
+          : undefined,
+      correctAnswer:
+        dbQuestion.question_type === 'multiple-choice'
+          ? dbQuestion.correct_answer === 'A'
+            ? 0
+            : dbQuestion.correct_answer === 'B'
+            ? 1
+            : dbQuestion.correct_answer === 'C'
+            ? 2
+            : 3
+          : dbQuestion.correct_answer,
       explanation: dbQuestion.correct_rationale,
       section: dbQuestion.section as 'reading-writing' | 'math',
       topic: dbQuestion.skill,
       difficulty: dbQuestion.difficulty as 'easy' | 'medium' | 'hard',
       type: dbQuestion.question_type as 'multiple-choice' | 'grid-in',
+      chartData,
       rationales: {
         correct: dbQuestion.correct_rationale,
         incorrect: {
@@ -347,8 +382,9 @@ class QuestionService {
           D: dbQuestion.incorrect_rationale_d
         }
       },
-      imageUrl: dbQuestion.image ? `https://kpcprhkubqhSlazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png` : undefined,
-      hasImage: dbQuestion.image || false
+      imageUrl: buildImageUrl(dbQuestion),
+      hasImage: determineHasImage(dbQuestion, chartData),
+      imageAltText: dbQuestion.image_alt_text || undefined
     };
   }
 
@@ -360,3 +396,39 @@ class QuestionService {
 }
 
 export const questionService = new QuestionService();
+
+function parseChartData(raw: any) {
+  if (!raw) return undefined;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      console.warn('Failed to parse chart_data JSON', error);
+      return undefined;
+    }
+  }
+  return raw;
+}
+
+function buildImageUrl(dbQuestion: DatabaseQuestion): string | undefined {
+  if (typeof dbQuestion.image === 'string' && dbQuestion.image.startsWith('http')) {
+    return dbQuestion.image;
+  }
+  if (dbQuestion.image) {
+    return `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${dbQuestion.id}.png`;
+  }
+  return undefined;
+}
+
+function determineHasImage(
+  dbQuestion: DatabaseQuestion,
+  chartData?: any
+): boolean {
+  if (typeof dbQuestion.has_image === 'boolean') {
+    return dbQuestion.has_image;
+  }
+  if (typeof dbQuestion.image === 'string' && dbQuestion.image.length > 0) {
+    return true;
+  }
+  return !!chartData;
+}

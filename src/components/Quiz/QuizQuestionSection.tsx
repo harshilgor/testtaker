@@ -23,9 +23,10 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
           question={question.question}
           imageUrl={imageUrl}
           hasImage={question.hasImage}
+          imageAltText={question.imageAltText}
           isMobile={true}
           className="h-full"
-          showImage={false}
+          showImage={question.hasImage}
           questionPrompt={question.question_prompt}
         />
       </div>
@@ -38,9 +39,10 @@ const QuizQuestionSection: React.FC<QuizQuestionSectionProps> = ({
         question={question.question}
         imageUrl={imageUrl}
         hasImage={question.hasImage}
+        imageAltText={question.imageAltText}
         isMobile={false}
         className="h-full"
-        showImage={false}
+        showImage={question.hasImage}
         questionPrompt={question.question_prompt}
       />
     </div>

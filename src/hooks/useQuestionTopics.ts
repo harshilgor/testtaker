@@ -11,6 +11,27 @@ interface Topic {
   count: number;
 }
 
+const FALLBACK_TOPICS: Partial<Record<Subject, Array<{ skill: string; domain: string }>>> = {
+  math: [
+    { skill: 'Linear equation in one variable', domain: 'Algebra' },
+    { skill: 'Linear equation in two variable', domain: 'Algebra' },
+    { skill: 'Linear function', domain: 'Algebra' },
+    { skill: 'Systems of two linear equations in two variables', domain: 'Algebra' },
+    { skill: 'Nonlinear functions', domain: 'Advanced Math' }
+  ],
+  english: [
+    { skill: 'Comprehension', domain: 'Information and Ideas' },
+    { skill: 'Command of Evidence', domain: 'Information and Ideas' },
+    { skill: 'Central Ideas and Details', domain: 'Information and Ideas' },
+    { skill: 'Words in Context', domain: 'Information and Ideas' },
+    { skill: 'Transitions', domain: 'Craft and Structure' },
+    { skill: 'Rhetorical Synthesis', domain: 'Craft and Structure' },
+    { skill: 'Form, Structure, and Sense', domain: 'Craft and Structure' },
+    { skill: 'Boundaries', domain: 'Expression of Ideas' },
+    { skill: 'Standard English Conventions', domain: 'Standard English Conventions' }
+  ]
+};
+
 export const useQuestionTopics = (subject: Subject) => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +77,27 @@ export const useQuestionTopics = (subject: Subject) => {
           question_count: info.count,
           count: info.count
         }));
+
+        const fallbackTopics = FALLBACK_TOPICS[subject] || [];
+        fallbackTopics.forEach((fallback) => {
+          const id = `skill-${fallback.skill.toLowerCase().replace(/\s+/g, '-')}`;
+          if (!topicsList.some((topic) => topic.id === id)) {
+            topicsList.push({
+              id,
+              skill: fallback.skill,
+              domain: fallback.domain,
+              question_count: 0,
+              count: 0
+            });
+          }
+        });
+
+        topicsList.sort((a, b) => {
+          if (a.domain === b.domain) {
+            return a.skill.localeCompare(b.skill);
+          }
+          return a.domain.localeCompare(b.domain);
+        });
 
         console.log(`📋 Final topics for ${subject}:`, topicsList.length, 'topics generated');
         console.log('Sample topics:', topicsList.slice(0, 3));

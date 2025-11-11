@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface AttemptRow {
   topic?: string | null;
@@ -72,6 +72,7 @@ const MasteryCard: React.FC = () => {
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -136,12 +137,14 @@ const MasteryCard: React.FC = () => {
     const proSkills = mastery.filter(m => m.status === 'PRO').length;
     const godSkills = mastery.filter(m => m.status === 'GOD').length;
     const topSkills = mastery.slice(0, 3);
+    const expandedSkills = mastery; // Show all skills when expanded
     
     return {
       totalSkills,
       proSkills,
       godSkills,
       topSkills,
+      expandedSkills,
       hasSkills: totalSkills > 0,
     };
   }, [mastery]);
@@ -151,21 +154,16 @@ const MasteryCard: React.FC = () => {
   };
 
   const handleSkillClick = (skill: string, subject: 'math' | 'english') => {
-    // Navigate to marathon with skill-specific settings
-    navigate('/marathon', {
-      state: {
-        marathonSettings: {
-          subjects: [subject],
-          difficulty: 'mixed',
-          timedMode: false,
-          calculatorEnabled: true,
-          darkMode: false,
-          fontSize: 'medium' as const,
-          adaptiveLearning: true,
-          skill: skill, // Skill-specific marathon
-        }
-      }
-    });
+    // Store auto-selection in localStorage for marathon mode (large question count)
+    const autoSelection = {
+      subject: subject,
+      topic: skill,
+      questionCount: 50 // Marathon mode - large question count to practice the skill
+    };
+    localStorage.setItem('selectedQuizTopic', JSON.stringify(autoSelection));
+    
+    // Navigate to quiz page - it will auto-select and start the quiz
+    navigate('/quiz');
   };
 
   if (loading) {
@@ -206,7 +204,7 @@ const MasteryCard: React.FC = () => {
   }
 
   return (
-    <Card className="rounded-2xl border border-gray-200 shadow-sm">
+    <Card className="rounded-2xl border border-gray-200 shadow-sm w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-semibold text-gray-900">Mastery</CardTitle>
       </CardHeader>
@@ -216,7 +214,8 @@ const MasteryCard: React.FC = () => {
         </p>
 
         {stats.topSkills.length > 0 && (
-          <div className="space-y-2 mb-4">
+          <div className={`space-y-2 mb-4 transition-all duration-300 ${isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}`}>
+            {/* Always show first 3 skills */}
             {stats.topSkills.map((skill, index) => (
               <div 
                 key={skill.skill} 
@@ -240,16 +239,67 @@ const MasteryCard: React.FC = () => {
                 </span>
               </div>
             ))}
+            
+            {/* Show additional skills when expanded */}
+            {isExpanded && stats.expandedSkills.length > 3 && (
+              <>
+                {stats.expandedSkills.slice(3).map((skill) => (
+                  <div 
+                    key={skill.skill} 
+                    className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => handleSkillClick(skill.skill, skill.subject)}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {skill.status !== 'NOVICE' && (
+                        <div className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          skill.status === 'GOD' 
+                            ? 'bg-yellow-100 text-yellow-700' 
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {skill.status}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-gray-900 truncate">{skill.skill}</span>
+                    </div>
+                    <span className="text-xs text-gray-600 ml-2 flex-shrink-0">
+                      {Math.round(skill.totalXPWithDecay)} XP
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
-        <Button 
-          variant="link" 
-          className="p-0 h-auto text-blue-600" 
-          onClick={handleViewMastery}
-        >
-          View all mastery
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="link" 
+            className="p-0 h-auto text-blue-600" 
+            onClick={handleViewMastery}
+          >
+            View all mastery
+          </Button>
+          {stats.totalSkills > 3 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs text-gray-600 hover:text-gray-900"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronLeft className="h-3 w-3 mr-1" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  Show more
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

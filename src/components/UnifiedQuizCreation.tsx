@@ -25,13 +25,15 @@ interface UnifiedQuizCreationProps {
   onBack: () => void;
   onBackToDashboard: () => void;
   onTakeSimilarQuiz?: () => void;
+  isMarathon?: boolean;
 }
 
 const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({ 
   userName, 
   onBack, 
   onBackToDashboard,
-  onTakeSimilarQuiz
+  onTakeSimilarQuiz,
+  isMarathon = false
 }) => {
   const { user } = useAuth();
   const [selectedSubject, setSelectedSubject] = useState<'math' | 'english' | 'both'>('english');
@@ -40,6 +42,7 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
   const [marathonMode, setMarathonMode] = useState(false);
   const [adaptiveLearning, setAdaptiveLearning] = useState(false);
   const [userAttempts, setUserAttempts] = useState<any[]>([]);
+  const [isAutoStarting, setIsAutoStarting] = useState(false);
   const { autoSelection, clearAutoSelection } = useAutoTopicSelection();
   
   const { topics, loading: topicsLoading } = useQuestionTopics(selectedSubject);
@@ -51,7 +54,7 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
       try {
         const { data, error } = await supabase
           .from('question_attempts_v2')
-          .select('topic, is_correct')
+          .select('topic, is_correct, question_id')
           .eq('user_id', user.id)
           .limit(5000);
 
@@ -92,6 +95,22 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
     
     return result;
   }, [userAttempts]);
+
+  const solvedQuestionIdsBySkill = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    userAttempts.forEach(attempt => {
+      const skill = attempt.topic || '';
+      const questionId = attempt.question_id;
+      if (!skill || !questionId) return;
+      if (!map[skill]) {
+        map[skill] = [];
+      }
+      if (!map[skill].includes(questionId)) {
+        map[skill].push(questionId);
+      }
+    });
+    return map;
+  }, [userAttempts]);
   const {
     selectedTopics,
     questionCount,
@@ -107,29 +126,74 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
     handleDifficultyCountChange,
     toggleDifficultySelection,
     getTotalQuestions
-  } = useQuizTopicSelection(selectedSubject, topics);
+  } = useQuizTopicSelection(selectedSubject, topics, solvedQuestionIdsBySkill);
 
-  // Handle auto-selection
+  // Handle auto-selection - improved to ensure topic is selected before starting
   useEffect(() => {
-    if (autoSelection && topics.length > 0) {
+    if (autoSelection && topics.length > 0 && !showQuiz && !isAutoStarting) {
       // Set the subject from auto selection
       if (autoSelection.subject === 'math' || autoSelection.subject === 'english') {
         setSelectedSubject(autoSelection.subject);
         
-        // Find the topic that matches the auto-selection
-        const matchingTopic = topics.find(topic => topic.skill === autoSelection.topic);
+        // Find the topic that matches the auto-selection (case-insensitive and flexible matching)
+        const matchingTopic = topics.find(topic => {
+          const topicSkill = (topic.skill || '').toLowerCase().trim();
+          const autoSkill = (autoSelection.topic || '').toLowerCase().trim();
+          return topicSkill === autoSkill || topicSkill.includes(autoSkill) || autoSkill.includes(topicSkill);
+        });
+        
         if (matchingTopic) {
-          // Auto-select the topic and start the quiz
-          handleTopicToggle(matchingTopic.id);
+          console.log('🎯 Auto-selection: Found matching topic', {
+            autoSkill: autoSelection.topic,
+            foundSkill: matchingTopic.skill,
+            topicId: matchingTopic.id
+          });
           
-          // Auto-start the quiz after a brief delay
-          setTimeout(() => {
-            handleStartQuiz(true, autoSelection.questionCount);
-          }, 500);
+          // Auto-select the topic if not already selected
+          if (!selectedTopics.includes(matchingTopic.id)) {
+            handleTopicToggle(matchingTopic.id);
+          }
+          
+          // Update question count if provided
+          if (autoSelection.questionCount && questionCount !== autoSelection.questionCount) {
+            handleQuestionCountChange({ target: { value: autoSelection.questionCount.toString() } } as any);
+          }
+          
+          // Set auto-starting flag
+          setIsAutoStarting(true);
+        } else {
+          console.warn('⚠️ Auto-selection: No matching topic found', {
+            autoSkill: autoSelection.topic,
+            availableSkills: topics.map(t => t.skill)
+          });
         }
       }
     }
-  }, [autoSelection, topics]);
+  }, [autoSelection, topics, selectedSubject, showQuiz, isAutoStarting]);
+
+  // Separate effect to start quiz once topic is selected
+  useEffect(() => {
+    if (autoSelection && topics.length > 0 && !showQuiz && isAutoStarting && selectedSubject === autoSelection.subject) {
+      const matchingTopic = topics.find(topic => {
+        const topicSkill = (topic.skill || '').toLowerCase().trim();
+        const autoSkill = (autoSelection.topic || '').toLowerCase().trim();
+        return topicSkill === autoSkill || topicSkill.includes(autoSkill) || autoSkill.includes(topicSkill);
+      });
+      
+      if (matchingTopic && selectedTopics.includes(matchingTopic.id)) {
+        // Topic is now selected, start the quiz after ensuring everything is ready
+        const startTimer = setTimeout(async () => {
+          // Double-check topic is still selected before starting
+          if (selectedTopics.includes(matchingTopic.id)) {
+            console.log('🚀 Auto-starting quiz with topic:', matchingTopic.skill, 'questionCount:', autoSelection.questionCount);
+            await handleStartQuiz(true, autoSelection.questionCount);
+          }
+        }, 1000);
+        
+        return () => clearTimeout(startTimer);
+      }
+    }
+  }, [autoSelection, topics, selectedTopics, showQuiz, selectedSubject, isAutoStarting]);
 
   const handleSubjectToggle = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -137,6 +201,19 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
   };
 
   const handleStartQuiz = async (isAutoStart = false, autoQuestionCount?: number) => {
+    // For auto-start, ensure topic is selected
+    if (isAutoStart && autoSelection && selectedTopics.length === 0) {
+      const matchingTopic = topics.find(topic => topic.skill === autoSelection.topic);
+      if (matchingTopic) {
+        handleTopicToggle(matchingTopic.id);
+        // Wait for state to update and retry
+        setTimeout(() => {
+          handleStartQuiz(true, autoQuestionCount);
+        }, 300);
+        return;
+      }
+    }
+    
     const questionsToUse = isAutoStart && autoQuestionCount ? autoQuestionCount : (useDifficultySelection ? getTotalQuestions() : questionCount);
     
     if (selectedTopics.length === 0 && !isAutoStart) {
@@ -145,25 +222,93 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
     }
     
     // Check if difficulty selection is enabled but no questions are selected
-    if (useDifficultySelection && getTotalQuestions() === 0) {
+    if (useDifficultySelection && getTotalQuestions() === 0 && !isAutoStart) {
       alert('Please select at least one question for any difficulty level');
       return;
     }
     
     const questions = await loadQuizQuestions();
     if (questions.length === 0) {
-      alert('No questions available for selected topics');
+      // For auto-start, try to generate questions using AI if available
+      if (isAutoStart && autoSelection) {
+        const matchingTopic = topics.find(topic => {
+          const topicSkill = (topic.skill || '').toLowerCase().trim();
+          const autoSkill = (autoSelection.topic || '').toLowerCase().trim();
+          return topicSkill === autoSkill || topicSkill.includes(autoSkill) || autoSkill.includes(topicSkill);
+        });
+        
+        if (matchingTopic) {
+          console.log('🔄 Auto-start: No questions found, attempting to generate with AI...');
+          // Try generating questions directly using infiniteQuestionService
+          try {
+            const { infiniteQuestionService } = await import('@/services/infiniteQuestionService');
+            const response = await infiniteQuestionService.getInfiniteQuestions({
+              subject: autoSelection.subject,
+              skill: matchingTopic.skill,
+              domain: matchingTopic.domain,
+              difficulty: 'mixed',
+              count: autoQuestionCount || 50,
+              useAI: true
+            });
+            
+            if (response.questions && response.questions.length > 0) {
+              // Format questions for QuizView
+              const formattedQuestions = response.questions.map((q: any, index: number) => ({
+                id: q.id || index + 1,
+                question: q.question_prompt || q.question_text || q.question || '',
+                content: q.question_text || '',
+                options: [
+                  q.option_a || '',
+                  q.option_b || '',
+                  q.option_c || '',
+                  q.option_d || '',
+                ].filter(Boolean),
+                correctAnswer: q.correct_answer === 'A' ? 0 : q.correct_answer === 'B' ? 1 : q.correct_answer === 'C' ? 2 : 3,
+                explanation: q.correct_rationale || '',
+                topic: q.skill || matchingTopic.skill,
+                subject: autoSelection.subject,
+                difficulty: (q.difficulty || 'medium').toLowerCase(),
+                question_prompt: q.question_prompt,
+                image: q.image,
+              }));
+              
+              console.log(`✅ Generated ${formattedQuestions.length} questions via AI`);
+              setQuizQuestions(formattedQuestions);
+              setShowQuiz(true);
+              setIsAutoStarting(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Error generating questions with AI:', error);
+          }
+        }
+        
+        alert('No questions available for the selected skill. Please try a different skill or check your internet connection.');
+        setIsAutoStarting(false);
+      } else {
+        alert('No questions available for selected topics');
+      }
       return;
     }
     
     console.log(`📊 Questions loaded: ${questions.length}, Questions to use: ${questionsToUse}`);
     
-    // Don't slice if we already have the right number of questions
-    const finalQuestions = questions.length >= questionsToUse ? questions.slice(0, questionsToUse) : questions;
-    console.log(`📊 Final questions for quiz: ${finalQuestions.length}`);
+    // For marathon mode (questionCount >= 50), only load the first question
+    // Questions will be loaded one at a time as user clicks "Next Question"
+    let finalQuestions;
+    if (isAutoStart && (autoQuestionCount || 0) >= 50) {
+      // Marathon mode: only load first question
+      finalQuestions = questions.length > 0 ? [questions[0]] : [];
+      console.log(`🏃 Marathon mode: Loading first question only. Total available: ${questions.length}`);
+    } else {
+      // Regular quiz: load all questions
+      finalQuestions = questions.length >= questionsToUse ? questions.slice(0, questionsToUse) : questions;
+      console.log(`📊 Final questions for quiz: ${finalQuestions.length}`);
+    }
     
     setQuizQuestions(finalQuestions);
     setShowQuiz(true);
+    setIsAutoStarting(false); // Reset auto-starting flag when quiz starts
   };
 
   const handleQuizEnd = () => {
@@ -172,6 +317,14 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
   };
 
   if (showQuiz && quizQuestions.length > 0) {
+    // Determine if this is a marathon (50+ questions requested)
+    const isMarathonMode = autoSelection?.questionCount >= 50 || isMarathon;
+    const matchingTopic = autoSelection ? topics.find(topic => {
+      const topicSkill = (topic.skill || '').toLowerCase().trim();
+      const autoSkill = (autoSelection.topic || '').toLowerCase().trim();
+      return topicSkill === autoSkill || topicSkill.includes(autoSkill) || autoSkill.includes(topicSkill);
+    }) : null;
+    
     return (
       <QuizView
         questions={quizQuestions}
@@ -183,7 +336,32 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
         onTakeSimilarQuiz={onTakeSimilarQuiz}
         feedbackPreference={feedbackPreference}
         selectedTopics={selectedTopics}
+        isMarathon={isMarathonMode}
+        marathonSettings={isMarathonMode && autoSelection && matchingTopic ? {
+          subject: autoSelection.subject,
+          skill: autoSelection.topic,
+          questionCount: autoSelection.questionCount,
+          domain: matchingTopic.domain || ''
+        } : undefined}
+        allAvailableQuestions={isMarathonMode ? quizQuestions : undefined}
       />
+    );
+  }
+
+  // Show loading state when auto-starting
+  if (isAutoStarting && !showQuiz) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Starting your practice session...</p>
+          {autoSelection && (
+            <p className="text-sm text-gray-500 mt-2">
+              Loading questions for {autoSelection.topic}
+            </p>
+          )}
+        </div>
+      </div>
     );
   }
 

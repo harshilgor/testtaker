@@ -172,7 +172,7 @@ const MasteryPerformance: React.FC = () => {
   };
 
   return (
-    <Card className="h-full rounded-2xl border border-gray-200 shadow-sm">
+    <Card className="rounded-2xl border border-gray-200 shadow-sm">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -205,7 +205,7 @@ const MasteryPerformance: React.FC = () => {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="max-h-[800px] overflow-y-auto">
         {!isInitialized ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -219,7 +219,7 @@ const MasteryPerformance: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredMastery.map(item => {
               const progress = getProgress(item.totalXPWithDecay);
               return (

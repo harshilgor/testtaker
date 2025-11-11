@@ -14,6 +14,8 @@ interface QuizSidebarProps {
   isCollapsed: boolean;
   onToggleSidebar: () => void;
   answerCorrectness: (boolean | null)[];
+  isMarathon?: boolean;
+  totalMarathonQuestions?: number;
 }
 
 const QuizSidebar: React.FC<QuizSidebarProps> = ({
@@ -28,7 +30,9 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
   timeRemaining,
   isCollapsed,
   onToggleSidebar,
-  answerCorrectness
+  answerCorrectness,
+  isMarathon = false,
+  totalMarathonQuestions = 0
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -112,12 +116,17 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-slate-900 text-white h-full flex flex-col">
+      <div className="w-12 text-white h-full flex flex-col" style={{ backgroundColor: '#00004d' }}>
         {/* Collapsed Header */}
-        <div className="p-4 border-b border-slate-800">
+        <div className="p-4 border-b" style={{ borderColor: '#000033' }}>
           <button
             onClick={onToggleSidebar}
-            className="w-full flex items-center justify-center p-2 hover:bg-slate-700 rounded transition-colors"
+            className="w-full flex items-center justify-center p-2 rounded transition-colors"
+            style={{ 
+              backgroundColor: 'transparent',
+            } as React.CSSProperties}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#000033'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <div className="w-6 h-6 flex flex-col space-y-1">
               <div className="w-full h-0.5 bg-white"></div>
@@ -139,15 +148,16 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
                 onClick={() => onGoToQuestion(index)}
                 className={`w-full p-2 mb-1 rounded transition-colors ${
                   isCurrent 
-                    ? 'bg-blue-600' 
+                    ? '' 
                     : status === 'correct'
                       ? 'bg-green-600/20'
                       : status === 'incorrect'
                         ? 'bg-red-600/20'
                         : status === 'flagged'
                           ? 'bg-orange-600/20'
-                          : 'bg-slate-700'
+                          : ''
                 }`}
+                style={isCurrent ? { backgroundColor: '#1a1a66' } : {}}
                 title={`Question ${index + 1}: ${getQuestionPreview(question, index)}`}
               >
                 {getStatusIcon(index)}
@@ -160,16 +170,22 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
   }
 
   return (
-    <div className="w-64 bg-slate-900 text-white h-full flex flex-col">
+    <div className="w-64 text-white h-full flex flex-col" style={{ backgroundColor: '#00004d' }}>
       {/* Header */}
-      <div className="p-4 border-b border-slate-800">
+      <div className="p-4 border-b" style={{ borderColor: '#000033' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="text-lg font-semibold text-white">
             Get1600.co
           </div>
           <button
             onClick={onToggleSidebar}
-            className="p-1 hover:bg-slate-700 rounded transition-colors"
+            className="p-1 rounded transition-colors"
+            style={{ 
+              backgroundColor: 'transparent',
+              '--hover-bg': '#000033'
+            } as React.CSSProperties & { '--hover-bg': string }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#000033'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <div className="w-4 h-4 flex flex-col space-y-0.5">
               <div className="w-full h-0.5 bg-white"></div>
@@ -181,12 +197,15 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
         <div className="text-sm text-gray-300 mb-3">
           {topics.join(', ')}
         </div>
-        {/* Exit Quiz Button */}
+        {/* Back Button */}
         <button
           onClick={onBack}
-          className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-3 rounded transition-colors"
+          className="flex items-center gap-2 text-white text-sm font-medium hover:text-gray-200 transition-colors w-full"
         >
-          Exit Quiz
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Back to Dashboard</span>
         </button>
       </div>
 
@@ -207,15 +226,16 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
                   onClick={() => onGoToQuestion(index)}
                   className={`w-full text-left p-2 rounded transition-colors ${
                     isCurrent 
-                      ? 'bg-blue-600 text-white' 
+                      ? 'text-white' 
                       : status === 'correct'
                         ? 'bg-green-600/20 text-green-300 hover:bg-green-600/30'
                         : status === 'incorrect'
                           ? 'bg-red-600/20 text-red-300 hover:bg-red-600/30'
                           : status === 'flagged'
                             ? 'bg-orange-600/20 text-orange-300 hover:bg-orange-600/30'
-                            : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                            : 'text-gray-300 hover:bg-black/20'
                   }`}
+                  style={isCurrent ? { backgroundColor: '#1a1a66' } : {}}
                 >
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(index)}
@@ -233,16 +253,17 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
       </div>
 
       {/* Progress Summary */}
-      <div className="p-4 border-t border-slate-700">
+      <div className="p-4 border-t" style={{ borderColor: '#000033' }}>
         <div className="text-sm text-gray-300 mb-2">Progress</div>
         <div className="flex justify-between text-xs text-gray-400">
           <span>Answered: {answers.filter(a => a !== null).length}</span>
-          <span>Total: {questions.length}</span>
+          <span>Total: {isMarathon && totalMarathonQuestions > 0 ? totalMarathonQuestions : questions.length}</span>
         </div>
-        <div className="w-full bg-slate-700 rounded-full h-2 mt-2">
+        <div className="w-full rounded-full h-2 mt-2" style={{ backgroundColor: '#000033' }}>
           <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className="h-2 rounded-full transition-all duration-300"
             style={{ 
+              backgroundColor: '#1a1a66',
               width: `${(answers.filter(a => a !== null).length / questions.length) * 100}%` 
             }}
           />

@@ -3,7 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Subject } from '../types/common';
 import { infiniteQuestionService } from '../services/infiniteQuestionService';
 
-export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
+export const useQuizTopicSelection = (
+  subject: Subject,
+  topics: any[],
+  solvedQuestionIdsBySkill: Record<string, string[]> = {}
+) => {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [feedbackPreference, setFeedbackPreference] = useState<'immediate' | 'end'>('immediate');
@@ -95,6 +99,21 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
       const primaryTopic = selectedTopicObjects[0];
       console.log('Primary topic for generation:', primaryTopic);
 
+      const excludeRawIds = new Set<string>();
+      const excludeNumericIds = new Set<number>();
+      selectedTopicObjects.forEach(topic => {
+        const solvedIds = solvedQuestionIdsBySkill[topic.skill] || [];
+        solvedIds.forEach(id => {
+          const idStr = String(id);
+          excludeRawIds.add(idStr);
+          const numericId = Number(id);
+          if (!Number.isNaN(numericId)) {
+            excludeNumericIds.add(numericId);
+          }
+        });
+      });
+      const initialSolvedRawIds = new Set(excludeRawIds);
+
       // Generate questions based on difficulty selection
       let allQuestions: any[] = [];
       
@@ -113,11 +132,22 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
               domain: primaryTopic.domain,
               difficulty: difficulty as 'easy' | 'medium' | 'hard',
               count: count,
-              useAI: true
+              useAI: true,
+              excludeIds: Array.from(excludeNumericIds)
             });
             
             console.log(`✅ Generated ${response.questions.length} ${difficulty} questions`);
-            allQuestions.push(...response.questions);
+            response.questions.forEach(question => {
+              const idStr = String(question.id);
+              if (!excludeRawIds.has(idStr)) {
+                excludeRawIds.add(idStr);
+              }
+              const numericId = Number(question.id);
+              if (!Number.isNaN(numericId)) {
+                excludeNumericIds.add(numericId);
+              }
+              allQuestions.push(question);
+            });
           }
         }
       } else {
@@ -129,10 +159,21 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
           domain: primaryTopic.domain,
           difficulty: 'mixed',
           count: questionCount,
-          useAI: true
+          useAI: true,
+          excludeIds: Array.from(excludeNumericIds)
         });
         
-        allQuestions = response.questions;
+        response.questions.forEach(question => {
+          const idStr = String(question.id);
+          if (!excludeRawIds.has(idStr)) {
+            excludeRawIds.add(idStr);
+          }
+          const numericId = Number(question.id);
+          if (!Number.isNaN(numericId)) {
+            excludeNumericIds.add(numericId);
+          }
+          allQuestions.push(question);
+        });
       }
 
       console.log(`📊 Total questions generated: ${allQuestions.length}`);
@@ -160,6 +201,17 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
 
       // Format questions for the quiz component
       const formattedQuestions = allQuestions.map((question, index) => {
+        const chartData = question.chartData ?? question.chart_data;
+        const imageUrl =
+          question.imageUrl ??
+          question.image ??
+          (chartData ? question.image : undefined);
+        const hasImage =
+          question.hasImage ??
+          question.has_image ??
+          (typeof imageUrl === 'string' && imageUrl.length > 0);
+        const imageAltText = question.imageAltText ?? question.image_alt_text;
+
         const formatted = {
           id: question.id,
           // For Reading and Writing questions, question_text is the passage, question_prompt is the question
@@ -190,7 +242,10 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
           test: question.test || (subject === 'math' ? 'Math' : 'Reading and Writing'),
           assessment: question.assessment || 'SAT',
           question_prompt: question.question_prompt,
-          image: question.image,
+          chartData,
+          imageUrl,
+          imageAltText,
+          hasImage,
           metadata: question.metadata
         };
         
@@ -205,11 +260,19 @@ export const useQuizTopicSelection = (subject: Subject, topics: any[]) => {
         return formatted;
       });
 
+      const uniqueFormattedQuestions = formattedQuestions.filter((question, index, array) => {
+        const idStr = String(question.id);
+        if (initialSolvedRawIds.has(idStr)) {
+          return false;
+        }
+        return array.findIndex(q => String(q.id) === idStr) === index;
+      });
+
       console.log('=== INFINITE QUIZ GENERATION COMPLETE ===');
-      console.log(`🎉 Successfully generated ${formattedQuestions.length} questions`);
-      console.log(`📊 Final question count: ${formattedQuestions.length} (requested: ${useDifficultySelection ? getTotalQuestions() : questionCount})`);
+      console.log(`🎉 Successfully generated ${uniqueFormattedQuestions.length} questions`);
+      console.log(`📊 Final question count: ${uniqueFormattedQuestions.length} (requested: ${useDifficultySelection ? getTotalQuestions() : questionCount})`);
       
-      return formattedQuestions;
+      return uniqueFormattedQuestions;
     } catch (error) {
       console.error('Error loading quiz questions:', error);
       setError('Error loading questions: ' + (error as Error).message);

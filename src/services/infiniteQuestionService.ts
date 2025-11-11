@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { supabase } from '@/integrations/supabase/client';
 import { openaiQuestionService, GeneratedQuestion } from './openaiQuestionService';
-import { isAIGenerationAvailable } from '../data/questionPrompts';
+import { isAIGenerationAvailable } from '../data/prompts';
 import { DatabaseQuestion } from './questionService';
+import { generateMathQuestion, GeneratedMathQuestion } from './mathQuestionGenerator';
 
 export interface InfiniteQuestionRequest {
   subject: 'math' | 'english';
@@ -119,7 +120,24 @@ class InfiniteQuestionService {
       }
 
       // Step 5: Combine questions (database first, then AI-generated)
-      const allQuestions = [...dbQuestionsToUse, ...generatedQuestions];
+      let allQuestions = [...dbQuestionsToUse, ...generatedQuestions];
+      let generatedFromTemplates = false;
+
+      if (allQuestions.length < request.count && request.subject === 'math') {
+        const neededFromTemplates = request.count - allQuestions.length;
+        console.log(`🧮 Generating ${neededFromTemplates} math fallback questions using templates...`);
+        const templateQuestions = this.generateMathFallbackQuestions(
+          request.skill,
+          request.domain,
+          neededFromTemplates,
+          request.difficulty
+        );
+        if (templateQuestions.length > 0) {
+          generatedFromTemplates = true;
+          allQuestions = [...allQuestions, ...templateQuestions];
+        }
+      }
+
       const finalQuestions = allQuestions.slice(0, request.count);
       
       console.log('🔍 Final question combination:', {
@@ -138,7 +156,10 @@ class InfiniteQuestionService {
         questions: finalQuestions,
         generated_count: finalQuestions.length,
         requested_count: request.count,
-        source: generatedQuestions.length > 0 ? 'mixed' : 'database',
+        source:
+          generatedQuestions.length > 0 || generatedFromTemplates
+            ? 'mixed'
+            : 'database',
         ai_used: aiUsed
       };
 
@@ -313,12 +334,6 @@ class InfiniteQuestionService {
     try {
       console.log('🤖 Starting AI question generation...', request);
       
-      // Only generate for Reading and Writing for now (since we only have those prompts)
-      if (request.subject !== 'english') {
-        console.log('AI generation only available for Reading and Writing section');
-        return [];
-      }
-
       // For mixed difficulty, generate questions from multiple difficulty levels
       let generatedQuestions: any[] = [];
       
@@ -338,14 +353,15 @@ class InfiniteQuestionService {
         const questionsPerDifficulty = Math.ceil(request.count / 3);
         
         for (const difficulty of difficulties) {
-          if (!isAIGenerationAvailable(request.skill, request.domain, difficulty)) {
+          if (!(await isAIGenerationAvailable(request.skill, request.domain, difficulty))) {
             console.log(`⚠️ AI generation not available for difficulty: ${difficulty}`);
             continue;
           }
           
           console.log(`📡 Generating ${questionsPerDifficulty} questions for ${difficulty} difficulty...`);
           try {
-            const questions = await openaiQuestionService.generateTopicQuestions(
+        console.log(`🚀 Generating AI questions for skill "${request.skill}", domain "${request.domain}", difficulty "${difficulty}"`);
+        const questions = await openaiQuestionService.generateTopicQuestions(
               request.skill,
               request.domain,
               difficulty,
@@ -362,8 +378,8 @@ class InfiniteQuestionService {
         const aiDifficulty = request.difficulty as 'easy' | 'medium' | 'hard';
         
         // Check if AI generation is available for this skill/domain/difficulty combination
-        if (!isAIGenerationAvailable(request.skill, request.domain, aiDifficulty)) {
-          console.log(`AI generation not available for skill: "${request.skill}", domain: "${request.domain}", difficulty: "${aiDifficulty}"`);
+        if (!(await isAIGenerationAvailable(request.skill, request.domain, aiDifficulty))) {
+        console.log(`AI generation not available for skill: "${request.skill}", domain: "${request.domain}", difficulty: "${aiDifficulty}"`);
           return [];
         }
         console.log('🎯 AI generation parameters:', {
@@ -409,7 +425,13 @@ class InfiniteQuestionService {
       const dbFormatQuestions = generatedQuestions.map((q, index) => {
         // For mixed difficulty, use the difficulty from the generated question
         const questionDifficulty = request.difficulty === 'mixed' ? q.difficulty || 'medium' : request.difficulty;
-        const converted = openaiQuestionService.convertToDatabaseFormat(q, request.skill, request.domain, questionDifficulty);
+        const converted = openaiQuestionService.convertToDatabaseFormat(
+          q,
+          request.skill,
+          request.domain,
+          questionDifficulty,
+          request.subject
+        );
         console.log(`Converted question ${index + 1}:`, converted);
         return converted;
       });
@@ -700,7 +722,7 @@ class InfiniteQuestionService {
         .eq('skill', skill)
         .eq('domain', domain)
         .eq('assessment', 'SAT')
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(storedQuestions.length);
 
       if (verifyError) {
@@ -752,6 +774,174 @@ class InfiniteQuestionService {
   clearCache(): void {
     this.generationCache.clear();
     this.cacheExpiry.clear();
+  }
+
+  private generateMathFallbackQuestions(
+    skill: string,
+    domain: string,
+    count: number,
+    difficulty: 'easy' | 'medium' | 'hard' | 'mixed'
+  ): DatabaseQuestion[] {
+    const questions: DatabaseQuestion[] = [];
+
+    for (let i = 0; i < count; i++) {
+      if (skill === 'Systems of two linear equations in two variables') {
+        questions.push(this.createSystemsOfEquationsQuestion(skill, domain));
+        continue;
+      }
+
+      try {
+        const desiredDifficulty =
+          difficulty === 'mixed' ? 'easy' : (difficulty as 'easy' | 'medium' | 'hard');
+        const generated = generateMathQuestion(undefined, desiredDifficulty);
+        questions.push(
+          this.convertGeneratedMathQuestion(generated, skill || generated.metadata.skill, domain || generated.metadata.domain, desiredDifficulty)
+        );
+      } catch (error) {
+        console.error('Failed to generate math question via template engine:', error);
+      }
+    }
+
+    return questions;
+  }
+
+  private convertGeneratedMathQuestion(
+    question: GeneratedMathQuestion,
+    skill: string,
+    domain: string,
+    difficulty: 'easy' | 'medium' | 'hard'
+  ): DatabaseQuestion {
+    const id = this.createTemporaryQuestionId();
+    const options = question.options || [];
+
+    const letterFromIndex = (index: number) => ['A', 'B', 'C', 'D'][index] || 'A';
+    const correctLetter = letterFromIndex(question.correctAnswer ?? 0);
+
+    return {
+      id,
+      question_text: question.question,
+      option_a: options[0] ?? '',
+      option_b: options[1] ?? '',
+      option_c: options[2] ?? '',
+      option_d: options[3] ?? '',
+      correct_answer: correctLetter,
+      correct_rationale: question.explanation || '',
+      incorrect_rationale_a: question.rationales?.incorrect?.A || '',
+      incorrect_rationale_b: question.rationales?.incorrect?.B || '',
+      incorrect_rationale_c: question.rationales?.incorrect?.C || '',
+      incorrect_rationale_d: question.rationales?.incorrect?.D || '',
+      skill,
+      domain,
+      difficulty,
+      assessment: 'SAT',
+      test: 'Math',
+      section: 'Math',
+      question_type: 'multiple-choice',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      question_prompt: question.question,
+      image: null,
+      metadata: {
+        source: 'math-template-engine',
+        templateId: question.metadata?.templateId
+      }
+    };
+  }
+
+  private createSystemsOfEquationsQuestion(skill: string, domain: string): DatabaseQuestion {
+    const randInt = (min: number, max: number) =>
+      Math.floor(Math.random() * (max - min + 1)) + min;
+
+    let a1 = randInt(1, 6);
+    let b1 = randInt(1, 6);
+    let a2 = randInt(1, 6);
+    let b2 = randInt(1, 6);
+
+    // Ensure system has a unique solution
+    while (a1 * b2 - a2 * b1 === 0) {
+      a2 = randInt(1, 6);
+      b2 = randInt(1, 6);
+    }
+
+    let xSolution = randInt(1, 10);
+    let ySolution = randInt(1, 10);
+
+    while (xSolution === ySolution) {
+      ySolution = randInt(1, 10);
+    }
+
+    const c1 = a1 * xSolution + b1 * ySolution;
+    const c2 = a2 * xSolution + b2 * ySolution;
+
+    const askForX = Math.random() < 0.5;
+    const targetVariable = askForX ? 'x' : 'y';
+    const correctValue = askForX ? xSolution : ySolution;
+    const swappedValue = askForX ? ySolution : xSolution;
+    const sumValue = xSolution + ySolution;
+    let offByOne = correctValue + 1;
+    if (offByOne === swappedValue) {
+      offByOne = correctValue - 1;
+    }
+    if (offByOne <= 0 || offByOne === swappedValue || offByOne === sumValue) {
+      offByOne = correctValue + 2;
+    }
+
+    const id = this.createTemporaryQuestionId();
+
+    const questionText =
+      `Solve the system of equations below:\n\n` +
+      `${a1}x + ${b1}y = ${c1}\n` +
+      `${a2}x + ${b2}y = ${c2}\n\n` +
+      `What is the value of ${targetVariable}?`;
+
+    const options = [
+      correctValue.toString(),
+      swappedValue.toString(),
+      sumValue.toString(),
+      offByOne.toString()
+    ];
+
+    const correctRationale =
+      `Substituting the solution (${xSolution}, ${ySolution}) into the system shows that ` +
+      `${a1}(${xSolution}) + ${b1}(${ySolution}) = ${c1} and ${a2}(${xSolution}) + ${b2}(${ySolution}) = ${c2}. ` +
+      `Therefore, ${targetVariable} = ${correctValue}.`;
+
+    return {
+      id,
+      question_text: questionText,
+      option_a: options[0],
+      option_b: options[1],
+      option_c: options[2],
+      option_d: options[3],
+      correct_answer: 'A',
+      correct_rationale: correctRationale,
+      incorrect_rationale_a: correctRationale,
+      incorrect_rationale_a: '',
+      incorrect_rationale_b: `This swaps the roles of x and y, giving the value ${swappedValue}.`,
+      incorrect_rationale_c: `This adds x and y, yielding ${sumValue}, instead of solving the system.`,
+      incorrect_rationale_d: `This value is off by one from the correct solution, which can happen if a sign error occurs during elimination.`,
+      skill,
+      domain,
+      difficulty: 'easy',
+      assessment: 'SAT',
+      test: 'Math',
+      section: 'Math',
+      question_type: 'multiple-choice',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      question_prompt: questionText,
+      image: null,
+      metadata: {
+        source: 'math-template-engine',
+        templateId: 'algebra-systems-two-linear-equations-easy'
+      }
+    };
+  }
+
+  private createTemporaryQuestionId(): string {
+    return `${Date.now()}${Math.floor(Math.random() * 10000)}`;
   }
 }
 

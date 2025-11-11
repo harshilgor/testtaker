@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles, BookOpen, Calculator, FileText, HelpCircle, Target } from 'lucide-react';
+import { Sparkles, BookOpen, Calculator, FileText, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
@@ -136,17 +136,8 @@ const MockTestCard: React.FC<MockTestCardProps> = ({
           </p>
         </div>
 
-        {/* Right: Accuracy badge and Launch button */}
-        <div className="bg-white px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between gap-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200">
-          {testInfo.accuracy !== null && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Accuracy</span>
-              <HelpCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <div className="px-2 py-1 sm:px-3 sm:py-1 bg-red-50 text-red-600 rounded-full text-xs sm:text-sm font-medium border border-red-100 whitespace-nowrap">
-                {loading ? '...' : `${testInfo.accuracy}%`}
-              </div>
-            </div>
-          )}
+        {/* Right: Launch button */}
+        <div className="bg-white px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-end gap-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200">
           <Button
             onClick={handleLaunch}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm whitespace-nowrap text-sm"

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { QuizQuestion } from '@/types/question';
 
@@ -19,6 +18,9 @@ interface QuizAnswerPanelProps {
   onNext: () => void;
   loading: boolean;
   isSubmitted?: boolean;
+  isEliminateMode?: boolean;
+  eliminatedOptions?: Set<number>;
+  onToggleEliminateOption?: (index: number) => void;
 }
 
 const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
@@ -34,7 +36,10 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
   isCorrect,
   onNext,
   loading,
-  isSubmitted = false
+  isSubmitted = false,
+  isEliminateMode = false,
+  eliminatedOptions = new Set(),
+  onToggleEliminateOption
 }) => {
   const { isMobile } = useResponsiveLayout();
   const hasAnswered = selectedAnswer !== null;
@@ -45,53 +50,92 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
         <div className="h-full flex flex-col pb-4">
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto">
-            <p className="text-sm text-gray-600 mb-4">
-              Choose the best answer.
-            </p>
             <div className="space-y-3 mb-6">
               {question.options.map((option: string, index: number) => {
                 const isSelected = selectedAnswer === index;
                 const isCorrectAnswer = index === question.correctAnswer;
                 const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
+                const isEliminated = eliminatedOptions.has(index);
                 
                 return (
-                  <button
-                    key={index}
-                    onClick={() => !isSubmitted && onAnswerSelect(index)}
-                    disabled={isSubmitted}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                      isSelected
-                        ? shouldShowCorrect
-                          ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-red-500 bg-red-50'
-                          : 'border-blue-500 bg-blue-50'
-                        : shouldShowCorrect && isCorrectAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : isSubmitted
-                        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                        isSelected
+                  <div key={index} className="flex items-start gap-2">
+                    {/* Eliminate Circle - Outside the button container */}
+                    {isEliminateMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onToggleEliminateOption) {
+                            onToggleEliminateOption(index);
+                          }
+                        }}
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all mt-4 ${
+                          isEliminated
+                            ? 'border-gray-400 bg-gray-300'
+                            : 'border-gray-300 bg-white hover:border-gray-400'
+                        }`}
+                        title={isEliminated ? "Un-eliminate option" : "Eliminate option"}
+                      >
+                        {isEliminated && (
+                          <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        // When eliminate mode is active, clicking the option text selects it (normal behavior)
+                        // Only clicking the circle eliminates it
+                        if (!isSubmitted) {
+                          onAnswerSelect(index);
+                        }
+                      }}
+                      disabled={isSubmitted}
+                      className={`flex-1 p-4 text-left rounded-lg border-2 transition-all relative ${
+                        isEliminated
+                          ? 'opacity-50 line-through'
+                          : isSelected
                           ? shouldShowCorrect
                             ? isCorrectAnswer
-                              ? 'border-green-500 bg-green-500 text-white'
-                              : 'border-red-500 bg-red-500 text-white'
-                            : 'border-blue-500 bg-blue-500 text-white'
+                              ? 'border-green-500 bg-green-50'
+                              : 'border-red-500 bg-red-50'
+                            : 'border-blue-500 bg-blue-50'
                           : shouldShowCorrect && isCorrectAnswer
-                          ? 'border-green-500 bg-green-500 text-white'
-                          : 'border-gray-300'
-                      }`}>
-                        {String.fromCharCode(65 + index)}
+                          ? 'border-green-500 bg-green-50'
+                          : isSubmitted
+                          ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                          : isEliminateMode
+                          ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 cursor-pointer'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {isEliminated && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <svg className="w-full h-0.5 text-red-500" viewBox="0 0 100 2" preserveAspectRatio="none">
+                            <line x1="0" y1="1" x2="100" y2="1" stroke="currentColor" strokeWidth="2" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="flex items-start space-x-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                          isEliminated
+                            ? 'border-gray-300 bg-gray-200 text-gray-500'
+                            : isSelected
+                            ? shouldShowCorrect
+                              ? isCorrectAnswer
+                                ? 'border-green-500 bg-green-500 text-white'
+                                : 'border-red-500 bg-red-500 text-white'
+                              : 'border-blue-500 bg-blue-500 text-white'
+                            : shouldShowCorrect && isCorrectAnswer
+                            ? 'border-green-500 bg-green-500 text-white'
+                            : 'border-gray-300'
+                        }`}>
+                          {String.fromCharCode(65 + index)}
+                        </div>
+                        <span className={`flex-1 text-base leading-relaxed ${isEliminated ? 'text-gray-400' : ''}`}>
+                          {option}
+                        </span>
                       </div>
-                      <span className="flex-1 text-sm leading-relaxed">
-                        {option}
-                      </span>
-                    </div>
-                  </button>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -105,7 +149,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                     <div className="flex items-center mb-2">
                       <span className="font-semibold text-green-800">Correct!</span>
                     </div>
-                    <p className="text-sm text-green-700">{question.explanation}</p>
+                    <p className="text-base text-green-700">{question.explanation}</p>
                   </div>
                 );
               }
@@ -124,7 +168,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                       <div className="flex items-center mb-2">
                         <span className="font-semibold text-red-800">Incorrect</span>
                       </div>
-                      <p className="text-sm text-red-700">{incorrectRationaleText}</p>
+                      <p className="text-base text-red-700">{incorrectRationaleText}</p>
                     </div>
 
                     {/* Rationale for the CORRECT answer */}
@@ -132,7 +176,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                       <div className="flex items-center mb-2">
                         <span className="font-semibold text-green-800">Correct Answer Explanation</span>
                       </div>
-                      <p className="text-sm text-green-700">{question.explanation}</p>
+                      <p className="text-base text-green-700">{question.explanation}</p>
                     </div>
                   </div>
                 );
@@ -151,73 +195,95 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
       <div className="h-full p-2 flex flex-col">
         {/* Rounded Container with Curved Edges */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Answer Options</h3>
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="mark-review"
-                    checked={isFlagged}
-                    onCheckedChange={onToggleFlag}
-                  />
-                  <label htmlFor="mark-review" className="text-sm text-gray-600">
-                    Mark for Review
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-          
           {/* Content */}
           <div className="flex-1 p-6 overflow-y-auto">
 
         {/* Answer Options */}
         <div className="mb-8">
-          <p className="text-sm text-gray-600 mb-4">Choose the best answer.</p>
           <div className="space-y-3">
             {(question.options || []).map((option, index) => {
               const isSelected = selectedAnswer === index;
               const isCorrectAnswer = index === question.correctAnswer;
               const shouldShowCorrect = feedbackPreference === 'immediate' && showFeedback;
+              const isEliminated = eliminatedOptions.has(index);
               
               return (
-                <button
-                  key={index}
-                  onClick={() => !isSubmitted && onAnswerSelect(index)}
-                  disabled={isSubmitted}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? shouldShowCorrect
-                        ? isCorrectAnswer
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-red-500 bg-red-50'
-                        : 'border-blue-500 bg-blue-50'
-                      : shouldShowCorrect && isCorrectAnswer
-                      ? 'border-green-500 bg-green-50'
-                      : isSubmitted
-                      ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium ${
-                      isSelected
+                <div key={index} className="flex items-start gap-2">
+                  {/* Eliminate Circle - Outside the button container */}
+                  {isEliminateMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onToggleEliminateOption) {
+                          onToggleEliminateOption(index);
+                        }
+                      }}
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all mt-4 ${
+                        isEliminated
+                          ? 'border-gray-400 bg-gray-300'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      }`}
+                      title={isEliminated ? "Un-eliminate option" : "Eliminate option"}
+                    >
+                      {isEliminated && (
+                        <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      // When eliminate mode is active, clicking the option text selects it (normal behavior)
+                      // Only clicking the circle eliminates it
+                      if (!isSubmitted) {
+                        onAnswerSelect(index);
+                      }
+                    }}
+                    disabled={isSubmitted}
+                    className={`flex-1 p-4 text-left rounded-lg border-2 transition-all relative ${
+                      isEliminated
+                        ? 'opacity-50 line-through'
+                        : isSelected
                         ? shouldShowCorrect
                           ? isCorrectAnswer
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : 'border-red-500 bg-red-500 text-white'
-                          : 'border-blue-500 bg-blue-500 text-white'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-red-500 bg-red-50'
+                          : 'border-blue-500 bg-blue-50'
                         : shouldShowCorrect && isCorrectAnswer
-                        ? 'border-green-500 bg-green-500 text-white'
-                        : 'border-gray-300'
-                    }`}>
-                      {String.fromCharCode(65 + index)}
+                        ? 'border-green-500 bg-green-50'
+                        : isSubmitted
+                        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                        : isEliminateMode
+                        ? 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 cursor-pointer'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isEliminated && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <svg className="w-full h-0.5 text-red-500" viewBox="0 0 100 2" preserveAspectRatio="none">
+                          <line x1="0" y1="1" x2="100" y2="1" stroke="currentColor" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex items-start space-x-3">
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium ${
+                        isEliminated
+                          ? 'border-gray-300 bg-gray-200 text-gray-500'
+                          : isSelected
+                          ? shouldShowCorrect
+                            ? isCorrectAnswer
+                              ? 'border-green-500 bg-green-500 text-white'
+                              : 'border-red-500 bg-red-500 text-white'
+                            : 'border-blue-500 bg-blue-500 text-white'
+                          : shouldShowCorrect && isCorrectAnswer
+                          ? 'border-green-500 bg-green-500 text-white'
+                          : 'border-gray-300'
+                      }`}>
+                        {String.fromCharCode(65 + index)}
+                      </div>
+                      <span className={`flex-1 text-base leading-relaxed ${isEliminated ? 'text-gray-400' : ''}`}>{option}</span>
                     </div>
-                    <span className="flex-1">{option}</span>
-                  </div>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -232,7 +298,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                 <div className="flex items-center mb-2">
                   <span className="font-semibold text-green-800">Correct!</span>
                 </div>
-                <p className="text-sm text-green-700">{question.explanation}</p>
+                <p className="text-base text-green-700">{question.explanation}</p>
               </div>
             );
           }
@@ -259,7 +325,7 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                   <div className="flex items-center mb-2">
                     <span className="font-semibold text-green-800">Correct Answer Explanation</span>
                   </div>
-                  <p className="text-sm text-green-700">{question.explanation}</p>
+                  <p className="text-base text-green-700">{question.explanation}</p>
                 </div>
               </div>
             );

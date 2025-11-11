@@ -3,13 +3,30 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, FileText, ArrowLeft, Target } from 'lucide-react';
+import { MockTestConfig } from './SAT/mockTestConfig';
 
 interface SATTestIntroductionProps {
+  config: MockTestConfig;
   onStartTest: () => void;
   onBack?: () => void;
 }
 
-const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ onStartTest, onBack }) => {
+const formatDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes} minutes`;
+};
+
+const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ config, onStartTest, onBack }) => {
+  const totalModules = config.sections.reduce((sum, section) => sum + section.moduleCount, 0);
+  const totalQuestions = config.sections.reduce(
+    (sum, section) => sum + section.moduleCount * section.questionCountPerModule,
+    0
+  );
+  const totalTimeSeconds = config.sections.reduce(
+    (sum, section) => sum + section.moduleCount * section.moduleTimeSeconds,
+    0
+  );
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
@@ -30,10 +47,10 @@ const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ onStartTest, 
               <Target className="h-6 w-6 text-white" />
             </div>
             <CardTitle className="text-2xl font-semibold text-gray-900 mb-2">
-              Digital SAT Practice Test
+              {config.title}
             </CardTitle>
             <p className="text-gray-600">
-              Take a full-length practice test that adapts to your performance
+              {config.description}
             </p>
           </CardHeader>
           
@@ -45,14 +62,15 @@ const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ onStartTest, 
                   Test Structure
                 </h3>
                 <div className="space-y-3 text-gray-600">
-                  <div>
-                    <div className="font-medium text-gray-900">Reading & Writing</div>
-                    <div className="text-sm">2 modules, 54 questions total</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Math</div>
-                    <div className="text-sm">2 modules, 44 questions total</div>
-                  </div>
+                  {config.sections.map(section => (
+                    <div key={section.id}>
+                      <div className="font-medium text-gray-900">{section.title}</div>
+                      <div className="text-sm">
+                        {section.moduleCount} modules,{' '}
+                        {section.moduleCount * section.questionCountPerModule} questions total
+                      </div>
+                    </div>
+                  ))}
                   <div>
                     <div className="font-medium text-gray-900">Adaptive</div>
                     <div className="text-sm">Module 2 difficulty depends on Module 1 performance</div>
@@ -66,17 +84,18 @@ const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ onStartTest, 
                   Time Limits
                 </h3>
                 <div className="space-y-3 text-gray-600">
-                  <div>
-                    <div className="font-medium text-gray-900">Reading & Writing</div>
-                    <div className="text-sm">32 minutes per module</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Math</div>
-                    <div className="text-sm">35 minutes per module</div>
-                  </div>
+                  {config.sections.map(section => (
+                    <div key={section.id}>
+                      <div className="font-medium text-gray-900">{section.title}</div>
+                      <div className="text-sm">{formatDuration(section.moduleTimeSeconds)} per module</div>
+                    </div>
+                  ))}
                   <div>
                     <div className="font-medium text-gray-900">Total Time</div>
-                    <div className="text-sm">Approximately 2 hours 14 minutes</div>
+                    <div className="text-sm">
+                      {totalModules} modules • {totalQuestions} questions •{' '}
+                      {formatDuration(totalTimeSeconds)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -109,7 +128,7 @@ const SATTestIntroduction: React.FC<SATTestIntroductionProps> = ({ onStartTest, 
                 size="lg"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-medium"
               >
-                Start SAT Practice Test
+                Start Test
               </Button>
             </div>
           </CardContent>

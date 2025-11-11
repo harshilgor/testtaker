@@ -1,4 +1,5 @@
-import { getPrompt } from '../data/questionPrompts';
+import { getPrompt } from '../data/prompts';
+import { cleanMathText } from '../utils/mathText';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyA9jfgnHGVloZuP_NrcXAnKnj2_1T7pM8Q';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
@@ -43,22 +44,18 @@ class GeminiQuestionService {
     try {
       const { skill, domain, difficulty, count = 1 } = request;
       
-      // Get the appropriate prompt
-      const prompt = getPrompt(skill, domain, difficulty);
-      if (!prompt) {
-        return {
-          questions: [],
-          success: false,
-          error: `No prompt found for skill: ${skill}, domain: ${domain}, difficulty: ${difficulty}`
-        };
-      }
-
       // Generate questions using Gemini API
       const questions: GeneratedQuestion[] = [];
       
       for (let i = 0; i < count; i++) {
         try {
-          const question = await this.generateSingleQuestion(prompt);
+          const prompt = await getPrompt(skill, domain, difficulty);
+          if (!prompt) {
+            console.warn('⚠️ Gemini: no prompt found during generation loop', { skill, domain, difficulty, iteration: i });
+            break;
+          }
+
+          const question = await this.generateSingleQuestion(prompt, skill);
           if (question) {
             questions.push(question);
           }
@@ -87,7 +84,7 @@ class GeminiQuestionService {
   /**
    * Generate a single question using Gemini API
    */
-  private async generateSingleQuestion(prompt: string): Promise<GeneratedQuestion | null> {
+  private async generateSingleQuestion(prompt: string, skill: string): Promise<GeneratedQuestion | null> {
     try {
       console.log('🔑 Using API Key:', GEMINI_API_KEY.substring(0, 10) + '...');
       console.log('📡 API URL:', GEMINI_API_URL);
@@ -137,7 +134,20 @@ class GeminiQuestionService {
       try {
         const parsedQuestion = JSON.parse(content);
         console.log('✅ Parsed question:', parsedQuestion);
-        return this.validateAndCleanQuestion(parsedQuestion);
+        const cleaned = this.validateAndCleanQuestion(parsedQuestion);
+        if (!cleaned) {
+          return null;
+        }
+
+        if (!this.validateSkillSpecificConstraints(cleaned, skill)) {
+          console.warn('⚠️ Gemini question rejected by skill-specific validation', {
+            skill,
+            question: cleaned
+          });
+          return null;
+        }
+
+        return cleaned;
       } catch (parseError) {
         console.error('❌ Failed to parse Gemini response as JSON:', content);
         console.error('Parse error:', parseError);
@@ -178,21 +188,21 @@ class GeminiQuestionService {
       }
 
       return {
-        passage: question.passage.trim(),
-        question: question.question.trim(),
+        passage: cleanMathText(question.passage),
+        question: cleanMathText(question.question),
         options: {
-          A: options.A.trim(),
-          B: options.B.trim(),
-          C: options.C.trim(),
-          D: options.D.trim()
+          A: cleanMathText(options.A),
+          B: cleanMathText(options.B),
+          C: cleanMathText(options.C),
+          D: cleanMathText(options.D)
         },
         correct_answer: question.correct_answer as 'A' | 'B' | 'C' | 'D',
         rationales: {
-          correct: rationales.correct.trim(),
-          A: rationales.A.trim(),
-          B: rationales.B.trim(),
-          C: rationales.C.trim(),
-          D: rationales.D.trim()
+          correct: cleanMathText(rationales.correct),
+          A: cleanMathText(rationales.A),
+          B: cleanMathText(rationales.B),
+          C: cleanMathText(rationales.C),
+          D: cleanMathText(rationales.D)
         }
       };
 
@@ -205,28 +215,83 @@ class GeminiQuestionService {
   /**
    * Convert generated question to database format
    */
-  convertToDatabaseFormat(generatedQuestion: GeneratedQuestion, skill: string, domain: string, difficulty: string): any {
+  convertToDatabaseFormat(
+    generatedQuestion: GeneratedQuestion,
+    skill: string,
+    domain: string,
+    difficulty: string,
+    subject: 'math' | 'english'
+  ): any {
+    const test = subject === 'math' ? 'Math' : 'Reading and Writing';
+
     return {
-      question_text: generatedQuestion.question,
-      option_a: generatedQuestion.options.A,
-      option_b: generatedQuestion.options.B,
-      option_c: generatedQuestion.options.C,
-      option_d: generatedQuestion.options.D,
+      question_text: cleanMathText(generatedQuestion.question),
+      option_a: cleanMathText(generatedQuestion.options.A),
+      option_b: cleanMathText(generatedQuestion.options.B),
+      option_c: cleanMathText(generatedQuestion.options.C),
+      option_d: cleanMathText(generatedQuestion.options.D),
       correct_answer: generatedQuestion.correct_answer,
-      correct_rationale: generatedQuestion.rationales.correct,
-      incorrect_rationale_a: generatedQuestion.rationales.A,
-      incorrect_rationale_b: generatedQuestion.rationales.B,
-      incorrect_rationale_c: generatedQuestion.rationales.C,
-      incorrect_rationale_d: generatedQuestion.rationales.D,
+      correct_rationale: cleanMathText(generatedQuestion.rationales.correct),
+      incorrect_rationale_a: cleanMathText(generatedQuestion.rationales.A),
+      incorrect_rationale_b: cleanMathText(generatedQuestion.rationales.B),
+      incorrect_rationale_c: cleanMathText(generatedQuestion.rationales.C),
+      incorrect_rationale_d: cleanMathText(generatedQuestion.rationales.D),
       skill: skill,
       domain: domain,
       difficulty: difficulty,
       assessment: 'SAT',
-      test: 'Reading and Writing',
-      question_prompt: generatedQuestion.passage,
-      is_generated: true,
-      generated_at: new Date().toISOString()
+      test,
+      section: test,
+      question_type: 'multiple-choice',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      question_prompt: subject === 'english'
+        ? cleanMathText(generatedQuestion.passage)
+        : cleanMathText(generatedQuestion.question)
     };
+  }
+
+  private validateSkillSpecificConstraints(question: GeneratedQuestion, skill: string): boolean {
+    const stem = question.question;
+
+    const sqrtMatch = stem.match(/f\(x\)\s*=\s*√\(\s*([-+]?\d+)\s*x\s*([+-]\s*\d+)\s*\)/i);
+    const inputMatch = stem.match(/f\(\s*(\d+)\s*\)/i);
+
+    if (sqrtMatch && inputMatch) {
+      const coeff = parseInt(sqrtMatch[1].replace(/\s+/g, ''), 10);
+      const constant = parseInt(sqrtMatch[2].replace(/\s+/g, ''), 10);
+      const inputValue = parseInt(inputMatch[1], 10);
+
+      const radicand = coeff * inputValue + constant;
+      const result = Math.sqrt(radicand);
+
+      if (!Number.isFinite(result) || !Number.isInteger(result)) {
+        console.warn('⚠️ Gemini rejecting question: radicand not perfect square', {
+          coeff,
+          constant,
+          inputValue,
+          radicand
+        });
+        return false;
+      }
+
+      const correctOption = question.options[question.correct_answer];
+      if (!correctOption) {
+        return false;
+      }
+
+      const normalizedCorrect = cleanMathText(correctOption);
+      if (normalizedCorrect !== result.toString()) {
+        console.warn('⚠️ Gemini rejecting question: correct option mismatch', {
+          normalizedCorrect,
+          expected: result.toString()
+        });
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**

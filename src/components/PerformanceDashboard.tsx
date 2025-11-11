@@ -447,14 +447,9 @@ const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ userName, o
 
         {/* Top Stats Grid - Removed: Current Streak, Predicted SAT Score, Study Time, Questions Solved */}
 
-        {/* Mastery Section - 2/3 + 1/3 Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <div className="lg:col-span-2 h-full">
-            <MasteryPerformance />
-          </div>
-          <div className="lg:col-span-1 h-full">
-            {/* Empty space or other component if needed */}
-          </div>
+        {/* Mastery Section - Full Width */}
+        <div className="mb-6">
+          <MasteryPerformance />
         </div>
 
         {/* Best Performing Topics & Recent Sessions - Top Section */}

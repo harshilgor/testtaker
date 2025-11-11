@@ -8,12 +8,22 @@ interface QuizQuestionPanelProps {
   question: QuizQuestion;
   isFlagged?: boolean;
   onToggleFlag?: () => void;
+  elapsedTime?: number;
+  onToggleTimerVisibility?: () => void;
+  isTimerVisible?: boolean;
+  onToggleEliminate?: () => void;
+  isEliminateMode?: boolean;
 }
 
 const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({ 
   question, 
   isFlagged = false, 
-  onToggleFlag 
+  onToggleFlag,
+  elapsedTime,
+  onToggleTimerVisibility,
+  isTimerVisible,
+  onToggleEliminate,
+  isEliminateMode
 }) => {
   const { isMobile } = useResponsiveLayout();
   
@@ -24,6 +34,11 @@ const QuizQuestionPanel: React.FC<QuizQuestionPanelProps> = ({
       isFlagged={isFlagged}
       onToggleFlag={onToggleFlag}
       showPrompt={true}
+      elapsedTime={elapsedTime}
+      onToggleTimerVisibility={onToggleTimerVisibility}
+      isTimerVisible={isTimerVisible}
+      onToggleEliminate={onToggleEliminate}
+      isEliminateMode={isEliminateMode}
     />
   );
 };

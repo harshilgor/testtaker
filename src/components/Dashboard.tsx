@@ -25,6 +25,7 @@ interface DashboardProps {
   onQuizSelect: () => void;
   onNavigateToLeaderboard: () => void;
   onNavigateToStudyPlan: () => void;
+  onNavigateToStudyPlanView?: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -32,7 +33,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   onMockTestSelect,
   onQuizSelect,
   onNavigateToLeaderboard,
-  onNavigateToStudyPlan
+  onNavigateToStudyPlan,
+  onNavigateToStudyPlanView
 }) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showQuestsModal, setShowQuestsModal] = useState(false);
@@ -475,7 +477,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                     </div>
                     
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto min-h-0">
                       {questsLoading ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -607,9 +609,12 @@ const Dashboard: React.FC<DashboardProps> = ({
               {/* Right Side - Learning Plan + Your Stats Widget */}
               <div className="w-full xl:w-80 xl:flex-shrink-0">
                 <div className="mb-4">
-                  <LearningPlanCard onEdit={onNavigateToStudyPlan} />
+                  <LearningPlanCard 
+                    onEdit={onNavigateToStudyPlan}
+                    onViewPlan={onNavigateToStudyPlanView}
+                  />
                 </div>
-                <div className="w-full xl:w-80 h-64 xl:h-64 overflow-hidden">
+                <div className="w-full xl:w-80">
                   <WidgetCarousel />
                 </div>
               </div>

@@ -28,6 +28,14 @@ interface QuizViewProps {
   subject: Subject;
   onBackToDashboard: () => void;
   onTakeSimilarQuiz?: () => void;
+  isMarathon?: boolean;
+  marathonSettings?: {
+    subject: 'math' | 'english';
+    skill: string;
+    questionCount: number;
+    domain?: string;
+  };
+  allAvailableQuestions?: QuizQuestion[];
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
@@ -39,7 +47,10 @@ const QuizView: React.FC<QuizViewProps> = ({
   userName,
   subject,
   onBackToDashboard,
-  onTakeSimilarQuiz
+  onTakeSimilarQuiz,
+  isMarathon = false,
+  marathonSettings,
+  allAvailableQuestions
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -64,6 +75,14 @@ const QuizView: React.FC<QuizViewProps> = ({
   );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [answerCorrectness, setAnswerCorrectness] = useState<(boolean | null)[]>(new Array(questions.length).fill(null));
+  const [isTimerVisible, setIsTimerVisible] = useState(true);
+  const [isEliminateMode, setIsEliminateMode] = useState(false);
+  const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+  
+  // Marathon mode state
+  const [loadedQuestions, setLoadedQuestions] = useState<QuizQuestion[]>(questions);
+  const [usedQuestionIds, setUsedQuestionIds] = useState<Set<string>>(new Set(questions.map(q => q.id?.toString() || '').filter(Boolean)));
+  const [loadingNextQuestion, setLoadingNextQuestion] = useState(false);
   
   // Panel resizing state
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
@@ -128,13 +147,94 @@ const QuizView: React.FC<QuizViewProps> = ({
     setAnswerCorrectness(newCorrectness);
   };
 
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      // Track question start time for the new question
-      const newStartTimes = [...questionStartTimes];
-      newStartTimes[currentQuestionIndex + 1] = Date.now();
-      setQuestionStartTimes(newStartTimes);
+  const loadNextMarathonQuestion = async () => {
+    if (!marathonSettings || !allAvailableQuestions) return;
+    
+    setLoadingNextQuestion(true);
+    try {
+      const { infiniteQuestionService } = await import('@/services/infiniteQuestionService');
+      
+      // Find the matching topic
+      const topic = topics.find(t => t.toLowerCase().includes(marathonSettings.skill.toLowerCase())) || marathonSettings.skill;
+      
+      // Load a new question
+      const response = await infiniteQuestionService.getInfiniteQuestions({
+        subject: marathonSettings.subject,
+        skill: marathonSettings.skill,
+        domain: marathonSettings.domain || '',
+        difficulty: 'mixed',
+        count: 1,
+        useAI: true,
+        excludeIds: Array.from(usedQuestionIds).map(id => parseInt(id)).filter(id => !isNaN(id))
+      });
+      
+      if (response.questions && response.questions.length > 0) {
+        const newQuestion = response.questions[0];
+        
+        // Format question for QuizView
+        const formattedQuestion: QuizQuestion = {
+          id: newQuestion.id || Date.now().toString(),
+          question: newQuestion.question_prompt || newQuestion.question_text || '',
+          options: [
+            newQuestion.option_a || '',
+            newQuestion.option_b || '',
+            newQuestion.option_c || '',
+            newQuestion.option_d || '',
+          ].filter(Boolean),
+          correctAnswer: newQuestion.correct_answer === 'A' ? 0 : newQuestion.correct_answer === 'B' ? 1 : newQuestion.correct_answer === 'C' ? 2 : 3,
+          explanation: newQuestion.correct_rationale || '',
+          topic: newQuestion.skill || marathonSettings.skill,
+          subject: marathonSettings.subject,
+          difficulty: (newQuestion.difficulty || 'medium').toLowerCase() as 'easy' | 'medium' | 'hard',
+          question_prompt: newQuestion.question_prompt,
+          image: newQuestion.image,
+        };
+        
+        // Add to loaded questions
+        setLoadedQuestions(prev => [...prev, formattedQuestion]);
+        setUsedQuestionIds(prev => new Set([...prev, formattedQuestion.id?.toString() || '']));
+        
+        // Move to the new question
+        const newIndex = loadedQuestions.length;
+        setCurrentQuestionIndex(newIndex);
+        
+        // Update arrays to accommodate new question
+        setAnswers(prev => [...prev, null]);
+        setFlaggedQuestions(prev => [...prev, false]);
+        setSubmittedQuestions(prev => [...prev, false]);
+        setQuestionStartTimes(prev => [...prev, Date.now()]);
+        setAnswerCorrectness(prev => [...prev, null]);
+        
+        // Reset eliminated options
+        setEliminatedOptions(new Set());
+      }
+    } catch (error) {
+      console.error('Error loading next marathon question:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load next question. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingNextQuestion(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (isMarathon) {
+      // Marathon mode: load a new question
+      await loadNextMarathonQuestion();
+    } else {
+      // Regular quiz: navigate to next question
+      if (currentQuestionIndex < loadedQuestions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        // Track question start time for the new question
+        const newStartTimes = [...questionStartTimes];
+        newStartTimes[currentQuestionIndex + 1] = Date.now();
+        setQuestionStartTimes(newStartTimes);
+        // Reset eliminated options for the new question
+        setEliminatedOptions(new Set());
+      }
     }
   };
 
@@ -454,11 +554,13 @@ const QuizView: React.FC<QuizViewProps> = ({
     };
   }, [isDragging]);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Use loadedQuestions for marathon mode, questions for regular quiz
+  const questionsToDisplay = isMarathon ? loadedQuestions : questions;
+  const currentQuestion = questionsToDisplay[currentQuestionIndex];
   const answeredCount = answers.filter(answer => answer !== null).length;
   const isSubmitted = submittedQuestions[currentQuestionIndex];
   const showFeedback = feedbackPreference === 'immediate' && isSubmitted;
-  const isCorrect = answers[currentQuestionIndex] === currentQuestion.correctAnswer;
+  const isCorrect = currentQuestion && answers[currentQuestionIndex] === currentQuestion.correctAnswer;
 
   if (showSummary) {
     return (
@@ -476,18 +578,20 @@ const QuizView: React.FC<QuizViewProps> = ({
     <div className="h-screen bg-white flex overflow-hidden">
       {/* Left Sidebar */}
       <QuizSidebar
-        questions={questions}
+        questions={questionsToDisplay}
         currentQuestionIndex={currentQuestionIndex}
         answers={answers}
         flaggedQuestions={flaggedQuestions}
         onGoToQuestion={setCurrentQuestionIndex}
-        onBack={onBack}
+        onBack={onBackToDashboard}
         subject={subject}
         topics={topics}
         timeRemaining={timeRemaining}
         isCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         answerCorrectness={answerCorrectness}
+        isMarathon={isMarathon}
+        totalMarathonQuestions={marathonSettings?.questionCount || 0}
       />
       
       {/* Main Content Area */}
@@ -520,6 +624,11 @@ const QuizView: React.FC<QuizViewProps> = ({
               question={currentQuestion}
               isFlagged={flaggedQuestions[currentQuestionIndex]}
               onToggleFlag={handleToggleFlag}
+              elapsedTime={elapsedTime}
+              onToggleTimerVisibility={() => setIsTimerVisible(!isTimerVisible)}
+              isTimerVisible={isTimerVisible}
+              onToggleEliminate={() => setIsEliminateMode(!isEliminateMode)}
+              isEliminateMode={isEliminateMode}
             />
           </div>
           
@@ -553,6 +662,17 @@ const QuizView: React.FC<QuizViewProps> = ({
               onNext={handleNext}
               loading={loading}
               isSubmitted={isSubmitted}
+              isEliminateMode={isEliminateMode}
+              eliminatedOptions={eliminatedOptions}
+              onToggleEliminateOption={(index) => {
+                const newEliminated = new Set(eliminatedOptions);
+                if (newEliminated.has(index)) {
+                  newEliminated.delete(index);
+                } else {
+                  newEliminated.add(index);
+                }
+                setEliminatedOptions(newEliminated);
+              }}
             />
           </div>
         </div>
@@ -576,6 +696,19 @@ const QuizView: React.FC<QuizViewProps> = ({
                   {currentQuestion.difficulty?.toUpperCase() || 'N/A'}
                 </span>
               </div>
+              {/* Mark for Review Checkbox */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="mark-review-bottom"
+                  checked={flaggedQuestions[currentQuestionIndex]}
+                  onChange={handleToggleFlag}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="mark-review-bottom" className="text-sm text-gray-600 cursor-pointer">
+                  Mark for Review
+                </label>
+              </div>
             </div>
             
             {/* Action Buttons - Right Side */}
@@ -590,7 +723,30 @@ const QuizView: React.FC<QuizViewProps> = ({
               </button>
               
               {/* Next Question / Complete Quiz Button */}
-              {currentQuestionIndex === questions.length - 1 ? (
+              {isMarathon ? (
+                <button
+                  onClick={handleNext}
+                  disabled={loading || loadingNextQuestion}
+                  className="px-4 py-2 bg-white text-blue-600 text-sm font-medium rounded-md border border-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                >
+                  {loadingNextQuestion ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Loading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Next Question</span>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              ) : currentQuestionIndex === questionsToDisplay.length - 1 ? (
                 <button
                   onClick={handleCompleteQuiz}
                   disabled={loading}

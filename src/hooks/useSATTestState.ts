@@ -23,12 +23,15 @@ interface TestProgress {
   timeRemaining: number;
 }
 
-export const useSATTestState = () => {
+export const useSATTestState = (
+  initialSection: TestSection = 'reading-writing',
+  initialModuleTimeSeconds: number = 32 * 60
+) => {
   const [currentProgress, setCurrentProgress] = useState<TestProgress>({
-    section: 'reading-writing',
+    section: initialSection,
     module: 1,
     questionIndex: 0,
-    timeRemaining: 32 * 60
+    timeRemaining: initialModuleTimeSeconds
   });
   
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: number }>({});

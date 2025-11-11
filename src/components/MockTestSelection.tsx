@@ -98,15 +98,6 @@ const MockTestSelection: React.FC<MockTestSelectionProps> = ({
           </div>
         </div>
 
-        {/* Targeted Mock Test */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Targeted Practice</h2>
-          <MockTestCard 
-            testType="targeted" 
-            onLaunch={() => onSelectTest('targeted')} 
-          />
-        </div>
-
         {/* Previous Mock Tests */}
         <div className="mb-8">
           <MockTestHistory userName={userName} />

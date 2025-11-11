@@ -14,8 +14,9 @@ import WelcomePopup from '@/components/WelcomePopup';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useWelcomePopup } from '@/hooks/useWelcomePopup';
 import StudyPlan from '@/components/StudyPlan';
+import StudyPlanView from '@/components/StudyPlanView';
 
-export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends' | 'study-plan';
+export type Screen = 'landing' | 'auth' | 'dashboard' | 'learn' | 'leaderboard' | 'performance-dashboard' | 'trends' | 'study-plan' | 'study-plan-view';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -176,6 +177,26 @@ const Index = () => {
     );
   }
 
+  if (currentScreen === 'study-plan-view') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          userName={userName}
+          onSignOut={handleSignOut}
+        />
+        <div className="pt-16">
+          <StudyPlanView
+            userName={userName}
+            onBack={() => setCurrentScreen('dashboard')}
+            onCreatePlan={() => setCurrentScreen('study-plan')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
@@ -191,6 +212,7 @@ const Index = () => {
           onQuizSelect={() => navigate('/quiz')}
           onNavigateToLeaderboard={() => setCurrentScreen('leaderboard')}
           onNavigateToStudyPlan={() => setCurrentScreen('study-plan')}
+          onNavigateToStudyPlanView={() => setCurrentScreen('study-plan-view')}
         />
       </div>
       

@@ -58,15 +58,15 @@ const SimpleStreakWidget: React.FC<SimpleStreakWidgetProps> = ({ variant = 'card
   const flameColor = hasStreakToday ? 'text-orange-500' : 'text-gray-300';
 
   const Content = (
-    <div className="w-full h-full flex flex-col">
-      <div className="text-center py-3">
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+    <div className="w-full h-full flex flex-col justify-between pb-4">
+      <div className="text-center py-2">
+        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-1.5">
           <Flame className={`h-5 w-5 lg:h-6 lg:w-6 transition-colors ${flameColor}`} />
         </div>
-        <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">
+        <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-0.5">
           {streakData?.current_streak || 0}
         </div>
-        <div className="text-xs lg:text-sm text-gray-600 mb-2">
+        <div className="text-xs lg:text-sm text-gray-600 mb-1">
           Day Streak
         </div>
         {!hasStreakToday && questionsRemaining > 0 && (

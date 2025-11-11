@@ -170,12 +170,12 @@ const LeaderboardRankingWidget: React.FC<LeaderboardRankingWidgetProps> = ({ var
   // Show fallback if no data available
   if (rankingData.totalUsers === 0) {
     const Fallback = (
-      <div className="w-full h-full flex flex-col">
-        <div className="text-center py-3">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+      <div className="w-full h-full flex flex-col justify-between pb-4">
+        <div className="text-center py-2">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-1.5">
             <Users className="h-5 w-5 lg:h-6 lg:w-6 text-gray-500" />
           </div>
-          <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">--</div>
+          <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-0.5">--</div>
           <div className="text-xs lg:text-sm text-gray-600">Start practicing to get ranked!</div>
         </div>
       </div>
@@ -194,12 +194,12 @@ const LeaderboardRankingWidget: React.FC<LeaderboardRankingWidgetProps> = ({ var
   }
 
   const Content = (
-    <div className="w-full h-full flex flex-col">
-      <div className="text-center py-3">
-        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+    <div className="w-full h-full flex flex-col justify-between pb-4">
+      <div className="text-center py-2">
+        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-1.5">
           <RankIcon className={`h-5 w-5 lg:h-6 lg:w-6 ${getRankColor(rankingData.currentRank)}`} />
         </div>
-        <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">#{rankingData.currentRank}</div>
+        <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-0.5">#{rankingData.currentRank}</div>
         <div className="text-xs lg:text-sm text-gray-600">of {rankingData.totalUsers.toLocaleString()} users</div>
       </div>
     </div>
