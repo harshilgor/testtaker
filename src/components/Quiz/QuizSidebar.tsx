@@ -173,7 +173,7 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
     <div className="w-64 text-white h-full flex flex-col" style={{ backgroundColor: '#00004d' }}>
       {/* Header */}
       <div className="p-4 border-b" style={{ borderColor: '#000033' }}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <div className="text-lg font-semibold text-white">
             Get1600.co
           </div>
@@ -194,19 +194,29 @@ const QuizSidebar: React.FC<QuizSidebarProps> = ({
             </div>
           </button>
         </div>
-        <div className="text-sm text-gray-300 mb-3">
-          {topics.join(', ')}
-        </div>
+        
         {/* Back Button */}
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-white text-sm font-medium hover:text-gray-200 transition-colors w-full"
+          className="flex items-center gap-2 text-white text-sm font-medium hover:text-gray-200 transition-colors w-full mb-4"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          <span>Back to Dashboard</span>
+          <span>Back to {subject === 'english' ? 'SAT' : subject === 'math' ? 'SAT' : 'Dashboard'}</span>
         </button>
+        
+        {/* Subject Header and Skill Name */}
+        <div className="mb-4">
+          <div className="text-base font-bold text-white mb-1">
+            {subject === 'english' ? 'Reading & Writing' : subject === 'math' ? 'Math' : 'Practice'}
+          </div>
+          {topics.length > 0 && (
+            <div className="text-sm text-white font-normal">
+              {topics[0]}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Today's Questions */}

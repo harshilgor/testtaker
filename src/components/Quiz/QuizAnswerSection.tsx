@@ -202,7 +202,7 @@ const QuizAnswerSection: React.FC<QuizAnswerSectionProps> = ({
                   }
                 </p>
                 <p className="text-green-700 text-sm leading-relaxed">
-                  {question.explanation}
+                  {(question as any).rationales?.correct || question.explanation || 'No explanation provided.'}
                 </p>
               </div>
             </div>

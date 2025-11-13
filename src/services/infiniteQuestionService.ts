@@ -34,19 +34,24 @@ class InfiniteQuestionService {
   async getInfiniteQuestions(request: InfiniteQuestionRequest): Promise<InfiniteQuestionResponse> {
     const cacheKey = this.getCacheKey(request);
     
-    // Check cache first
-    if (this.isCacheValid(cacheKey)) {
-      const cached = this.generationCache.get(cacheKey);
-      if (cached) {
-        console.log('Returning cached infinite questions');
-        return {
-          questions: cached.slice(0, request.count),
-          generated_count: cached.length,
-          requested_count: request.count,
-          source: 'database',
-          ai_used: false
-        };
+    // Check cache first, but only if no excludeIds (cache doesn't account for excludeIds)
+    // If excludeIds are provided, we need to fetch fresh to respect exclusions
+    if (!request.excludeIds || request.excludeIds.length === 0) {
+      if (this.isCacheValid(cacheKey)) {
+        const cached = this.generationCache.get(cacheKey);
+        if (cached) {
+          console.log('Returning cached infinite questions (no exclusions)');
+          return {
+            questions: cached.slice(0, request.count),
+            generated_count: cached.length,
+            requested_count: request.count,
+            source: 'database',
+            ai_used: false
+          };
+        }
       }
+    } else {
+      console.log('⚠️ ExcludeIds provided - skipping cache to respect exclusions');
     }
 
     try {
@@ -91,32 +96,48 @@ class InfiniteQuestionService {
       
       if (neededCount > 0 && request.useAI !== false && hasExhaustedDatabase) {
         console.log(`🤖 Database exhausted! Generating ${neededCount} questions with OpenAI...`);
+        console.log(`📊 Database status: available=${availableDbQuestions.length}, used=${dbQuestionsToUse.length}, needed=${neededCount}`);
         
         // Test API connection first
         console.log('🧪 Testing API connection before generation...');
         const apiTestResult = await this.testAPIConnection();
         if (!apiTestResult) {
           console.error('❌ API test failed, skipping AI generation');
-          return {
-            questions: dbQuestionsToUse,
-            generated_count: dbQuestionsToUse.length,
-            requested_count: request.count,
-            source: 'database',
-            ai_used: false
-          };
+          // Even if API test fails, try generating anyway (might be a false negative)
+          console.log('⚠️ Proceeding with AI generation despite test failure...');
         }
         
-        const aiQuestions = await this.generateAIQuestions({
-          ...request,
-          count: neededCount,
-          excludeIds: [...(request.excludeIds || []), ...dbQuestionsToUse.map(q => parseInt(q.id))]
-        });
-        
-        generatedQuestions = aiQuestions;
-        aiUsed = aiQuestions.length > 0;
-        console.log(`✅ Generated ${aiQuestions.length} AI questions`);
+        try {
+          const aiQuestions = await this.generateAIQuestions({
+            ...request,
+            count: neededCount,
+            excludeIds: [...(request.excludeIds || []), ...dbQuestionsToUse.map(q => parseInt(q.id))]
+          });
+          
+          generatedQuestions = aiQuestions;
+          aiUsed = aiQuestions.length > 0;
+          console.log(`✅ Generated ${aiQuestions.length} AI questions`);
+          
+          if (aiQuestions.length === 0) {
+            console.warn('⚠️ AI generation returned 0 questions. This might indicate:');
+            console.warn('   - No prompt available for skill/domain/difficulty combination');
+            console.warn('   - API connection issue');
+            console.warn('   - Generation error');
+            console.warn(`   - Request details: skill="${request.skill}", domain="${request.domain}", difficulty="${request.difficulty}"`);
+          }
+        } catch (error) {
+          console.error('❌ Error during AI generation:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            request: request
+          });
+          // Continue with whatever questions we have
+        }
       } else if (neededCount > 0 && !hasExhaustedDatabase) {
         console.log(`⚠️ Not generating AI questions yet - still have ${availableDbQuestions.length - dbQuestionsToUse.length} unused database questions`);
+      } else if (neededCount > 0 && request.useAI === false) {
+        console.log('⚠️ AI generation is disabled, cannot generate additional questions');
       }
 
       // Step 5: Combine questions (database first, then AI-generated)

@@ -149,7 +149,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                     <div className="flex items-center mb-2">
                       <span className="font-semibold text-green-800">Correct!</span>
                     </div>
-                    <p className="text-base text-green-700">{question.explanation}</p>
+                    <p className="text-base text-green-700">
+                      {(question as any).rationales?.correct || question.explanation || 'No explanation provided.'}
+                    </p>
                   </div>
                 );
               }
@@ -176,7 +178,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                       <div className="flex items-center mb-2">
                         <span className="font-semibold text-green-800">Correct Answer Explanation</span>
                       </div>
-                      <p className="text-base text-green-700">{question.explanation}</p>
+                      <p className="text-base text-green-700">
+                        {(question as any).rationales?.correct || question.explanation || 'No explanation provided.'}
+                      </p>
                     </div>
                   </div>
                 );
@@ -298,7 +302,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                 <div className="flex items-center mb-2">
                   <span className="font-semibold text-green-800">Correct!</span>
                 </div>
-                <p className="text-base text-green-700">{question.explanation}</p>
+                <p className="text-base text-green-700">
+                  {(question as any).rationales?.correct || question.explanation || 'No explanation provided.'}
+                </p>
               </div>
             );
           }
@@ -325,7 +331,9 @@ const QuizAnswerPanel: React.FC<QuizAnswerPanelProps> = ({
                   <div className="flex items-center mb-2">
                     <span className="font-semibold text-green-800">Correct Answer Explanation</span>
                   </div>
-                  <p className="text-base text-green-700">{question.explanation}</p>
+                  <p className="text-base text-green-700">
+                    {(question as any).rationales?.correct || question.explanation || 'No explanation provided.'}
+                  </p>
                 </div>
               </div>
             );

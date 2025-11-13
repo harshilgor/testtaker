@@ -38,24 +38,83 @@ export interface QuestionGenerationResponse {
 
 class GeminiQuestionService {
   /**
+   * Extract topics from already generated questions by parsing passage text
+   */
+  private extractTopicsFromQuestions(questions: GeneratedQuestion[]): string[] {
+    const topics: string[] = [];
+    
+    questions.forEach(q => {
+      const passage = q.passage || '';
+      if (!passage) return;
+      
+      // Extract main topic/subject from passage
+      // Strategy: Look for key phrases in the first 1-2 sentences (usually contain the main subject)
+      const sentences = passage.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const relevantSentences = sentences.slice(0, 2); // First 1-2 sentences
+      
+      relevantSentences.forEach(sentence => {
+        const trimmed = sentence.trim();
+        
+        // Extract capitalized noun phrases (likely to be the main topic)
+        // Pattern: "The X", "X is", "X has", "X are", "X was", etc.
+        const keyPhrases = trimmed.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+        const commonWords = ['The', 'This', 'In', 'During', 'According', 'Some', 'Many', 'Most', 'All', 'These', 'Those', 'However', 'Nevertheless', 'Additionally', 'Furthermore', 'Moreover', 'While', 'When', 'Where', 'What', 'Which', 'Who', 'How', 'Why', 'Believing', 'That', 'Living', 'Can', 'Heighten', 'Even', 'Improve', 'Designed', 'More', 'Than', 'Kitchen', 'Counter', 'Chest', 'High', 'One', 'Side', 'Knee', 'Other', 'Ceiling', 'Has', 'Door', 'Nowhere', 'Effect', 'Disorienting', 'Invigorating', 'After', 'Four', 'Years', 'There', 'Filmmaker', 'Reported', 'Significant', 'Health', 'Benefits'];
+        
+        // Find significant phrases (skip common words and very short phrases)
+        const significantPhrases = keyPhrases.filter(phrase => 
+          !commonWords.includes(phrase) && phrase.length > 3
+        );
+        
+        if (significantPhrases.length > 0) {
+          // Take the first 1-2 significant phrases as the topic identifier
+          // This captures things like "social media", "pachuca style", "Gins and Arakawa", etc.
+          const topicPhrase = significantPhrases.slice(0, 2).join(' ').toLowerCase();
+          if (topicPhrase && topicPhrase.length > 3) {
+            topics.push(topicPhrase);
+          }
+        }
+      });
+    });
+    
+    // Remove duplicates and return
+    return [...new Set(topics)];
+  }
+
+  /**
    * Generate questions using Gemini API with stored prompts
    */
   async generateQuestions(request: QuestionGenerationRequest): Promise<QuestionGenerationResponse> {
     try {
       const { skill, domain, difficulty, count = 1 } = request;
       
+      // Import getRandomPromptIndex for tracking used prompts
+      const { getRandomPromptIndex } = await import('@/data/prompts');
+      
       // Generate questions using Gemini API
       const questions: GeneratedQuestion[] = [];
+      const usedPromptIndices = new Set<number>(); // Track used prompts to ensure variety
       
       for (let i = 0; i < count; i++) {
         try {
-          const prompt = await getPrompt(skill, domain, difficulty);
-          if (!prompt) {
+          // Extract topics from already generated questions to avoid repetition
+          const previousTopics = this.extractTopicsFromQuestions(questions);
+          if (previousTopics.length > 0) {
+            console.log(`🚫 Gemini: Avoiding topics used in previous questions: ${previousTopics.join(', ')}`);
+          }
+          
+          // Get a random prompt that hasn't been used in this batch
+          const promptResult = await getRandomPromptIndex(skill, domain, difficulty, usedPromptIndices);
+          if (!promptResult) {
             console.warn('⚠️ Gemini: no prompt found during generation loop', { skill, domain, difficulty, iteration: i });
             break;
           }
 
-          const question = await this.generateSingleQuestion(prompt, skill);
+          const { prompt, index } = promptResult;
+          usedPromptIndices.add(index); // Mark this prompt as used
+          
+          console.log(`🎲 Gemini: Using random prompt ${index + 1} of available prompts for question ${i + 1}`);
+
+          const question = await this.generateSingleQuestion(prompt, skill, previousTopics);
           if (question) {
             questions.push(question);
           }
@@ -84,12 +143,32 @@ class GeminiQuestionService {
   /**
    * Generate a single question using Gemini API
    */
-  private async generateSingleQuestion(prompt: string, skill: string): Promise<GeneratedQuestion | null> {
+  private async generateSingleQuestion(prompt: string, skill: string, previousTopics: string[] = []): Promise<GeneratedQuestion | null> {
     try {
+      // Append topic avoidance section if we have previous topics
+      let finalPrompt = prompt;
+      if (previousTopics.length > 0) {
+        const avoidanceSection = `\n\n═══════════════════════════════════════════════════════════════
+CRITICAL: AVOID THESE TOPICS
+═══════════════════════════════════════════════════════════════
+The following topics have already been used in previous questions in this quiz. You MUST NOT use these topics or any similar topics:
+
+${previousTopics.map(topic => `- ${topic}`).join('\n')}
+
+You MUST select a completely different topic from a different domain. If a previous question was about "${previousTopics[0]}", you MUST choose a topic that is:
+- From a completely different domain (e.g., if previous was social science, use technology, medicine, business, natural science, etc.)
+- Completely unrelated to the topics listed above
+- Not similar in subject matter, context, or examples
+
+This is CRITICAL for ensuring question variety.`;
+        finalPrompt = prompt + avoidanceSection;
+        console.log(`🚫 Gemini: Added topic avoidance section for ${previousTopics.length} previous topics`);
+      }
+      
       console.log('🔑 Using API Key:', GEMINI_API_KEY.substring(0, 10) + '...');
       console.log('📡 API URL:', GEMINI_API_URL);
-      console.log('📝 Prompt length:', prompt.length);
-      console.log('📝 Prompt preview:', prompt.substring(0, 200) + '...');
+      console.log('📝 Prompt length:', finalPrompt.length);
+      console.log('📝 Prompt preview:', finalPrompt.substring(0, 200) + '...');
       
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -99,7 +178,7 @@ class GeminiQuestionService {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: prompt
+              text: finalPrompt
             }]
           }],
           generationConfig: {

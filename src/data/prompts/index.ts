@@ -61,11 +61,12 @@ function generateKey(skill: string, domain: string, difficulty: string): string 
   return `${skill.toLowerCase().replace(/\s+/g, '-')}-${domain.toLowerCase().replace(/\s+/g, '-')}-${difficulty}`;
 }
 
-// Main function to get prompt (with caching)
+// Main function to get prompt (with random selection for variety)
 export async function getPrompt(
   skill: string, 
   domain: string, 
-  difficulty: 'easy' | 'medium' | 'hard'
+  difficulty: 'easy' | 'medium' | 'hard',
+  excludeUsedPrompts?: Set<number> // Optional: exclude specific prompt indices to avoid duplicates in same session
 ): Promise<string | null> {
   await initializePrompts();
   
@@ -76,11 +77,62 @@ export async function getPrompt(
     return null;
   }
 
-  const nextIndex = PROMPT_ROTATION_INDEX.get(key) ?? 0;
-  const prompt = promptList[nextIndex % promptList.length];
-  PROMPT_ROTATION_INDEX.set(key, (nextIndex + 1) % promptList.length);
+  // If only one prompt, return it
+  if (promptList.length === 1) {
+    return promptList[0].prompt;
+  }
 
-  return prompt.prompt;
+  // Random selection for variety
+  let availableIndices = promptList.map((_, index) => index);
+  
+  // Exclude already used prompts if provided
+  if (excludeUsedPrompts && excludeUsedPrompts.size > 0) {
+    availableIndices = availableIndices.filter(idx => !excludeUsedPrompts.has(idx));
+    
+    // If all prompts were used, reset and use all prompts
+    if (availableIndices.length === 0) {
+      availableIndices = promptList.map((_, index) => index);
+    }
+  }
+
+  // Randomly select from available prompts
+  const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+  const selectedPrompt = promptList[randomIndex];
+
+  return selectedPrompt.prompt;
+}
+
+// Get a random prompt index (useful for tracking which prompt was used)
+export async function getRandomPromptIndex(
+  skill: string, 
+  domain: string, 
+  difficulty: 'easy' | 'medium' | 'hard',
+  excludeUsedPrompts?: Set<number>
+): Promise<{ prompt: string; index: number } | null> {
+  await initializePrompts();
+  
+  const key = generateKey(skill, domain, difficulty);
+  const promptList = PROMPT_MAP.get(key);
+
+  if (!promptList || promptList.length === 0) {
+    return null;
+  }
+
+  let availableIndices = promptList.map((_, index) => index);
+  
+  if (excludeUsedPrompts && excludeUsedPrompts.size > 0) {
+    availableIndices = availableIndices.filter(idx => !excludeUsedPrompts.has(idx));
+    if (availableIndices.length === 0) {
+      availableIndices = promptList.map((_, index) => index);
+    }
+  }
+
+  const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+
+  return {
+    prompt: promptList[randomIndex].prompt,
+    index: randomIndex
+  };
 }
 
 // Check if prompt exists (O(1) lookup)
@@ -91,7 +143,15 @@ export async function hasPrompt(
 ): Promise<boolean> {
   await initializePrompts();
   const key = generateKey(skill, domain, difficulty);
-  return PROMPT_MAP.has(key);
+  const hasPrompt = PROMPT_MAP.has(key);
+  
+  if (!hasPrompt) {
+    console.warn(`⚠️ Prompt not found for: skill="${skill}", domain="${domain}", difficulty="${difficulty}"`);
+    console.warn(`   Generated key: "${key}"`);
+    console.warn(`   Available keys:`, Array.from(PROMPT_MAP.keys()).slice(0, 10).join(', '), '...');
+  }
+  
+  return hasPrompt;
 }
 
 function getAllPrompts(): QuestionPrompt[] {

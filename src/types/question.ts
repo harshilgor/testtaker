@@ -1,5 +1,12 @@
 // Unified question interfaces for all question types across the app
 
+export interface GraphBounds {
+  left: number;
+  right: number;
+  bottom: number;
+  top: number;
+}
+
 export interface BaseQuestion {
   id: string | number;
   content?: string;
@@ -9,6 +16,8 @@ export interface BaseQuestion {
   difficulty?: string;
   topic?: string;
   subject?: string;
+  graph_latex?: string | string[]; // LaTeX expression(s) for Desmos graph
+  graph_bounds?: GraphBounds; // Optional custom bounds for the graph
 }
 
 export interface QuizQuestion extends BaseQuestion {

@@ -113,6 +113,12 @@ export const useQuizTopicSelection = (
         });
       });
       const initialSolvedRawIds = new Set(excludeRawIds);
+      
+      console.log('🔍 Solved question IDs to exclude:', {
+        count: initialSolvedRawIds.size,
+        ids: Array.from(initialSolvedRawIds).slice(0, 10), // Show first 10
+        numericIds: Array.from(excludeNumericIds).slice(0, 10)
+      });
 
       // Generate questions based on difficulty selection
       let allQuestions: any[] = [];
@@ -243,6 +249,7 @@ export const useQuizTopicSelection = (
           assessment: question.assessment || 'SAT',
           question_prompt: question.question_prompt,
           chartData,
+          chart_data: chartData, // Also include as chart_data for compatibility
           imageUrl,
           imageAltText,
           hasImage,
@@ -260,17 +267,59 @@ export const useQuizTopicSelection = (
         return formatted;
       });
 
+      // Filter out already solved questions and duplicates
+      // BUT: Don't filter out questions that were just generated (they have metadata.generated = true)
       const uniqueFormattedQuestions = formattedQuestions.filter((question, index, array) => {
         const idStr = String(question.id);
-        if (initialSolvedRawIds.has(idStr)) {
+        
+        // Skip if question ID is invalid
+        if (!question.id || idStr === 'undefined' || idStr === 'null' || idStr === '') {
+          console.warn(`⚠️ Question ${index + 1} has invalid ID:`, question.id);
           return false;
         }
-        return array.findIndex(q => String(q.id) === idStr) === index;
+        
+        // IMPORTANT: Don't filter out newly generated questions - they're fresh!
+        const isNewlyGenerated = question.metadata?.generated === true || 
+                                 question.metadata?.source === 'openai-gpt' ||
+                                 question.metadata?.source === 'gemini-ai' ||
+                                 idStr.startsWith('generated_');
+        
+        if (isNewlyGenerated) {
+          // Newly generated questions should always be included (they're fresh)
+          console.log(`✅ Including newly generated question ${index + 1} (ID: ${idStr})`);
+          // Still check for duplicates among newly generated questions
+          const firstIndex = array.findIndex(q => String(q.id) === idStr);
+          return firstIndex === index;
+        }
+        
+        // For database questions, check if already solved
+        if (initialSolvedRawIds.has(idStr)) {
+          console.log(`⏭️ Skipping question ${index + 1} (ID: ${idStr}) - already solved`);
+          return false;
+        }
+        
+        // Keep only first occurrence of each ID (remove duplicates)
+        const firstIndex = array.findIndex(q => String(q.id) === idStr);
+        if (firstIndex !== index) {
+          console.log(`⏭️ Skipping question ${index + 1} (ID: ${idStr}) - duplicate of question ${firstIndex + 1}`);
+          return false;
+        }
+        
+        return true;
       });
 
       console.log('=== INFINITE QUIZ GENERATION COMPLETE ===');
+      console.log(`📊 Formatted questions: ${formattedQuestions.length}`);
+      console.log(`📊 Excluded (solved/duplicates): ${formattedQuestions.length - uniqueFormattedQuestions.length}`);
       console.log(`🎉 Successfully generated ${uniqueFormattedQuestions.length} questions`);
       console.log(`📊 Final question count: ${uniqueFormattedQuestions.length} (requested: ${useDifficultySelection ? getTotalQuestions() : questionCount})`);
+      
+      // Debug: Log IDs that were excluded
+      if (uniqueFormattedQuestions.length === 0 && formattedQuestions.length > 0) {
+        console.error('❌ All questions were filtered out!');
+        console.error('📋 Solved question IDs:', Array.from(initialSolvedRawIds));
+        console.error('📋 Generated question IDs:', formattedQuestions.map(q => String(q.id)));
+      }
       
       return uniqueFormattedQuestions;
     } catch (error) {

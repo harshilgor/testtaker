@@ -283,10 +283,16 @@ const UnifiedQuizCreation: React.FC<UnifiedQuizCreationProps> = ({
           }
         }
         
-        alert('No questions available for the selected skill. Please try a different skill or check your internet connection.');
+        alert('No questions available for the selected skill. The system will attempt to generate questions using AI, but this may take a moment. Please try again or select a different topic.');
         setIsAutoStarting(false);
       } else {
-        alert('No questions available for selected topics');
+        console.error('❌ No questions loaded. Debug info:', {
+          selectedTopics,
+          topics: topics.map(t => ({ id: t.id, skill: t.skill, domain: t.domain })),
+          subject: selectedSubject,
+          questionCount: questionsToUse
+        });
+        alert(`No questions available for selected topics. This could mean:\n\n1. No questions exist in the database for these topics\n2. AI generation is not available for this skill/domain combination\n3. There was an error generating questions\n\nPlease check the browser console for more details or try selecting different topics.`);
       }
       return;
     }

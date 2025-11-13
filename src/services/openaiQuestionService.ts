@@ -52,24 +52,83 @@ export interface QuestionGenerationResponse {
 
 class OpenAIQuestionService {
   /**
+   * Extract topics from already generated questions by parsing passage text
+   */
+  private extractTopicsFromQuestions(questions: GeneratedQuestion[]): string[] {
+    const topics: string[] = [];
+    
+    questions.forEach(q => {
+      const passage = q.passage || '';
+      if (!passage) return;
+      
+      // Extract main topic/subject from passage
+      // Strategy: Look for key phrases in the first 1-2 sentences (usually contain the main subject)
+      const sentences = passage.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const relevantSentences = sentences.slice(0, 2); // First 1-2 sentences
+      
+      relevantSentences.forEach(sentence => {
+        const trimmed = sentence.trim();
+        
+        // Extract capitalized noun phrases (likely to be the main topic)
+        // Pattern: "The X", "X is", "X has", "X are", "X was", etc.
+        const keyPhrases = trimmed.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+        const commonWords = ['The', 'This', 'In', 'During', 'According', 'Some', 'Many', 'Most', 'All', 'These', 'Those', 'However', 'Nevertheless', 'Additionally', 'Furthermore', 'Moreover', 'While', 'When', 'Where', 'What', 'Which', 'Who', 'How', 'Why', 'Believing', 'That', 'Living', 'Can', 'Heighten', 'Even', 'Improve', 'Designed', 'More', 'Than', 'Kitchen', 'Counter', 'Chest', 'High', 'One', 'Side', 'Knee', 'Other', 'Ceiling', 'Has', 'Door', 'Nowhere', 'Effect', 'Disorienting', 'Invigorating', 'After', 'Four', 'Years', 'There', 'Filmmaker', 'Reported', 'Significant', 'Health', 'Benefits'];
+        
+        // Find significant phrases (skip common words and very short phrases)
+        const significantPhrases = keyPhrases.filter(phrase => 
+          !commonWords.includes(phrase) && phrase.length > 3
+        );
+        
+        if (significantPhrases.length > 0) {
+          // Take the first 1-2 significant phrases as the topic identifier
+          // This captures things like "social media", "pachuca style", "Gins and Arakawa", etc.
+          const topicPhrase = significantPhrases.slice(0, 2).join(' ').toLowerCase();
+          if (topicPhrase && topicPhrase.length > 3) {
+            topics.push(topicPhrase);
+          }
+        }
+      });
+    });
+    
+    // Remove duplicates and return
+    return [...new Set(topics)];
+  }
+
+  /**
    * Generate questions using OpenAI GPT API with stored prompts
    */
   async generateQuestions(request: QuestionGenerationRequest): Promise<QuestionGenerationResponse> {
     try {
       const { skill, domain, difficulty, count = 1 } = request;
       
+      // Import getRandomPromptIndex for tracking used prompts
+      const { getRandomPromptIndex } = await import('@/data/prompts');
+      
       // Generate questions using OpenAI API
       const questions: GeneratedQuestion[] = [];
+      const usedPromptIndices = new Set<number>(); // Track used prompts to ensure variety
       
       for (let i = 0; i < count; i++) {
         try {
-          const prompt = await getPrompt(skill, domain, difficulty);
-          if (!prompt) {
+          // Extract topics from already generated questions to avoid repetition
+          const previousTopics = this.extractTopicsFromQuestions(questions);
+          if (previousTopics.length > 0) {
+            console.log(`🚫 Avoiding topics used in previous questions: ${previousTopics.join(', ')}`);
+          }
+          
+          // Get a random prompt that hasn't been used in this batch
+          const promptResult = await getRandomPromptIndex(skill, domain, difficulty, usedPromptIndices);
+          if (!promptResult) {
             console.warn('⚠️ No prompt found during generation loop', { skill, domain, difficulty, iteration: i });
             break;
           }
 
-          const question = await this.generateSingleQuestion(prompt, skill);
+          const { prompt, index } = promptResult;
+          usedPromptIndices.add(index); // Mark this prompt as used
+          
+          console.log(`🎲 Using random prompt ${index + 1} of available prompts for question ${i + 1}`);
+
+          const question = await this.generateSingleQuestion(prompt, skill, previousTopics);
           if (question) {
             questions.push(question);
           }
@@ -98,12 +157,32 @@ class OpenAIQuestionService {
   /**
    * Generate a single question using OpenAI API
    */
-  private async generateSingleQuestion(prompt: string, skill: string): Promise<GeneratedQuestion | null> {
+  private async generateSingleQuestion(prompt: string, skill: string, previousTopics: string[] = []): Promise<GeneratedQuestion | null> {
     try {
+      // Append topic avoidance section if we have previous topics
+      let finalPrompt = prompt;
+      if (previousTopics.length > 0) {
+        const avoidanceSection = `\n\n═══════════════════════════════════════════════════════════════
+CRITICAL: AVOID THESE TOPICS
+═══════════════════════════════════════════════════════════════
+The following topics have already been used in previous questions in this quiz. You MUST NOT use these topics or any similar topics:
+
+${previousTopics.map(topic => `- ${topic}`).join('\n')}
+
+You MUST select a completely different topic from a different domain. If a previous question was about "${previousTopics[0]}", you MUST choose a topic that is:
+- From a completely different domain (e.g., if previous was social science, use technology, medicine, business, natural science, etc.)
+- Completely unrelated to the topics listed above
+- Not similar in subject matter, context, or examples
+
+This is CRITICAL for ensuring question variety.`;
+        finalPrompt = prompt + avoidanceSection;
+        console.log(`🚫 Added topic avoidance section for ${previousTopics.length} previous topics`);
+      }
+      
       console.log('🔑 Using OpenAI API Key:', OPENAI_API_KEY.substring(0, 10) + '...');
       console.log('📡 API URL:', OPENAI_API_URL);
-      console.log('📝 Prompt length:', prompt.length);
-      console.log('📝 Prompt preview:', prompt.substring(0, 200) + '...');
+      console.log('📝 Prompt length:', finalPrompt.length);
+      console.log('📝 Prompt preview:', finalPrompt.substring(0, 200) + '...');
       
       const response = await fetch(OPENAI_API_URL, {
         method: 'POST',
@@ -120,7 +199,7 @@ class OpenAIQuestionService {
             },
             {
               role: 'user',
-              content: prompt
+              content: finalPrompt
             }
           ],
           temperature: 0.7,
@@ -155,8 +234,21 @@ class OpenAIQuestionService {
       try {
         const parsedQuestion = JSON.parse(content);
         console.log('✅ Parsed question:', parsedQuestion);
+        console.log('🔍 Question structure analysis:', {
+          hasQuestion: !!parsedQuestion.question,
+          hasQuestionStem: !!parsedQuestion.question?.stem,
+          hasOptions: !!parsedQuestion.options,
+          hasQuestionOptions: !!parsedQuestion.question?.options,
+          hasSolution: !!parsedQuestion.solution,
+          hasCorrectAnswer: !!parsedQuestion.correct_answer,
+          hasSolutionCorrectAnswer: !!parsedQuestion.solution?.correctAnswerKey,
+          topLevelKeys: Object.keys(parsedQuestion),
+          questionKeys: parsedQuestion.question ? Object.keys(parsedQuestion.question) : [],
+          solutionKeys: parsedQuestion.solution ? Object.keys(parsedQuestion.solution) : []
+        });
         const cleaned = this.validateAndCleanQuestion(parsedQuestion);
         if (!cleaned) {
+          console.error('❌ Question validation failed. Raw question structure:', JSON.stringify(parsedQuestion, null, 2));
           return null;
         }
 
@@ -186,9 +278,20 @@ class OpenAIQuestionService {
    */
   private validateAndCleanQuestion(question: any): GeneratedQuestion | null {
     try {
+      console.log('🔍 Validating question structure:', {
+        hasQuestion: !!question.question,
+        hasQuestionStem: !!question.question?.stem,
+        hasStem: !!question.stem,
+        hasOptions: !!question.options,
+        hasQuestionOptions: !!question.question?.options,
+        questionType: typeof question.question,
+        optionsType: typeof question.options
+      });
+      
       // Validate required fields
       // Math/graph-style schema: nested question object with stem + options array or object
       if (question?.question?.stem && (Array.isArray(question?.question?.options) || typeof question?.question?.options === 'object')) {
+        console.log('✅ Detected math/graph-style question format');
         const rawOptions = question.question.options;
         const optionEntries: Array<{ key: string; text: string }> = Array.isArray(rawOptions)
           ? rawOptions
@@ -266,46 +369,148 @@ class OpenAIQuestionService {
         };
       }
 
-      // Default reading-style schema
-      if (!question.passage || !question.question || !question.options || !question.correct_answer || !question.rationales) {
-        console.warn('⚠️ Generated question missing expected fields', question);
+      // Default reading-style schema - but be more flexible
+      console.log('🔍 Attempting to extract fields from default/reading-style format');
+      
+      // Try to extract question text from various possible locations
+      const questionText = question.question || 
+                          question.stem || 
+                          question.question_text || 
+                          question.questionText ||
+                          (typeof question.question === 'string' ? question.question : '') ||
+                          '';
+      const passageText = question.passage || 
+                         question.context || 
+                         question.passage_text || 
+                         question.passageText ||
+                         '';
+      
+      console.log('📝 Extracted question text:', questionText ? questionText.substring(0, 100) + '...' : 'NONE');
+      console.log('📝 Extracted passage text:', passageText ? passageText.substring(0, 100) + '...' : 'NONE');
+      
+      // Try to extract options from various formats
+      let extractedOptions: Record<string, string> = {};
+      
+      // Try question.options first (standard format)
+      if (question.options && typeof question.options === 'object' && !Array.isArray(question.options)) {
+        console.log('✅ Found options as object');
+        extractedOptions = question.options;
+      } 
+      // Try question.question.options (nested format)
+      else if (question.question?.options && typeof question.question.options === 'object' && !Array.isArray(question.question.options)) {
+        console.log('✅ Found options in question.question.options');
+        extractedOptions = question.question.options;
+      }
+      // Try array format
+      else if (Array.isArray(question.options)) {
+        console.log('✅ Found options as array');
+        question.options.forEach((opt: any, idx: number) => {
+          const key = opt?.key || opt?.label || opt?.option || ['A', 'B', 'C', 'D'][idx] || '';
+          const text = opt?.text || opt?.value || opt?.content || (typeof opt === 'string' ? opt : '') || '';
+          if (key && text) {
+            extractedOptions[key.toUpperCase()] = text;
+          }
+        });
+      }
+      // Try question.question.options as array
+      else if (Array.isArray(question.question?.options)) {
+        console.log('✅ Found options in question.question.options as array');
+        question.question.options.forEach((opt: any, idx: number) => {
+          const key = opt?.key || opt?.label || opt?.option || ['A', 'B', 'C', 'D'][idx] || '';
+          const text = opt?.text || opt?.value || opt?.content || (typeof opt === 'string' ? opt : '') || '';
+          if (key && text) {
+            extractedOptions[key.toUpperCase()] = text;
+          }
+        });
+      }
+      
+      console.log('📋 Extracted options:', Object.keys(extractedOptions), extractedOptions);
+      
+      // Validate we have the minimum required fields
+      if (!questionText || Object.keys(extractedOptions).length < 4) {
+        console.error('❌ Generated question missing expected fields', {
+          hasQuestionText: !!questionText,
+          questionTextLength: questionText?.length || 0,
+          hasPassage: !!passageText,
+          optionsCount: Object.keys(extractedOptions).length,
+          extractedOptionsKeys: Object.keys(extractedOptions),
+          questionStructure: Object.keys(question),
+          questionQuestionKeys: question.question ? Object.keys(question.question) : [],
+          fullQuestion: JSON.stringify(question, null, 2)
+        });
         throw new Error('Missing required fields in generated question');
       }
 
-      // Validate options
-      const options = question.options;
-      if (!options.A || !options.B || !options.C || !options.D) {
+      // Ensure we have A, B, C, D options
+      if (!extractedOptions.A || !extractedOptions.B || !extractedOptions.C || !extractedOptions.D) {
+        console.warn('⚠️ Generated question missing some options', {
+          hasA: !!extractedOptions.A,
+          hasB: !!extractedOptions.B,
+          hasC: !!extractedOptions.C,
+          hasD: !!extractedOptions.D,
+          availableOptions: Object.keys(extractedOptions)
+        });
         throw new Error('Missing required options A, B, C, or D');
       }
 
-      // Validate correct answer
-      if (!['A', 'B', 'C', 'D'].includes(question.correct_answer)) {
+      // Validate correct answer - try multiple possible locations
+      let correctAnswer = question.correct_answer || 
+                         question.correctAnswer || 
+                         question.solution?.correctAnswerKey ||
+                         question.solution?.correct_answer;
+      
+      if (typeof correctAnswer === 'number') {
+        correctAnswer = ['A', 'B', 'C', 'D'][correctAnswer] || '';
+      }
+      if (typeof correctAnswer === 'string') {
+        correctAnswer = correctAnswer.trim().toUpperCase();
+      }
+      
+      if (!['A', 'B', 'C', 'D'].includes(correctAnswer as string)) {
+        console.warn('⚠️ Invalid correct answer format', {
+          provided: correctAnswer,
+          question: question
+        });
         throw new Error('Invalid correct answer format');
       }
 
-      // Validate rationales
-      const rationales = question.rationales;
-      if (!rationales.correct || !rationales.A || !rationales.B || !rationales.C || !rationales.D) {
-        throw new Error('Missing required rationales');
+      // Validate rationales - be flexible about structure
+      const rationales = question.rationales || question.solution?.rationale || {};
+      const hasAllRationales = rationales.correct && 
+                               (rationales.A || rationales['A']) && 
+                               (rationales.B || rationales['B']) && 
+                               (rationales.C || rationales['C']) && 
+                               (rationales.D || rationales['D']);
+      
+      if (!hasAllRationales) {
+        console.warn('⚠️ Missing some rationales, using defaults', {
+          hasCorrect: !!rationales.correct,
+          hasA: !!(rationales.A || rationales['A']),
+          hasB: !!(rationales.B || rationales['B']),
+          hasC: !!(rationales.C || rationales['C']),
+          hasD: !!(rationales.D || rationales['D'])
+        });
+        // Don't throw - we can work with partial rationales
       }
 
       return {
-        passage: typeof question.passage === 'string' ? cleanMathText(question.passage) : undefined,
-        question: cleanMathText(question.question),
+        passage: passageText ? cleanMathText(passageText) : undefined,
+        question: cleanMathText(questionText),
         options: {
-          A: cleanMathText(options.A),
-          B: cleanMathText(options.B),
-          C: cleanMathText(options.C),
-          D: cleanMathText(options.D)
+          A: cleanMathText(extractedOptions.A),
+          B: cleanMathText(extractedOptions.B),
+          C: cleanMathText(extractedOptions.C),
+          D: cleanMathText(extractedOptions.D)
         },
-        correct_answer: question.correct_answer as 'A' | 'B' | 'C' | 'D',
+        correct_answer: correctAnswer as 'A' | 'B' | 'C' | 'D',
         rationales: {
-          correct: cleanMathText(rationales.correct),
-          A: cleanMathText(rationales.A),
-          B: cleanMathText(rationales.B),
-          C: cleanMathText(rationales.C),
-          D: cleanMathText(rationales.D)
-        }
+          correct: cleanMathText(rationales.correct || rationales['correct'] || ''),
+          A: cleanMathText(rationales.A || rationales['A'] || ''),
+          B: cleanMathText(rationales.B || rationales['B'] || ''),
+          C: cleanMathText(rationales.C || rationales['C'] || ''),
+          D: cleanMathText(rationales.D || rationales['D'] || '')
+        },
+        chartData: question.chartData || question.chart_data
       };
 
     } catch (error) {

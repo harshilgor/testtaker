@@ -1,8 +1,10 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { QuestionPanelProps, BaseQuestion } from '@/types/question';
 import QuestionImage from '../QuestionImage';
+import DesmosGraph from './DesmosGraph';
 import { Eye, EyeOff } from 'lucide-react';
+import { chartDataToDesmosLatex, getGraphBoundsFromChartData } from '@/utils/chartToDesmos';
 
 interface TopNavBarProps {
   elapsedTime: number;
@@ -111,12 +113,47 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
   // Handle different question content formats
   const questionText = 'question' in question ? (question as any).question : question.content || '';
   const questionPrompt = 'question_prompt' in question ? (question as any).question_prompt : undefined;
-  const passageText = question.content || question.question_text || '';
+  // For reading comprehension: passage is typically in 'passage' field, question is in 'question' or 'question_prompt'
+  const passageText = (question as any).passage || (question.content && question.content !== questionText && question.content !== questionPrompt ? question.content : '') || '';
 
   // Generate image URL if hasImage is true but imageUrl is not provided
   const finalImageUrl = question.imageUrl || (question.hasImage && question.id ? 
     `https://kpcprhkubqhslazlhgad.supabase.co/storage/v1/object/public/question-images/${question.id}.png` : 
     null);
+
+  // Convert chart_data to graph_latex if graph_latex doesn't exist
+  const graphLatex = useMemo(() => {
+    // If graph_latex is already provided, use it
+    if (question.graph_latex) {
+      return question.graph_latex;
+    }
+    
+    // Otherwise, try to convert chart_data to Desmos LaTeX
+    const chartData = (question as any).chartData || (question as any).chart_data;
+    if (chartData) {
+      const latex = chartDataToDesmosLatex(chartData);
+      if (latex) {
+        console.log('✅ Converted chart_data to Desmos LaTeX:', latex);
+        return latex;
+      }
+    }
+    
+    return null;
+  }, [question]);
+
+  // Get graph bounds from chart_data if not provided
+  const graphBounds = useMemo(() => {
+    if (question.graph_bounds) {
+      return question.graph_bounds;
+    }
+    
+    const chartData = (question as any).chartData || (question as any).chart_data;
+    if (chartData) {
+      return getGraphBoundsFromChartData(chartData);
+    }
+    
+    return undefined;
+  }, [question]);
 
   return (
     <div className={`h-full ${isMobile ? 'p-2' : 'p-3'} flex flex-col`}>
@@ -135,27 +172,50 @@ const UnifiedQuestionPanel = <T extends BaseQuestion>({
           )}
           {/* Question Content */}
           <div className="p-6 flex-1 overflow-y-auto">
-            {/* Passage Text (for Reading and Writing questions) */}
-            {passageText && passageText !== questionText && (
+            {/* Passage Text (for Reading and Writing questions) - always first */}
+            {passageText && passageText !== questionText && passageText !== questionPrompt && (
               <div className={`${textSizeClass} leading-relaxed text-gray-700 p-4 bg-gray-50 rounded-lg mb-6`}>
                 {passageText}
               </div>
             )}
 
-            {/* Question Text */}
-            <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-6`}>
-              {questionText}
-            </div>
+            {/* Question Text - displayed below passage without grey box */}
+            {questionText && questionText !== questionPrompt && (
+              <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-6`}>
+                {questionText}
+              </div>
+            )}
 
-            {/* Question Prompt (fallback for other question types) */}
-            {showPrompt && questionPrompt && questionPrompt !== questionText && (
-              <div className={`${textSizeClass} leading-relaxed text-gray-600 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-400 mb-6`}>
+            {/* Question Prompt - displayed below passage and question text, without grey box */}
+            {showPrompt && questionPrompt && (
+              <div className={`${textSizeClass} leading-relaxed text-gray-900 mb-6`}>
                 {questionPrompt}
               </div>
             )}
 
-            {/* Question Image */}
-            {finalImageUrl && (
+            {/* Desmos Graph (for math questions with graph_latex or chart_data) */}
+            {graphLatex && (
+              <div className="my-4 flex flex-col items-center">
+                <DesmosGraph
+                  latex={graphLatex}
+                  width={isMobile ? 280 : 350}
+                  height={isMobile ? 280 : 350}
+                  graphBounds={graphBounds}
+                  interactive={true}
+                  allowPan={true}
+                  allowZoom={true}
+                  showGrid={true}
+                  showXAxis={true}
+                  showYAxis={true}
+                />
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Drag to pan • Scroll to zoom
+                </p>
+              </div>
+            )}
+
+            {/* Question Image - only show if we don't have a Desmos graph */}
+            {finalImageUrl && !graphLatex && (
               <div className="mb-6">
                 <QuestionImage 
                   imageUrl={finalImageUrl} 

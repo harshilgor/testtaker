@@ -6,6 +6,7 @@ import { ArrowLeft, RotateCcw, Trophy, Clock, Target, BookOpen, TrendingUp, Tren
 import { Subject } from '@/types/common';
 import { QuizQuestion } from '@/types/question';
 import CollapsibleQuestionReview from '@/components/CollapsibleQuestionReview';
+import { calculatePoints, calculateXP } from '@/services/pointsService';
 
 interface QuizSummaryPageProps {
   questions: QuizQuestion[];
@@ -35,35 +36,82 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
   const incorrectAnswers = questions.length - correctAnswers;
   const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
   
-  // Calculate points based on difficulty (3/6/9 points per correct answer)
-  const calculatePointsFromQuestions = (questions: any[], answers: any[]) => {
-    let totalPoints = 0;
+  // Calculate points and XP using the service functions
+  const pointsEarned = questions.reduce((total, question, index) => {
+    const userAnswer = answers[index];
+    const correctAnswer = question.correctAnswer ?? (question as any).correct_answer;
+    const isCorrect = userAnswer === correctAnswer;
+    const difficulty = question.difficulty || 'medium';
+    return total + calculatePoints(difficulty, isCorrect);
+  }, 0);
+
+  const xpEarned = questions.reduce((total, question, index) => {
+    const userAnswer = answers[index];
+    const correctAnswer = question.correctAnswer ?? (question as any).correct_answer;
+    const isCorrect = userAnswer === correctAnswer;
+    const difficulty = question.difficulty || 'medium';
+    return total + calculateXP(difficulty, isCorrect);
+  }, 0);
+
+  // Calculate skill breakdown
+  const skillBreakdown = React.useMemo(() => {
+    const skillMap = new Map<string, {
+      skill: string;
+      total: number;
+      correct: number;
+      easy: { total: number; correct: number; points: number; xp: number };
+      medium: { total: number; correct: number; points: number; xp: number };
+      hard: { total: number; correct: number; points: number; xp: number };
+      totalPoints: number;
+      totalXP: number;
+    }>();
+
     questions.forEach((question, index) => {
       const userAnswer = answers[index];
-      const isCorrect = userAnswer === question.correctAnswer;
+      const correctAnswer = question.correctAnswer ?? (question as any).correct_answer;
+      const isCorrect = userAnswer === correctAnswer;
+      const difficulty = (question.difficulty || 'medium').toLowerCase() as 'easy' | 'medium' | 'hard';
+      const skill = (question as any).skill || question.topic || (question as any).domain || 'General';
       
+      if (!skillMap.has(skill)) {
+        skillMap.set(skill, {
+          skill,
+          total: 0,
+          correct: 0,
+          easy: { total: 0, correct: 0, points: 0, xp: 0 },
+          medium: { total: 0, correct: 0, points: 0, xp: 0 },
+          hard: { total: 0, correct: 0, points: 0, xp: 0 },
+          totalPoints: 0,
+          totalXP: 0
+        });
+      }
+
+      const skillData = skillMap.get(skill)!;
+      skillData.total++;
       if (isCorrect) {
-        const difficulty = question.difficulty || 'medium';
-        switch (difficulty.toLowerCase()) {
-          case 'easy':
-            totalPoints += 3;
-            break;
-          case 'medium':
-            totalPoints += 6;
-            break;
-          case 'hard':
-            totalPoints += 9;
-            break;
-          default:
-            totalPoints += 6; // Default to medium
-        }
+        skillData.correct++;
+      }
+
+      // Update difficulty-specific stats
+      const diffData = skillData[difficulty];
+      diffData.total++;
+      if (isCorrect) {
+        diffData.correct++;
+        const points = calculatePoints(difficulty, true);
+        const xp = calculateXP(difficulty, true);
+        diffData.points += points;
+        diffData.xp += xp;
+        skillData.totalPoints += points;
+        skillData.totalXP += xp;
+      } else {
+        const xp = calculateXP(difficulty, false);
+        diffData.xp += xp;
+        skillData.totalXP += xp;
       }
     });
-    return totalPoints;
-  };
 
-  const pointsEarned = calculatePointsFromQuestions(questions, answers);
-  const xpEarned = calculateXPFromQuestions(questions, answers);
+    return Array.from(skillMap.values()).sort((a, b) => b.total - a.total);
+  }, [questions, answers]);
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -111,124 +159,141 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
   const avgTimePerQuestion = Math.round(timeElapsed / questions.length);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Button
             onClick={onBackToDashboard}
             variant="ghost"
-            className="mb-4 text-gray-600 hover:text-gray-800"
+            size="sm"
+            className="text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <Trophy className="h-12 w-12 text-yellow-500 mr-3" />
-              <h1 className="text-3xl font-bold text-gray-900">Quiz Complete!</h1>
-            </div>
-            <p className="text-gray-600">Here's how you performed</p>
-          </div>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-1">Quiz Complete</h1>
+          <p className="text-gray-600 text-sm">Review your performance and track your progress</p>
         </div>
 
-        {/* Score Overview */}
-        <Card className="mb-8">
-          <CardContent className="p-8">
-            <div className="text-center mb-8">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor(scorePercentage)}`}>
+        {/* Summary Stats Card */}
+        <Card className="rounded-2xl border border-gray-200 shadow-sm mb-6">
+          <CardContent className="p-6">
+            <div className="text-center mb-6">
+              <div className={`text-5xl font-semibold mb-2 ${getScoreColor(scorePercentage)}`}>
                 {scorePercentage}%
               </div>
-              <p className="text-xl text-gray-600 mb-4">{getScoreMessage(scorePercentage)}</p>
-              <div className="flex justify-center items-center space-x-8 text-gray-600">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2" />
-                  <span>Time: {formatTime(timeElapsed)}</span>
+              <p className="text-sm text-gray-600 mb-4">{getScoreMessage(scorePercentage)}</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-semibold text-green-600 mb-1">{correctAnswers}</div>
+                <div className="text-xs text-gray-600">Correct</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-semibold text-red-600 mb-1">{incorrectAnswers}</div>
+                <div className="text-xs text-gray-600">Incorrect</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-semibold text-blue-600 mb-1">{formatTime(timeElapsed)}</div>
+                <div className="text-xs text-gray-600">Time</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-semibold text-purple-600 mb-1">{pointsEarned}</div>
+                <div className="text-xs text-gray-600">Points</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-3xl font-semibold mb-1 ${xpEarned >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {xpEarned >= 0 ? '+' : ''}{xpEarned}
                 </div>
-                <div className="flex items-center">
-                  <Target className="h-5 w-5 mr-2" />
-                  <span>{correctAnswers}/{questions.length} Correct</span>
-                </div>
-                <div className="flex items-center">
-                  <Award className="h-5 w-5 mr-2 text-yellow-500" />
-                  <span className="font-semibold">{pointsEarned} Points</span>
-                </div>
-                <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
-                  <span className={`font-semibold ${xpEarned >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {xpEarned >= 0 ? '+' : ''}{xpEarned} XP
-                  </span>
-                </div>
+                <div className="text-xs text-gray-600">XP</div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="grid md:grid-cols-5 gap-6">
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">{correctAnswers}</div>
-                  <div className="text-green-700 font-medium">Correct Answers</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-red-50 border-red-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-red-600 mb-2">{incorrectAnswers}</div>
-                  <div className="text-red-700 font-medium">Incorrect Answers</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">{formatTime(timeElapsed)}</div>
-                  <div className="text-blue-700 font-medium">Time Taken</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-purple-50 border-purple-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-purple-600 mb-2">{pointsEarned}</div>
-                  <div className="text-purple-700 font-medium">Points Earned</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-6 text-center">
-                  <div className={`text-3xl font-bold mb-2 ${xpEarned >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {xpEarned >= 0 ? '+' : ''}{xpEarned}
+        {/* Skill Performance Breakdown */}
+        <Card className="rounded-2xl border border-gray-200 shadow-sm mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-gray-900">Skill Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              {skillBreakdown.map((skill, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-xl bg-white border border-gray-200"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{skill.skill}</h3>
+                      <p className="text-sm text-gray-600">
+                        {skill.correct}/{skill.total} correct
+                      </p>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="flex items-center gap-1.5 text-purple-600 font-semibold mb-1">
+                        <Award className="h-3.5 w-3.5" />
+                        <span className="text-sm">{skill.totalPoints}</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 font-semibold text-sm ${skill.totalXP >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        <span>{skill.totalXP >= 0 ? '+' : ''}{skill.totalXP}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={`font-medium ${xpEarned >= 0 ? 'text-blue-700' : 'text-red-700'}`}>XP Earned</div>
-                </CardContent>
-              </Card>
+                  
+                  {/* Difficulty Breakdown */}
+                  <div className="flex gap-4 pt-3 border-t border-gray-100">
+                    {(['easy', 'medium', 'hard'] as const).map((diff) => {
+                      const diffData = skill[diff];
+                      if (diffData.total === 0) return null;
+                      return (
+                        <div key={diff} className="flex-1">
+                          <div className={`text-xs font-medium mb-1 ${
+                            diff === 'easy' ? 'text-green-700' :
+                            diff === 'medium' ? 'text-yellow-700' :
+                            'text-red-700'
+                          }`}>
+                            {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                          </div>
+                          <div className="text-sm font-semibold text-gray-900 mb-0.5">
+                            {diffData.correct}/{diffData.total}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {diffData.points} pts • {diffData.xp >= 0 ? '+' : ''}{diffData.xp} XP
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         {/* Topic Performance */}
         {topics.length > 0 && (
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center mb-6">
-                <BookOpen className="h-6 w-6 text-gray-600 mr-3" />
-                <h2 className="text-xl font-semibold text-gray-900">Topic Performance</h2>
-              </div>
-              
-              <div className="space-y-4">
+          <Card className="rounded-2xl border border-gray-200 shadow-sm mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold text-gray-900">Topic Performance</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
                 {Object.entries(topicPerformance).map(([topic, performance]) => (
-                  <div key={topic} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{topic}</h3>
-                      <div className="flex items-center mt-1">
-                        <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${performance.percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-600 min-w-0">
-                          {performance.correct}/{performance.total} ({performance.percentage}%)
-                        </span>
-                      </div>
+                  <div key={topic} className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-sm text-gray-900">{topic}</h3>
+                      <span className="text-sm font-semibold text-gray-700">
+                        {performance.correct}/{performance.total}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div 
+                        className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${performance.percentage}%` }}
+                      ></div>
                     </div>
                   </div>
                 ))}
@@ -238,61 +303,63 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
         )}
 
         {/* Performance Highlights */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Performance Highlights</h2>
-            <div className="space-y-3">
+        <Card className="rounded-2xl border border-gray-200 shadow-sm mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold text-gray-900">Highlights</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
               {strongestTopic && (
-                <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-green-800 font-medium">
-                      Your strongest topic was {strongestTopic[0]}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50/50 border border-green-200/50">
+                  <TrendingUp className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-900">
+                      Strongest: {strongestTopic[0]}
                     </p>
-                    <p className="text-green-700 text-sm">
-                      {strongestTopic[1].correct}/{strongestTopic[1].total} correct ({strongestTopic[1].percentage}% accuracy)
+                    <p className="text-xs text-green-700">
+                      {strongestTopic[1].correct}/{strongestTopic[1].total} correct ({strongestTopic[1].percentage}%)
                     </p>
                   </div>
                 </div>
               )}
               
               {weakestTopic && weakestTopic[1].percentage < 70 && (
-                <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <TrendingDown className="h-5 w-5 text-red-600 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-red-800 font-medium">
-                      You struggled most in {weakestTopic[0]}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50/50 border border-red-200/50">
+                  <TrendingDown className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-900">
+                      Needs improvement: {weakestTopic[0]}
                     </p>
-                    <p className="text-red-700 text-sm">
-                      {weakestTopic[1].correct}/{weakestTopic[1].total} correct ({weakestTopic[1].percentage}% accuracy)
+                    <p className="text-xs text-red-700">
+                      {weakestTopic[1].correct}/{weakestTopic[1].total} correct ({weakestTopic[1].percentage}%)
                     </p>
                   </div>
                 </div>
               )}
 
               {avgTimePerQuestion < 30 && scorePercentage < 70 && (
-                <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <p className="text-yellow-800 font-medium">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50/50 border border-yellow-200/50">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-yellow-900">
                       Consider slowing down
                     </p>
-                    <p className="text-yellow-700 text-sm">
-                      You averaged {avgTimePerQuestion}s per question. Taking more time might improve accuracy.
+                    <p className="text-xs text-yellow-700">
+                      Averaged {avgTimePerQuestion}s per question
                     </p>
                   </div>
                 </div>
               )}
 
               {scorePercentage >= 90 && (
-                <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <Trophy className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-blue-800 font-medium">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50/50 border border-blue-200/50">
+                  <Trophy className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-blue-900">
                       Excellent performance!
                     </p>
-                    <p className="text-blue-700 text-sm">
-                      You demonstrated mastery across all topics. Consider challenging yourself with harder questions.
+                    <p className="text-xs text-blue-700">
+                      Consider challenging yourself with harder questions
                     </p>
                   </div>
                 </div>
@@ -305,21 +372,19 @@ const QuizSummaryPage: React.FC<QuizSummaryPageProps> = ({
         <CollapsibleQuestionReview questions={questions.map(q => ({ ...q, subject: q.subject || '', difficulty: q.difficulty || 'medium' }))} answers={answers} />
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex justify-center gap-3">
           <Button
             onClick={onRetakeQuiz}
-            className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+            variant="outline"
+            className="rounded-xl"
           >
-            <RotateCcw className="h-5 w-5 mr-2" />
+            <RotateCcw className="h-4 w-4 mr-2" />
             Retake Quiz
           </Button>
-          
           <Button
             onClick={onBackToDashboard}
-            variant="outline"
-            className="flex items-center justify-center px-8 py-3"
+            className="rounded-xl bg-blue-600 hover:bg-blue-700"
           >
-            <ArrowLeft className="h-5 w-5 mr-2" />
             Back to Dashboard
           </Button>
         </div>
